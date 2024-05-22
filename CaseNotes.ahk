@@ -1,4 +1,4 @@
-; Note: This script requires BOM encoding (UTF-8) to display characters properly. 
+﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly. 
 
 ;version 0.1.1, The 'Sending Case Note Update' version
 ;version 0.1.2, The 'Dude, Where's My GUI' version
@@ -506,6 +506,7 @@ MakeCaseNote:
         }
         CaseNoteEntered.MEC2Note := 1
         GuiControl, 1:Text, MEC2NoteButton, MEC2 ✔
+        ;GuiControl, 1:Text, MEC2NoteButton, MEC2 Chr(2714)
         Sleep 500
         Clipboard := CaseNumber
     }
@@ -546,7 +547,8 @@ MakeCaseNote:
         ; Test area end
 
         CaseNoteEntered.MAXISNote := 1
-        GuiControl, 1:Text, MaxisNoteButton, Maxis ✔
+        GuiControl, 1:Text, MaxisNoteButton, Maxis ✔ ; Chr(2714)
+        ;GuiControl, 1:Text, MaxisNoteButton, Maxis Chr(2714)
         sleep 500
         Clipboard := CaseNumber
     }
@@ -554,6 +556,7 @@ MakeCaseNote:
     If (A_GuiControl = "NotepadBackup") {
         CaseNoteEntered.MEC2Note := 1
         CaseNoteEntered.MAXISNote := 1
+        ;GuiControl, 1:Text, NotepadBackup, Desktop ✔
         GuiControl, 1:Text, NotepadBackup, Desktop ✔
         LetterLabel2 := StrLen(LetterText2) > 0 ? "`n== Letter Page 2 ==`n`n" : ""
         LetterLabel3 := StrLen(LetterText3) > 0 ? "`n`n== Letter Page 3 ==`n`n" : ""
@@ -1306,33 +1309,27 @@ MissingButtonDoneButton:
         EligibleActivityMissingText := "* You did not select an eligible activity on the application. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, Job Search up to 20 hours per week, and activities on a Cash Assistance Employment Plan.`n"
 		MissingVerifications[EligibleActivityMissingText] := 5
         EmailTextString .= EligibleActivityMissingText
-		CaseNoteMissing .= "Eligible activity;`n"
+		CaseNoteMissing .= "Eligible activity (none selected on form);`n"
     }
     If EmploymentIneligibleMissing {
         EmploymentIneligibleMissingText := "* Your employment does not meet eligible activity requirements. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, Job Search up to 20 hours per week, and activities on a Cash Assistance Employment Plan. You can submit up to the past 6 months of paystubs to average above 20 hours.`n"
         ;EmploymentIneligibleMissingText := "* Your employment does not meet eligible activity requirements. (Employment of 20+ hours per week (10+ for FT students), Education with an approved plan, Job Search up to 20 hours per week, and Cash Assistance Employment Plan activities.) You can still be eligible by participating in other activities, but we can't include your employment in the assistance hours." := 7
 		MissingVerifications[EmploymentIneligibleMissingText] := 6
         EmailTextString .= EmploymentIneligibleMissingText
-		CaseNoteMissing .= "Eligible employment activity or other activity;`n"
+		CaseNoteMissing .= "Employment hours meeting minimum requirement, or other eligible activity;`n"
     }
     If SelfEmploymentIneligibleMissing {
         SelfEmploymentIneligibleMissingText := "* Your self-employment does not meet activity requirements. Self-employment hours are calculated using 50% of gross, or gross minus expenses on tax return divided by MN minimum wage. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, Job Search up to 20 hours per week, and activities on a Cash Assistance Employment Plan.`n"
         ; SelfEmploymentIneligibleMissingText := ""* Your self-employment does not meet activity requirements. (Employment of 20+ hours per week (10+ for FT students), Education with an approved plan, Job Search up to 20 hours per week, and Cash Assistance Employment Plan activities.) Self-employment hours are calculated using 50% of gross, or gross minus eligible expenses on a tax return divided by the state's minimum wage. You can still be eligible by participating in other activities, but we can't include your employment in the assistance hours." := 9
 		MissingVerifications[SelfEmploymentIneligibleMissingText] := 7
         EmailTextString .= SelfEmploymentIneligibleMissingText
-		CaseNoteMissing .= "Eligible employment activity or other activity;`n"
+		CaseNoteMissing .= "Self-employment hours meeting minimum requirement, or other eligible activity;`n"
     }
 	If ActivityAfterHomelessMissing {
         ActivityAfterHomelessMissingText := "* At the end of the 3-month homeless exemption period, you must have an eligible activity to keep your Child Care Assistance case open. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, and activities listed on a Cash Assistance Employment Plan.`n"
 		MissingVerifications[ActivityAfterHomelessMissingText] := 6
         EmailTextString .= ActivityAfterHomelessMissingText
 		CaseNoteMissing .= "Eligible activity after the 3-month homeless period;`n"
-    }
-	If EdBSFOneBachelorDegreeMissing {
-        EdBSFOneBachelorDegreeMissingText := "* Unless listed on a Cash Assistance Employment Plan, education is only an eligible activity up to a first Bachelor's degree and CEUs, and no additional degrees.`n"
-		MissingVerifications[EdBSFOneBachelorDegreeMissingText] := 3
-        EmailTextString .= EdBSFOneBachelorDegreeMissingText
-		CaseNoteMissing .= "Client informed only up to first Bachelor's degree is BSF/TY eligible;`n"
     }
 	If NoProviderMissing {
         NoProviderMissingText := "* If you need help locating a daycare provider, contact`n Parent Aware at 888-291-9811 or www.parentaware.org/search`n"
@@ -1356,7 +1353,13 @@ MissingButtonDoneButton:
         ProviderForNonImmigrantMissingText := "* If your child is not a US citizen, Lawful Permanent Resident, Lawfully residing non-citizen, or fleeing persecution, assistance can only be approved at a daycare that is subject to public educational standards.`n"
         MissingVerifications[ProviderForNonImmigrantMissingText] := 4
         EmailTextString .= ProviderForNonImmigrantMissingText
-        CaseNoteMissing .= "Provider subject to Public Educational Standards (4.15), if child not immigrant;`n"
+        CaseNoteMissing .= "Provider subject to Public Educational Standards (4.15), if child not citizen/immigrant;`n"
+    }
+	If EdBSFOneBachelorDegreeMissing {
+        EdBSFOneBachelorDegreeMissingText := "* Unless listed on a Cash Assistance Employment Plan, education is only an eligible activity up to a first Bachelor's degree and CEUs, and no additional degrees.`n"
+		MissingVerifications[EdBSFOneBachelorDegreeMissingText] := 3
+        EmailTextString .= EdBSFOneBachelorDegreeMissingText
+		CaseNoteMissing .= "* Client informed only up to first Bachelor's degree is BSF/TY eligible;`n"
     }
     
     ClarifiedVerifications["NewLineAutoreplaceOne Documents can also be faxed to " CountyFaxRead " or emailed to`n " CountyDocsEmailRead ". Please include your case number." AutoDenyObject.AutoDenyExtensionSpecLetter] := 2+AutoDenyObject.AutoDenyExtraLines
@@ -1376,9 +1379,9 @@ MissingButtonDoneButton:
                 MissingVerifications.InsertAt(1, "_____        Please submit the following items:        _____`n", 1)
             }
         }
-        If (ClarifiedVerifications.Length() > 1) {
-            ClarifiedVerifications.InsertAt(1, "`n__Clarification of items listed above the Worker Comments:__`n", 1)
-        }
+    }
+    If (ClarifiedVerifications.Length() > 1) {
+        ClarifiedVerifications.InsertAt(1, "`n__Clarification of items listed above the Worker Comments:__`n", 1)
     }
     GoSub SetEmailText
     ArrayLines := 0
