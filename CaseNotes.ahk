@@ -30,7 +30,7 @@
 SetWorkingDir %A_ScriptDir%
 #Persistent
 #SingleInstance force
-#NoTrayIcon
+; #NoTrayIcon
 SetTitleMatchMode, RegEx
 
 
@@ -40,6 +40,7 @@ IniRead, WorkerEmailRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeEmail, 
 IniRead, WorkerPhoneRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeePhone, %A_Space%
 IniRead, UseWorkerEmailRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeUseEmail, 0
 IniRead, UseMec2FunctionsRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeUseMec2Functions, 0
+IniRead, WorkerBrowserRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeBrowser, Google Chrome
 ;; County Specific Items:
 IniRead, CountyNoteInMaxisRead, %A_MyDocuments%\AHK.ini, CaseNoteCountyInfo, CountyNoteInMaxis, 0
 IniRead, CountyFaxRead, %A_MyDocuments%\AHK.ini, CaseNoteCountyInfo, CountyFax, %A_Space%
@@ -68,7 +69,7 @@ VerificationWindowOpenedOnce := 0
 VerifCat :=, LetterTextNumber := 1, LetterText := {}
 
 CountySpecificText := {}
-CountySpecificText.Dakota := { OverIncomeContactInfo: " contact 651-554-6696 and", CustomHotkeys: "Custom hotkeys for your county exist for the following windows (A ToolTip reminder appears by pressing F1):`nOnBase (Alt+4, 'Verifs Due Back' detail),`nOnBase (Perform Import) - For printing docs to OnBase (Ctrl+F6-12)`nOnBase (Ctrl+B, Inserts date and case number for mail)`nAutomated Mailing (Ctrl+B, Inserts date and case number for mail)`nChrome (Types in case note for app denied/approved, and worker signature)`nWord (Types in first name, case number, and app received date)." }
+CountySpecificText.Dakota := { OverIncomeContactInfo: " contact 651-554-6696 and", CustomHotkeys: "Custom hotkeys for your county exist for the following windows (A ToolTip reminder appears by pressing F1):`nOnBase (Alt+4, 'Verifs Due Back' detail),`nOnBase (Perform Import) - For printing docs to OnBase (Ctrl+F6-12)`nOnBase (Ctrl+B, Inserts date and case number for mail)`nAutomated Mailing (Ctrl+B, Inserts date and case number for mail)`nBrowser (Types in case note for app denied/approved, and worker signature)`nWord (Types in first name, case number, and app received date)." }
 CountySpecificText.StLouis := { OverIncomeContactInfo: "" }
 ; Globals
 
@@ -282,8 +283,8 @@ HelpButton:
     Hotkeys:
     ● [Alt+3]: Copies the case number to the clipboard. Usable from anywhere when CaseNotes is open.
     ● [Win+left arrow] or [Win+right arrow]: Resets CaseNotes location, in the event it is off-screen.
-    ● [Ctrl+F12] or [Alt+12]: In Chrome, types in the worker's name with a separation line (case note signature)
-    ● [Ctrl+Alt+a]: When in Chrome, select and copy text from a case note. Press hotkey to popup copied text in a separate window.
+    ● [Ctrl+F12] or [Alt+12]: In MEC2, types in the worker's name with a separation line (case note signature)
+    ● [Ctrl+Alt+a]: When in MEC2, select and copy text (such as from a case note). Hotkey popups copied text in a separate window.
     )"
     Paragraph5 := "
     (
@@ -363,15 +364,16 @@ SetEmailText:
 	If (!InStr(Missing, "over-income")) {
         EmailText.StartHL := (CaseDetails.Eligibility = "elig") ? " It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility." : " You may be eligible for the homeless policy, which allows us to approve eligibility even though there are verifications we need but do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility.`n`nBefore we can approve eligibility, we need information that you did not put on the application:`n`nREPLACE_THIS_WITH_QUESTIONS_THE_CLIENT_NEEDS_TO_ANSWER_TO_BE_APPROVED"
 
-        EmailText.EndHL := (CaseDetails.Eligibility = "elig") ? "You are initially approved for 30 hours of child care assistance per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.`nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week.`nIf you have a 'copay,' the amount the county pays to the provider will be reduced by that much. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay." : ""
+        EmailText.EndHL := (CaseDetails.Eligibility = "elig") ? "`nYou are initially approved for 30 hours of child care assistance per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.`nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children.`nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay." : ""
 
         EmailText.AreOrWillBe := (Homeless = 1) ? "will be" : "are"
         
-        EmailText.Reason := (CaseDetails.Eligibility = "elig") ? "for authorizing assistance hours" : "to determine eligibility and calculate assistance hours"
+        EmailText.Reason1 := (CaseDetails.Eligibility = "elig") ? "for authorizing assistance hours" : "to determine eligibility or calculate assistance hours"
+        EmailText.Reason2 := (Homeless = 1) ? "to determine on-going eligibility or calculate assistance hours after the 90-day period" : EmailText.Reason1
         EmailText.StartNotHL := "I processed your Child Care Assistance " MEC2DocType "."
 
         EmailText.Start := (Homeless = 1) ? EmailText.StartNotHL EmailText.StartHL : EmailText.StartNotHL
-        EmailText.Middle := "`n`nThe following documents or verifications " EmailText.AreOrWillBe " needed " EmailText.Reason ":`n`n"
+        EmailText.Middle := "`n`nThe following documents or verifications " EmailText.AreOrWillBe " needed " EmailText.Reason2 ":`n`n"
 
         EmailText.Combined := EmailText.Start EmailText.Middle
 	}
@@ -423,7 +425,9 @@ MakeCaseNote:
 	If (CaseDetails.Eligibility = "pends" && CaseDetails.DocType = "Redet") {
 		CaseDetails.Eligibility := "incomplete"
         CaseDetails.SaEntered := ""
+        FormattedSignDate := FormatMDY(SignDate)
         CaseDetails.RedetDue := CaseDetails.Eligibility = "incomplete" ? " (due " FormatMDY(SignDate) ")" : ""
+        ;CaseDetails.RedetDue := CaseDetails.Eligibility = "incomplete" ? " (due " SubStr(FormattedSignDate, 0, (StrLen(FormattedSignDate)-3)) ")" : ""
 	}
 	If (CaseDetails.Eligibility = "pends" || CaseDetails.Eligibility = "ineligible") {
 		CaseDetails.SaEntered := ""
@@ -478,7 +482,7 @@ MakeCaseNote:
         } else If (MEC2CaseNoteLines +1 > 30) {
             MsgBox,,MEC2 Case Note over 30 lines, Notice - Your case note is over 30 lines and will fail to save if not shortened.
         }
-		WinActivate ahk_exe chrome.exe
+		WinActivate % WorkerBrowserRead
 		Sleep 500
         MEC2DocType := CaseDetails.DocType = "Redet" ? "Redetermination" : CaseDetails.DocType
         If (UseMec2FunctionsRead = 1) {
@@ -486,7 +490,7 @@ MakeCaseNote:
             Clipboard := concatCaseNote
             Send, ^v
         } Else If (UseMec2FunctionsRead = 0) {
-            WinActivate ahk_exe chrome.exe
+            WinActivate % WorkerBrowserRead
             Sleep 1000
             Send {Tab 7}
             Sleep 750
@@ -1449,7 +1453,7 @@ MissingButtonDoneButton:
 		CaseNoteMissing .= "Employment hours meeting minimum requirement, or other eligible activity;`n"
     }
 	If ActivityAfterHomelessMissing {
-        ActivityAfterHomelessMissingText := "* At the end of the 3-month homeless exemption period, you must have an eligible activity to keep your Child Care Assistance case open. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, and activities listed on a Cash Assistance Employment Plan.`n"
+        ActivityAfterHomelessMissingText := "* At the end of the 90-day homeless exemption period, you must have an eligible activity to keep your Child Care Assistance case open. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, and activities listed on a Cash Assistance Employment Plan.`n"
 		MissingVerifications[ActivityAfterHomelessMissingText] := 6
         EmailTextString .= ActivityAfterHomelessMissingText
 		CaseNoteMissing .= "Eligible activity after the 3-month homeless period;`n"
@@ -1595,7 +1599,7 @@ Return
 
 Letter:
     Gui, Submit, NoHide
-    WinActivate ahk_exe chrome.exe
+    WinActivate % WorkerBrowserRead
     Sleep 500
 	LetterGUINumber := "LetterText" . SubStr(A_GuiControl, 0)
     If (UseMEC2FunctionsRead = 1) {
@@ -1796,6 +1800,7 @@ SettingsButton:
     CountyNoteInMaxisReadini := (InStr(CountyNoteInMaxisRead, "0")) ? "Checked0" : "Checked"
     
     EditboxOptions := "x200 yp-3 h18 w200"
+    CheckboxOptions := "x200 yp-3 h18 w20"
     TextLabelOptions := "xm w170 h18 Right"
     Gui, Font,, Lucida Console
     Gui, Color, 989898, a9a9a9
@@ -1808,15 +1813,18 @@ SettingsButton:
     Gui, CSG: Add, Text, %TextLabelOptions%,Worker Email:
     Gui, CSG: Add, Edit, %EditboxOptions% vWorkerEmailWrite,%WorkerEmailRead%
     Gui, CSG: Add, Text, %TextLabelOptions%,Use Worker Email in Letters:
-    Gui, CSG: Add, CheckBox, %EditboxOptions% vWorkerEmailYesWrite %UseWorkerEmailReadini%
+    Gui, CSG: Add, CheckBox, %CheckboxOptions% vWorkerEmailYesWrite %UseWorkerEmailReadini%
     Gui, CSG: Add, Text, %TextLabelOptions%,Using mec2functions:
-    Gui, CSG: Add, CheckBox, %EditboxOptions% vWorkerUsingMec2FunctionsWrite %UseMec2FunctionsReadini%
-    
+    Gui, CSG: Add, CheckBox, %CheckboxOptions% vWorkerUsingMec2FunctionsWrite gWorkerUsingMec2Functions %UseMec2FunctionsReadini%
+    Gui, CSG: Add, ComboBox, x+10 yp vWorkerBrowserWrite Choose1 R4 Hidden, %WorkerBrowserRead%|Google Chrome|Mozilla Firefox|Microsoft Edge
+    If (UseMec2FunctionsReadini = "Checked") {
+        GuiControl, CSG: Show, WorkerBrowserWrite
+    }
     Gui, CSG: Add, Text, h0 w0 y+10
     Gui, CSG: Add, Text, %TextLabelOptions%,Select a county to auto-populate
-    Gui, CSG: Add, ComboBox, %EditboxOptions% vWorkerCountyWrite gCountySelection Choose1 R3, %WorkerCounty%|Dakota|StLouis|Other
+    Gui, CSG: Add, ComboBox, %EditboxOptions% vWorkerCountyWrite gCountySelection Choose1 R4, %WorkerCounty%|Dakota|StLouis|Other
     Gui, CSG: Add, Text, %TextLabelOptions%,Case Note in MAXIS:
-    Gui, CSG: Add, CheckBox, %EditboxOptions% vCountyNoteInMaxisWrite %CountyNoteInMaxisReadini%
+    Gui, CSG: Add, CheckBox, %CheckboxOptions% vCountyNoteInMaxisWrite %CountyNoteInMaxisReadini%
     Gui, CSG: Add, Text, %TextLabelOptions%,Fax Number:
     Gui, CSG: Add, Edit, %EditboxOptions% vCountyFaxWrite, %CountyFaxRead%
     Gui, CSG: Add, Text, %TextLabelOptions%,County Documents Email:
@@ -1827,6 +1835,14 @@ SettingsButton:
     Gui, CSG: Add, Edit, %EditboxOptions% vCountyEdBSFformWrite, %CountyEdBSFformRead%
     Gui, CSG: Add, Button, w80 gUpdateIniFile, Save
     Gui, CSG: Show,w450,Change Settings
+Return
+
+WorkerUsingMec2Functions:
+    If (%A_GuiControl% = 0) {
+        GuiControl, CSG: Hide, WorkerBrowserWrite
+        Return
+    }
+    GuiControl, CSG: Show, WorkerBrowserWrite
 Return
 
 UpdateIniFile:
@@ -1845,6 +1861,9 @@ UpdateIniFile:
     
     IniWrite, %WorkerUsingMec2FunctionsWrite%, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeUseMec2Functions
     UseMec2FunctionsRead := WorkerUsingMec2FunctionsWrite
+    
+    IniWrite, %WorkerBrowserWrite%, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeBrowser
+    WorkerBrowserRead := WorkerBrowserWrite
     
     IniWrite, %WorkerCountyWrite%, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeCounty
     WorkerCounty := WorkerCountyWrite
@@ -1878,26 +1897,28 @@ CountySelection:
 Return
 
 ;BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION 
-st_wordWrap(string, column, indentChar) ; String Things - Common String & Array Functions
-{
+st_wordWrap(string, column, indentChar) { ; String Things - Common String & Array Functions
     indentLength := StrLen(indentChar)
-     
     Loop, Parse, string, `n, `r
     {
-        If (StrLen(A_LoopField) > column)
-        {
+        If (StrLen(A_LoopField) > column) {
             pos := 1
-            Loop, Parse, A_LoopField, %A_Space%
-                If (pos + (loopLength := StrLen(A_LoopField)) <= column)
+            Loop, Parse, A_LoopField, %A_Space% ; A_LoopField is the individual word
+            {
+                If (pos + (loopLength := StrLen(A_LoopField)) <= column) {
                     out .= (A_Index = 1 ? "" : " ") A_LoopField
                     , pos += loopLength + 1
-                Else
+                } Else {
                     pos := loopLength + 1 + indentLength
                     , out .= "`n" indentChar A_LoopField
-             
+                }
+            }
             out .= "`n"
-        } Else
-            out .= A_LoopField "`n"
+        } Else {
+            If (StrLen(A_LoopField) > 0) {
+                out .= A_LoopField "`n"
+            }
+        }
     }
     Return SubStr(out, 1, -1)
 }
@@ -2041,7 +2062,7 @@ If (WorkerCounty = "Dakota") {
         Return
     #If
 
-    #IfWinActive Google Chrome
+    #If (WinActive WorkerBrowserRead)
         F1::
             ToolTip,
             (
