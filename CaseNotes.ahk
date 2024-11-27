@@ -20,7 +20,8 @@
 ;version 0.2.8, The 'Do or do not, there is no try' version
 ;version 0.2.9, The 'Imported hotkeys from MEC2Hotkeys' version
 ;version 0.3.0, The 'Look ma, I'm on GitHub' version
-;version 0.3.1, The 'I am so tired of typing questions from redeterminations into Other because someone missed Lump Sum again' version
+;version 0.3.1, The 'I am so tired of typing questions from redeterminations into Other because someone missed Lump Sum again' version (soonTM)
+;version 0.3.2, The 'I don't know what your MAXIS screen is called' version
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -41,6 +42,7 @@ IniRead, WorkerPhoneRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeePhone, 
 IniRead, UseWorkerEmailRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeUseEmail, 0
 IniRead, UseMec2FunctionsRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeUseMec2Functions, 0
 IniRead, WorkerBrowserRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeBrowser, Google Chrome
+IniRead, WorkerMaxisRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeMaxis, MAXIS-WINDOW-TITLE
 ;; County Specific Items:
 IniRead, CountyNoteInMaxisRead, %A_MyDocuments%\AHK.ini, CaseNoteCountyInfo, CountyNoteInMaxis, 0
 IniRead, CountyFaxRead, %A_MyDocuments%\AHK.ini, CaseNoteCountyInfo, CountyFax, %A_Space%
@@ -518,7 +520,8 @@ MakeCaseNote:
     }
     If (A_GuiControl = "MaxisNoteButton") {
         StrReplace(MaxisNote, "`n", "`n", MaxisNoteCaseNoteLines) ; Counting new lines
-        MaxisWindow := WinExist("MAXIS")
+        WorkerMaxisRead := WorkerMaxisRead = "MAXIS-WINDOW-TITLE" : "MAXIS" : WorkerMaxisRead
+        MaxisWindow := WinExist(WorkerMaxisRead)
         If (MaxisWindow = "0x0")
             MaxisWindow := WinExist("BlueZone Mainframe")
 
@@ -1025,7 +1028,7 @@ MissingButtonDoneButton:
         EmailListItem++
     }
 	If ChildSchoolMissing {
-        ChildSchoolMissingText := "Written or verbal statement of child school information;`n"
+        ChildSchoolMissingText := "Written or verbal statement by you of child school information (location, grade, start/end times) - does not need to be verification from the school;`n"
         EmailTextString .= EmailListItem ". " ChildSchoolMissingText
 		CaseNoteMissing .= "Child school information;`n"
         MecCheckboxIds.childSchoolSchedule := 1
@@ -1824,7 +1827,11 @@ SettingsButton:
     Gui, CSG: Add, Text, %TextLabelOptions%,Select a county to auto-populate
     Gui, CSG: Add, ComboBox, %EditboxOptions% vWorkerCountyWrite gCountySelection Choose1 R4, %WorkerCounty%|Dakota|StLouis|Other
     Gui, CSG: Add, Text, %TextLabelOptions%,Case Note in MAXIS:
-    Gui, CSG: Add, CheckBox, %CheckboxOptions% vCountyNoteInMaxisWrite %CountyNoteInMaxisReadini%
+    Gui, CSG: Add, CheckBox, %CheckboxOptions% vCountyNoteInMaxisWrite gCountyNoteInMaxis %CountyNoteInMaxisReadini%
+    Gui, CSG: Add, Edit, x+10 yp h18 w170 vWorkerMaxisWrite Hidden, %WorkerMaxisRead%
+    If (CountyNoteInMaxisReadini = "Checked") {
+        GuiControl, CSG: Show, WorkerMaxisWrite
+    }
     Gui, CSG: Add, Text, %TextLabelOptions%,Fax Number:
     Gui, CSG: Add, Edit, %EditboxOptions% vCountyFaxWrite, %CountyFaxRead%
     Gui, CSG: Add, Text, %TextLabelOptions%,County Documents Email:
@@ -1838,13 +1845,22 @@ SettingsButton:
 Return
 
 WorkerUsingMec2Functions:
-    If (%A_GuiControl% = 0) {
+    GuiControlGet, WorkerBrowser,,WorkerUsingMec2FunctionsWrite
+    If (WorkerBrowser = 0) {
         GuiControl, CSG: Hide, WorkerBrowserWrite
         Return
     }
     GuiControl, CSG: Show, WorkerBrowserWrite
+ReturnCountyNoteInMaxis:
+    GuiControlGet, MaxisChecked,,CountyNoteInMaxisWrite
+    If (MaxisChecked = 0) {
+        GuiControl, CSG: Hide, WorkerMaxisWrite
+        Return
+    }
+    GuiControl, CSG: Show, WorkerMaxisWrite
 Return
 
+;IniRead, WorkerMaxisRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeMaxis, MAXIS
 UpdateIniFile:
     Gui, Submit, NoHide
     IniWrite, %WorkerNameWrite%, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeName
@@ -1870,6 +1886,9 @@ UpdateIniFile:
 
     IniWrite, %CountyNoteInMaxisWrite%, %A_MyDocuments%\AHK.ini, CaseNoteCountyInfo, CountyNoteInMaxis
     CountyNoteInMaxisRead := CountyNoteInMaxisWrite
+    
+    IniWrite, %WorkerMaxisWrite%, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeMaxis
+    WorkerMaxisRead := WorkerMaxisWrite
     
     IniWrite, %CountyFaxWrite%, %A_MyDocuments%\AHK.ini, CaseNoteCountyInfo, CountyFax
     CountyFaxRead := CountyFaxWrite
