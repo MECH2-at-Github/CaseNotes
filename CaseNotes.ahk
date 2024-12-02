@@ -520,7 +520,7 @@ MakeCaseNote:
     }
     If (A_GuiControl = "MaxisNoteButton") {
         StrReplace(MaxisNote, "`n", "`n", MaxisNoteCaseNoteLines) ; Counting new lines
-        WorkerMaxisRead := WorkerMaxisRead = "MAXIS-WINDOW-TITLE" : "MAXIS" : WorkerMaxisRead
+        WorkerMaxisRead := WorkerMaxisRead = "MAXIS-WINDOW-TITLE" ? "MAXIS" : WorkerMaxisRead
         MaxisWindow := WinExist(WorkerMaxisRead)
         If (MaxisWindow = "0x0")
             MaxisWindow := WinExist("BlueZone Mainframe")
@@ -1860,7 +1860,6 @@ ReturnCountyNoteInMaxis:
     GuiControl, CSG: Show, WorkerMaxisWrite
 Return
 
-;IniRead, WorkerMaxisRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeMaxis, MAXIS
 UpdateIniFile:
     Gui, Submit, NoHide
     IniWrite, %WorkerNameWrite%, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeName
