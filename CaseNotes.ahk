@@ -372,7 +372,7 @@ SetEmailText:
         
         EmailText.Reason1 := (CaseDetails.Eligibility = "elig") ? "for authorizing assistance hours" : "to determine eligibility or calculate assistance hours"
         EmailText.Reason2 := (Homeless = 1) ? "to determine on-going eligibility or calculate assistance hours after the 90-day period" : EmailText.Reason1
-        EmailText.StartNotHL := "I processed your Child Care Assistance " MEC2DocType "."
+        EmailText.StartNotHL := "Your Child Care Assistance " MEC2DocType " has been processed."
 
         EmailText.Start := (Homeless = 1) ? EmailText.StartNotHL EmailText.StartHL : EmailText.StartNotHL
         EmailText.Middle := "`n`nThe following documents or verifications " EmailText.AreOrWillBe " needed " EmailText.Reason2 ":`n`n"
@@ -519,7 +519,7 @@ MakeCaseNote:
         Clipboard := CaseNumber
     }
     If (A_GuiControl = "MaxisNoteButton") {
-        StrReplace(MaxisNote, "`n", "`n", MaxisNoteCaseNoteLines) ; Counting new lines
+        ;StrReplace(MaxisNote, "`n", "`n", MaxisNoteCaseNoteLines) ; Counting new lines
         WorkerMaxisRead := WorkerMaxisRead = "MAXIS-WINDOW-TITLE" ? "MAXIS" : WorkerMaxisRead
         MaxisWindow := WinExist(WorkerMaxisRead)
         If (MaxisWindow = "0x0")
@@ -612,12 +612,12 @@ CalcDates:
     Gui, Submit, NoHide
     DateObject.ReceivedYMD := Received
     DateObject.ReceivedMDY := FormatMDY(DateObject.ReceivedYMD)
-    DateObject.AutoDenyYMD := AddDays(DateObject.ReceivedYMD, 30)
+    DateObject.AutoDenyYMD := AddDays(DateObject.ReceivedYMD, 29)
     DateObject.AutoDenyMDY := FormatMDY(DateObject.AutoDenyYMD)
-    DateObject.RecdPlusFortyfiveYMD := AddDays(DateObject.ReceivedYMD, 45)
+    DateObject.RecdPlusFortyfiveYMD := AddDays(DateObject.ReceivedYMD, 44)
     DateObject.TodayPlusFifteenishYMD := addFifteenishDays(DateObject.TodayYMD)
     
-    DateObject.ExpeditedNinetyDaysYMD := AddDays(DateObject.ReceivedYMD, 90)
+    DateObject.ExpeditedNinetyDaysYMD := AddDays(DateObject.ReceivedYMD, 89)
     DateObject.ExpeditedNinetyDaysMDY := FormatMDY(DateObject.ExpeditedNinetyDaysYMD)
     
     DateObject.RecdPlusFifteenishYMD := addFifteenishDays(DateObject.ReceivedYMD)
@@ -633,7 +633,7 @@ CalcDates:
     DateObject.SignedMDY := FormatMDY(SignDate)
     DateObject.RedetCaseCloseYMD := addFifteenishDays(DateObject.SignedYMD)
     DateObject.RedetCaseCloseMDY := FormatMDY(DateObject.RedetCaseCloseYMD)
-    DateObject.RedetDocsLastDayMDY := FormatMDY(AddDays(DateObject.RedetCaseCloseYMD, 30))
+    DateObject.RedetDocsLastDayMDY := FormatMDY(AddDays(DateObject.RedetCaseCloseYMD, 29))
     
     NeedsFakeExtension := DateObject.RecdPlusFifteenishMDY
     AutoDenyObject.AutoDenyExtraLines := 0, AutoDenyObject.AutoDenyExtensionSpecLetter :=
@@ -641,19 +641,19 @@ CalcDates:
         If (CaseDetails.Eligibility = "pends") {
             If (NeedsNoExtension > -1) {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.AutoDenyMDY
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**You have until " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
                 AutoDenyObject.AutoDenyExtraLines := 1
                 GuiControl, 1: Text, AutoDenyStatus, Has 15+ days before auto-deny
             } Else If (NeedsExtension > -1) {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
                 AutoDenyObject.AutoDenyExtensionMECnote := "Auto-deny extended to " AutoDenyObject.AutoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**You have until " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
                 AutoDenyObject.AutoDenyExtraLines := 1
                 GuiControl, 1: Text, AutoDenyStatus, % "Extend auto-deny to " AutoDenyObject.AutoDenyExtensionDate
             } Else {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
                 AutoDenyObject.AutoDenyExtensionMECnote := "Reinstate date is " AutoDenyObject.AutoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**Please note that you will be mailed an auto-denial notice.`n  You have until " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications.`n  If you are eligible, your case will be reinstated."
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**Please note that you will be mailed an auto-denial notice.`n  You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications.`n  If you are eligible, your case will be reinstated."
                 AutoDenyObject.AutoDenyExtraLines := 3
                 GuiControl, 1: Text, AutoDenyStatus, % "Auto-denies tonight, pends until " AutoDenyObject.AutoDenyExtensionDate
             }
@@ -843,9 +843,12 @@ MissingButton:
     Gui, 3: Add, Checkbox, xm vMarriageCertificateMissing, Marriage certificate
     Gui, 3: Add, Checkbox, %Column2of2% vLegalNameChangeMissing gInputBoxAGUIControl, Name change (input)
 
+    Gui, 3: Font, bold
     Gui, 3: Add, Text, Section xm+115 y+15, Earned Income
     Gui, 3: Add, Text, xm+20 yp+7 w85 h1 0x5
-    Gui, 3: Add, Text, xs+85 yp w85 h1 0x5
+    Gui, 3: Add, Text, xs+90 yp w85 h1 0x5
+    Gui, 3: Font
+    
     Gui, 3: Add, Checkbox, xm vIncomeMissing, Income
     Gui, 3: Add, Checkbox, %Column2of3% vWorkScheduleMissing, Work Schedule
     Gui, 3: Add, Checkbox, %Column3of3% vContractPeriodMissing, Contract Period
@@ -855,7 +858,7 @@ MissingButton:
     Gui, 3: Add, Checkbox, xm vWorkLeaveMissing, Leave of absence (Dates, pay status, hours, work schedule)
     Gui, 3: Add, Text, %LightGrayLine%
     Gui, 3: Add, Checkbox, xm vSeasonalWorkMissing, Seasonal employment season length
-    Gui, 3: Add, Checkbox, xm vSeasonalOffSeasonMissing, Seasonal employment info (applied during off-season)
+    Gui, 3: Add, Checkbox, xm vSeasonalOffSeasonMissing, Seasonal employment info (applied during off-season, input)
     Gui, 3: Add, Text, %LightGrayLine%
     Gui, 3: Add, Checkbox, xm vSelfEmploymentMissing, Self-Employment Income
     Gui, 3: Add, Checkbox, %Column2of2% vSelfEmploymentScheduleMissing, Self-Employment Schedule
@@ -864,24 +867,29 @@ MissingButton:
     Gui, 3: Add, Checkbox, xm vExpensesMissing, Expenses
     Gui, 3: Add, Checkbox, %Column2of2% vOverIncomeMissing gInputBoxAGUIControl, Over-income (input)
 
+    Gui, 3: Font, bold
     Gui, 3: Add, Text, Section xm+110 y+15, Unearned Income
     Gui, 3: Add, Text, xm+20 yp+7 w80 h1 0x5
-    Gui, 3: Add, Text, xs+100 yp w80 h1 0x5
+    Gui, 3: Add, Text, xs+105 yp w80 h1 0x5
+    Gui, 3: Font
+    
     Gui, 3: Add, Checkbox, xm vChildSupportIncomeMissing, Child Support Income
     Gui, 3: Add, Checkbox, %Column2of2% vSpousalSupportMissing, Spousal Support Income
     Gui, 3: Add, Checkbox, xm vRentalMissing, Rental
     Gui, 3: Add, Checkbox, %Column2of2% vDisabilityMissing, STD / LTD 
     Gui, 3: Add, Checkbox, xm vInsuranceBenefitsMissing, Insurance Benefits 
     Gui, 3: Add, Checkbox, %Column2of2% vUnearnedStatementMissing, Blank Unearned Yes/No (statement)
-    Gui, 3: Add, Checkbox, xm vVABenefitsMissing, VA Benefits
-    Gui, 3: Add, Checkbox, %Column2of2% vUnearnedMailedMissing, Blank Unearned Yes/No (mailed back)
-
     Gui, 3: Add, Checkbox, xm vAssetsBlankMissing, Assets (Blank)
+    Gui, 3: Add, Checkbox, %Column2of2% vUnearnedMailedMissing, Blank Unearned Yes/No (mailed back)
+    Gui, 3: Add, Checkbox, xm vVABenefitsMissing, VA Benefits
     Gui, 3: Add, Checkbox, %Column2of2% vAssetsGT1mMissing, Assets (>$1m)
 
+    Gui, 3: Font, bold
     Gui, 3: Add, Text, Section xm+140 y+15, Activity
     Gui, 3: Add, Text, xm+20 yp+7 w100 h1 0x5
-    Gui, 3: Add, Text, xs+50 yp w100 h1 0x5
+    Gui, 3: Add, Text, xs+55 yp w100 h1 0x5
+    Gui, 3: Font
+    
     Gui, 3: Add, Checkbox, xm vEdBSFformMissing, EdBSF Form
     Gui, 3: Add, Checkbox, %Column2of3% vClassScheduleMissing, Class schedule
     Gui, 3: Add, Checkbox, %Column3of3% vTranscriptMissing, Transcript
@@ -894,10 +902,13 @@ MissingButton:
     Gui, 3: Add, Checkbox, xm vEligibleActivityMissing, No Eligible Activity Listed
     Gui, 3: Add, Checkbox, %Column2of2% vEmploymentIneligibleMissing, Employment not enough hours
     Gui, 3: Add, Checkbox, xm vActivityAfterHomelessMissing, Activity Requirement After 3-Month Homeless Period
-
-    Gui, 3: Add, Text, Section xm+137 y+15,Provider
+    
+    Gui, 3: Font, bold
+    Gui, 3: Add, Text, Section xm+137 y+15, Provider
     Gui, 3: Add, Text, xm+20 yp+7 w100 h1 0x5
-    Gui, 3: Add, Text, xs+50 yp w100 h1 0x5
+    Gui, 3: Add, Text, xs+60 yp w100 h1 0x5
+    Gui, 3: Font
+    
     Gui, 3: Add, Checkbox, xm vNoProviderMissing, No Provider Listed
     Gui, 3: Add, Checkbox, %Column2of2% vUnregisteredProviderMissing,Unregistered Provider
     Gui, 3: Add, Checkbox, xm vInHomeCareMissing, In-Home Care form
@@ -911,11 +922,11 @@ MissingButton:
 
     Gui, 3: Add, Button, h17 gMissingButtonDoneButton, Done
     Gui, 3: Add, Button, x+20 w40 h17 hidden gEmail vEmail, Email
-
     Gui, 3: Add, Button, x+20 w42 h17 hidden gLetter vLetter1, Letter 1
     Gui, 3: Add, Button, x+20 w42 h17 hidden gLetter vLetter2, Letter 2
     Gui, 3: Add, Button, x+20 w42 h17 hidden gLetter vLetter3, Letter 3
     Gui, 3: Add, Button, x+20 w42 h17 hidden gLetter vLetter4, Letter 4
+    
     Gui, 3: Show, x%XVerification% y%YVerification% w375, Missing Verifications
     Gui, 3: Show, AutoSize
 Return
@@ -937,7 +948,7 @@ MissingButtonDoneButton:
     If OverIncomeMissing {
         OverIncomeMissingText1 := "Using information you provided your case is ineligible as your income is over the limit for a household of " OverIncomeObj.overIncomeHHsize ". The gross limit is $" OverIncomeObj.overIncomeText ".`n"
         OverIncomeMissingText2 := "If your gross income does not match this calculation, you must" CountySpecificText[WorkerCounty].OverIncomeContactInfo " submit updated income and expense documents along with the following verifications:`n"
-        EmailTextString := "I processed your Child Care Assistance " MEC2DocType ".`n`n" OverIncomeMissingText1 OverIncomeMissingText2 "`n"
+        EmailTextString := "ITour Child Care Assistance " MEC2DocType " has been processed.`n`n" OverIncomeMissingText1 OverIncomeMissingText2 "`n"
         MissingVerifications[OverIncomeMissingText1] := 3
         MissingVerifications[OverIncomeMissingText2] := 3
         CaseNoteMissing .= "Household is calculated to be over-income by $" OverIncomeObj.overIncomeDifference " ($" OverIncomeObj.overIncomeReceived " - $" OverIncomeObj.overIncomeLimit ");`n"
@@ -1028,23 +1039,23 @@ MissingButtonDoneButton:
         EmailListItem++
     }
 	If ChildSchoolMissing {
-        ChildSchoolMissingText := "Written or verbal statement by you of child school information (location, grade, start/end times) - does not need to be verification from the school;`n"
+        ChildSchoolMissingText := "Child's school information (location, grade, start/end times) - does not need to be verification from the school;`n"
         EmailTextString .= EmailListItem ". " ChildSchoolMissingText
 		CaseNoteMissing .= "Child school information;`n"
-        MecCheckboxIds.childSchoolSchedule := 1
+        MecCheckboxIds.childSchoolSchedule := 2
         EmailListItem++
         ;MEC2 text: Child School Schedule- You can provide the school schedule of each child that needs child care by sending a copy of the days and times of school from the school's website or handbook, writing the information on a piece of paper, or telling your worker.
     }
     If ChildFTSchoolMissing {
         ChildFTSchoolMissingText := "Verification of full-time student status for minor children with employment OR their most recent 30 days income (income is not counted if attending school full-time);`n"
-        MissingVerifications[ListItem ". " ChildFTSchoolMissingText] := 2
+        MissingVerifications[ListItem ". " ChildFTSchoolMissingText] := 3
         EmailTextString .= EmailListItem ". " ChildFTSchoolMissingText
 		CaseNoteMissing .= "Minor child FT school status or income;`n"
 		ListItem++
         EmailListItem++
     }
 	If MarriageCertificateMissing {
-        MarriageCertificateMissingText := "Marriage Verification;`n"
+        MarriageCertificateMissingText := "Marriage verification (example: marriage certificate);`n"
 		MissingVerifications[ListItem ". " MarriageCertificateMissingText] := 1
         EmailTextString .= EmailListItem ". " MarriageCertificateMissingText
 		CaseNoteMissing .= "Marriage certificate;`n"
@@ -1138,8 +1149,9 @@ MissingButtonDoneButton:
         ListItem++
     }
     If SeasonalOffSeasonMissing {
-        SeasonalOffSeasonMissingText := "Verification of either seasonal employment, including expected season length and typical wages, or a signed statement that you are no longer an employee at this job.`n Upon returning to work, verification of work schedule will be needed, showing days of the week and start/end times;`n"
-		MissingVerifications[ListItem ". " SeasonalOffSeasonMissingText] := 5
+        SeasonalOffSeasonMissing := StrLen(SeasonalOffSeasonMissing) > 0 ? " at " SeasonalOffSeasonMissing : ""
+        SeasonalOffSeasonMissingText := "Verification of either seasonal employment" SeasonalOffSeasonMissing ", including expected season length and typical wages, or a signed statement that you are no longer an employee at this job.`n Upon returning to work, verification of work schedule will be needed, showing days of the week and start/end times;`n"
+		MissingVerifications[ListItem ". " SeasonalOffSeasonMissingText] := 6
         EmailTextString .= EmailListItem ". " SeasonalOffSeasonMissingText
 		CaseNoteMissing .= "Seasonal employment (applied during off season);`n"
         ListItem++
@@ -1438,7 +1450,7 @@ MissingButtonDoneButton:
 		CaseNoteMissing .= "* Client informed only up to first bachelor's degree is BSF/TY eligible;`n"
     }
     If SelfEmploymentIneligibleMissing {
-        SelfEmploymentIneligibleMissingText := "* Your self-employment does not meet activity requirements. Self-employment hours are calculated using 50% of gross, or gross minus expenses on tax return divided by MN minimum wage. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, Job Search up to 20 hours per week, and activities on a Cash Assistance Employment Plan.`n"
+        SelfEmploymentIneligibleMissingText := "* Your self-employment does not meet activity requirements. Self-employment hours are calculated using 50% of recent gross income, or gross minus expenses on tax return divided by minimum wage. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, Job Search up to 20 hours per week, and activities on a Cash Assistance Employment Plan.`n"
 		MissingVerifications[SelfEmploymentIneligibleMissingText] := 7
         EmailTextString .= SelfEmploymentIneligibleMissingText
 		CaseNoteMissing .= "Self-employment hours meeting minimum requirement, or other eligible activity;`n"
@@ -1659,6 +1671,8 @@ InputBoxAGUIControl:
         PromptText := "What is the phone number of the Child Support officer?"
     Else If (InputBoxEntry = "LegalNameChangeMissing")
         PromptText := "Who is the name change proof needed for?"
+    Else If (InputBoxEntry = "SeasonalOffSeasonMissing")
+        PromptText := "Who is the employer? (optional)"
     Else if (InputBoxEntry = "OverIncomeMissing")
         PromptText := "Without dollar signs, enter the calculated income less expenses, income limit, and household size.`n`n(Example: 76392 49605 3)"
 
@@ -1845,6 +1859,7 @@ SettingsButton:
 Return
 
 WorkerUsingMec2Functions:
+    Gui, Submit, NoHide
     GuiControlGet, WorkerBrowser,,WorkerUsingMec2FunctionsWrite
     If (WorkerBrowser = 0) {
         GuiControl, CSG: Hide, WorkerBrowserWrite
@@ -1852,6 +1867,7 @@ WorkerUsingMec2Functions:
     }
     GuiControl, CSG: Show, WorkerBrowserWrite
 ReturnCountyNoteInMaxis:
+    Gui, Submit, NoHide
     GuiControlGet, MaxisChecked,,CountyNoteInMaxisWrite
     If (MaxisChecked = 0) {
         GuiControl, CSG: Hide, WorkerMaxisWrite
@@ -1912,6 +1928,7 @@ CountySelection:
     GuiControl, CSG: Text, CountyDocsEmailWrite, % CountyContact[WorkerCounty].Email
     GuiControl, CSG: Text, CountyEdBSFformWrite, % CountyContact[WorkerCounty].EdBSF
     GuiControl,, CountyNoteInMaxisWrite, % CountyContact[WorkerCounty].CountyNoteInMaxis
+    GoSub, CountyNoteInMaxis
 Return
 
 ;BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION 
@@ -2039,20 +2056,22 @@ Return
     #Right::
         MsgBox,4, Reset Position?, Do you want to reset CaseNotes' position?, 10
         IfMsgBox, Yes
-            WinMove, CaseNotes,, 0, 0
-            WinMove, Missing Verifications,,0,0
-            XVerification := 0
-            YVerification := 0
+            ResetPositions()
         IfMsgBox, Timeout
-            WinMove, CaseNotes,, 0, 0
-            WinMove, Missing Verifications,,0,0
-            XVerification := 0
-            YVerification := 0
+            ResetPositions()
         Return
     Return
 #If
+ResetPositions() {
+    WinMove, CaseNotes,, 0, 0
+    WinMove, Missing Verifications,,0,0
+    XCaseNotes := 0
+    YCaseNotes := 0
+    XVerification := 0
+    YVerification := 0
+}
 
-If (WorkerCounty = "Dakota") {
+If (true) {
     #If WinActive("ahk_exe WINWORD.EXE")
         F1::
             ToolTip,
@@ -2201,10 +2220,12 @@ If (WorkerCounty = "Dakota") {
             ToolTipText := WinActive("Automated Mailing Home Page")
             ? "Ctrl+B: Types in the current date and case number." : "
             (
-    Ctrl+B: Types in the current date and case number, clicks Yes. Works best from Custom Query.
-              First: Select documents, Right Click -> Send To -> Envelope.
+    Ctrl+B: (Mail) Types in the current date and case number, clicks Yes. Works best from Custom Query.
+              Step 1: Select documents in the query.
+              Step 2: Right Click -> Send To -> Envelope.
+              Step 3: Click 'Create Envelope'
 
-    Alt+4: Enters 'VERIFS DUE BACK' + document due date. 'Details' field needs to be active.
+    Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword field must be active.
             )"
             ToolTip, % ToolTipText,0,0
             SetTimer, RemoveToolTip, -8000
@@ -2225,7 +2246,7 @@ If (WorkerCounty = "Dakota") {
                         } Else {
                             run http://webapp4/AutomatedMailing/
                         }
-                }
+            }
             
         Return
         !4::
