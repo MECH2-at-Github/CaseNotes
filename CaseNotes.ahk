@@ -1878,6 +1878,9 @@ Return
 
 UpdateIniFile:
     Gui, Submit, NoHide
+    ;If (CountyNoteInMaxisWrite && WorkerMaxisWrite = "MAXIS-WINDOW-TITLE") {
+        ;change border of WorkerMaxisWrite, blink, dance, return?
+    ;}
     IniWrite, %WorkerNameWrite%, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeName
     WorkerNameRead := WorkerNameWrite
     
@@ -2071,193 +2074,191 @@ ResetPositions() {
     YVerification := 0
 }
 
-If (true) {
-    #If WinActive("ahk_exe WINWORD.EXE")
-        F1::
-            ToolTip,
-            (
-    Alt+4: Starting from the name field, moves to and enters date,
-             case number, and client's first name.
-            ), 0, 0
-            SetTimer, RemoveToolTip, -5000
-        Return
-        !4::
-            Gui, Submit, NoHide
-            ReceivedDate := FormatMDY(Received)
-            RegExMatch(HouseholdComp, "^\w+\b", NameMatch)
-            SendInput, {Down 2}
-            Sleep 400
-            SendInput, % ReceivedDate
-            Sleep 400
-            SendInput, {Up}
-            Sleep 400
-            SendInput, % CaseNumber
-            Sleep 400
-            SendInput, {Up}
-            Sleep 400
-            SendInput, % NameMatch " "
-        Return
-    #If
+#If WinActive("ahk_exe WINWORD.EXE")
+    F1::
+        ToolTip,
+        (
+Alt+4: Starting from the name field, moves to and enters date,
+         case number, and client's first name.
+        ), 0, 0
+        SetTimer, RemoveToolTip, -5000
+    Return
+    !4::
+        Gui, Submit, NoHide
+        ReceivedDate := FormatMDY(Received)
+        RegExMatch(HouseholdComp, "^\w+\b", NameMatch)
+        SendInput, {Down 2}
+        Sleep 400
+        SendInput, % ReceivedDate
+        Sleep 400
+        SendInput, {Up}
+        Sleep 400
+        SendInput, % CaseNumber
+        Sleep 400
+        SendInput, {Up}
+        Sleep 400
+        SendInput, % NameMatch " "
+    Return
+#If
 
-    #If (WinActive WorkerBrowserRead)
-        F1::
-            ToolTip,
-            (
-    Alt+F1: Reviewed/Approved application (Start New case note first)
-    Alt+F2: Reviewed/Denied application (Start New case note first)
+#If WinActive(WorkerBrowserRead)
+    F1::
+        ToolTip,
+        (
+Alt+F1: Reviewed/Approved application (Start New case note first)
+Alt+F2: Reviewed/Denied application (Start New case note first)
 
-    Ctrl/Alt+F12: Add worker signature to case note
-            )
-            , 0, 0
-            SetTimer, RemoveToolTip, -5000
-        Return
+Ctrl/Alt+F12: Add worker signature to case note
+        )
+        , 0, 0
+        SetTimer, RemoveToolTip, -5000
+    Return
 
-        !F1::
-            If (UseMec2FunctionsRead = 0)
-                Send {Tab 7}
-            Else
-                Send {Tab}
-            Sleep 750
-            Send {A 4}
-            Sleep 500
+    !F1::
+        If (UseMec2FunctionsRead = 0)
+            Send {Tab 7}
+        Else
             Send {Tab}
-            Sleep 500
-            SendInput, Reviewed application requirements - approved elig
-            Sleep 500,
-            Send, {Tab}
-            Sleep 500,
-            SendInput, Reviewed case for verifications that are required at application. Verifications were received.`n-`nApproved eligible results effective DATEAPPROVEDGOESHERE.`n-`nService Authorization APPROVEDorNOTandEFFECTIVEDATEIFAPPROVED.`n=====`n%WorkerNameRead%
-        Return
-
-        !F2::
-            If (UseMec2FunctionsRead = 0)
-                Send {Tab 7}
-            Else
-                Send {Tab}
-            Sleep 750
-            Send {A 4}
-            Sleep 500
-            Send {Tab}
-            Sleep 500
-            SendInput, Reviewed application requirements - app denied
-            Sleep 500,
-            Send, {Tab}
-            Sleep 500,
-            SendInput, Reviewed case for documents that are required at application. Documents were not received.`n-`nApplication was denied by MEC2 and remains denied.`n=====`n%WorkerNameRead%
-            Sleep 1000,
-            Send, !{s}
-        Return
-
-        ^F12:: ;CtrlF12/AltF12 Add worker signature
-        !F12::
-            SendInput `n=====`n
-            Send, %WorkerNameRead%
-        Return
-    #If
-
-    OnBaseImportKeys(CaseNum, DocType, DetailText, DetailTabs=1, ToolTipHelp="") {
-        SendInput, {Tab 2}
-        Sleep 250
-        SendInput, % DocType
-        Sleep 1000
-        SendInput, {Tab 4}
-        Sleep 1500
-        SendInput, NO
-        Sleep 250
-        SendInput, {Tab}
-        Sleep 500
-        SendInput, % CaseNum
-        Sleep 500
-        SendInput, {Tab %DetailTabs%}
         Sleep 750
-        SendInput, % DetailText
-        Sleep 200
-        If (StrLen(ToolTipHelp) > 0) {
-            CaretY := A_CaretY + 40
-            ToolTip, % "`n  " ToolTipHelp "  `n ", % A_CaretX, % CaretY
-            SetTimer, RemoveToolTip, -5000   
-        }
+        Send {A 4}
+        Sleep 500
+        Send {Tab}
+        Sleep 500
+        SendInput, Reviewed application requirements - approved elig
+        Sleep 500,
+        Send, {Tab}
+        Sleep 500,
+        SendInput, Reviewed case for verifications that are required at application. Verifications were received.`n-`nApproved eligible results effective DATEAPPROVEDGOESHERE.`n-`nService Authorization APPROVEDorNOTandEFFECTIVEDATEIFAPPROVED.`n=====`n%WorkerNameRead%
+    Return
+
+    !F2::
+        If (UseMec2FunctionsRead = 0)
+            Send {Tab 7}
+        Else
+            Send {Tab}
+        Sleep 750
+        Send {A 4}
+        Sleep 500
+        Send {Tab}
+        Sleep 500
+        SendInput, Reviewed application requirements - app denied
+        Sleep 500,
+        Send, {Tab}
+        Sleep 500,
+        SendInput, Reviewed case for documents that are required at application. Documents were not received.`n-`nApplication was denied by MEC2 and remains denied.`n=====`n%WorkerNameRead%
+        Sleep 1000,
+        Send, !{s}
+    Return
+
+    ^F12:: ;CtrlF12/AltF12 Add worker signature
+    !F12::
+        SendInput `n=====`n
+        Send, %WorkerNameRead%
+    Return
+#If
+
+OnBaseImportKeys(CaseNum, DocType, DetailText, DetailTabs=1, ToolTipHelp="") {
+    SendInput, {Tab 2}
+    Sleep 250
+    SendInput, % DocType
+    Sleep 1000
+    SendInput, {Tab 4}
+    Sleep 1500
+    SendInput, NO
+    Sleep 250
+    SendInput, {Tab}
+    Sleep 500
+    SendInput, % CaseNum
+    Sleep 500
+    SendInput, {Tab %DetailTabs%}
+    Sleep 750
+    SendInput, % DetailText
+    Sleep 200
+    If (StrLen(ToolTipHelp) > 0) {
+        CaretY := A_CaretY + 40
+        ToolTip, % "`n  " ToolTipHelp "  `n ", % A_CaretX, % CaretY
+        SetTimer, RemoveToolTip, -5000   
     }
-
-    ;Ctrl+: OnBase docs (OnBaseImportKeys("Text to get doc type", "Details Text", "Tab presses from Case # to details field")
-    #If WinActive("Perform Import")
-        F1:: 
-            ToolTip, CTRL+ `n F6: RSDI `n F7: SMI ID `n F8: PRISM GCSC `n F9: CS $ Calc `nF10: Income Calc `nF11: The Work # `nF12: CCAPP Letter, 0, 0
-            SetTimer, RemoveToolTip, -8000
-        Return
-        ^F6::
-            Gui, Submit, NoHide
-            OnBaseImportKeys(CaseNumber, "3003 ssi", "{Text}RSDI ", 3, "Member#, Member Name")
-        Return
-        ^F7::
-            Gui, Submit, NoHide
-            OnBaseImportKeys(CaseNumber, "3001 other id", "{Text}SMI ", 3, "Member#, Member Name")
-        Return
-        ^F8::
-            Gui, Submit, NoHide
-            OnBaseImportKeys(CaseNumber, "3003 child support", "{Text}GCSC ", 1, "Y/N, Child(ren) Member#")
-        Return
-        ^F9::
-            Gui, Submit, NoHide
-            OnBaseImportKeys(CaseNumber, "3003 wo", "{Text}CCAP CS INCOME CALC")
-        Return
-        ^F10::
-            Gui, Submit, NoHide
-            OnBaseImportKeys(CaseNumber, "3003 wo", "{Text}CCAP INCOME CALC")
-        Return
-        ^F11::
-            Gui, Submit, NoHide
-            OnBaseImportKeys(CaseNumber, "3003 other - in", "{Text}W# ", 3, "Member#, Employer")
-        Return
-        ^F12::
-            Gui, Submit, NoHide
-            OnBaseImportKeys(CaseNumber, "3003 edak 3813", "{Text}OUTBOUND")
-        Return
-    #If
-
-    #If WinActive("Automated Mailing Home Page") || WinActive("ahk_exe obunity.exe",,"Perform Import")
-        F1::
-            ToolTipText := WinActive("Automated Mailing Home Page")
-            ? "Ctrl+B: Types in the current date and case number." : "
-            (
-    Ctrl+B: (Mail) Types in the current date and case number, clicks Yes. Works best from Custom Query.
-              Step 1: Select documents in the query.
-              Step 2: Right Click -> Send To -> Envelope.
-              Step 3: Click 'Create Envelope'
-
-    Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword field must be active.
-            )"
-            ToolTip, % ToolTipText,0,0
-            SetTimer, RemoveToolTip, -8000
-        Return
-        ^b::
-            Gui, Submit, NoHide
-            SendInput, % ShortDate " " CaseNumber
-            Sleep 500
-            If ( WinActive("ahk_exe obunity.exe") ) {
-                Sleep 250
-                Send {Tab}
-                Send {Enter}
-                MsgBox, 4100, Case Open Mail, Reminder: First add documents to envelope.`n`nOpen / switch to Automated Mailing?
-                    IfMsgBox Yes
-                        If (WinExist("Automated Mailing Home Page") ) {
-                            WinActivate, "Automated Mailing Home Page"
-                                Return
-                        } Else {
-                            run http://webapp4/AutomatedMailing/
-                        }
-            }
-            
-        Return
-        !4::
-            SendInput, % "VERIFS DUE BACK " AutoDenyObject.AutoDenyExtensionDate
-        Return
-    #If
-
-    #If WinActive("ahk_exe bzmd.exe")
-        ^m::
-            WinSetTitle, ahk_exe bzmd.exe,,S1 - MAXIS
-            Send ^{m}
-        Return
-    #If
 }
+
+;Ctrl+: OnBase docs (OnBaseImportKeys("Text to get doc type", "Details Text", "Tab presses from Case # to details field")
+#If WinActive("Perform Import")
+    F1:: 
+        ToolTip, CTRL+ `n F6: RSDI `n F7: SMI ID `n F8: PRISM GCSC `n F9: CS $ Calc `nF10: Income Calc `nF11: The Work # `nF12: CCAPP Letter, 0, 0
+        SetTimer, RemoveToolTip, -8000
+    Return
+    ^F6::
+        Gui, Submit, NoHide
+        OnBaseImportKeys(CaseNumber, "3003 ssi", "{Text}RSDI ", 3, "Member#, Member Name")
+    Return
+    ^F7::
+        Gui, Submit, NoHide
+        OnBaseImportKeys(CaseNumber, "3001 other id", "{Text}SMI ", 3, "Member#, Member Name")
+    Return
+    ^F8::
+        Gui, Submit, NoHide
+        OnBaseImportKeys(CaseNumber, "3003 child support", "{Text}GCSC ", 1, "Y/N, Child(ren) Member#")
+    Return
+    ^F9::
+        Gui, Submit, NoHide
+        OnBaseImportKeys(CaseNumber, "3003 wo", "{Text}CCAP CS INCOME CALC")
+    Return
+    ^F10::
+        Gui, Submit, NoHide
+        OnBaseImportKeys(CaseNumber, "3003 wo", "{Text}CCAP INCOME CALC")
+    Return
+    ^F11::
+        Gui, Submit, NoHide
+        OnBaseImportKeys(CaseNumber, "3003 other - in", "{Text}W# ", 3, "Member#, Employer")
+    Return
+    ^F12::
+        Gui, Submit, NoHide
+        OnBaseImportKeys(CaseNumber, "3003 edak 3813", "{Text}OUTBOUND")
+    Return
+#If
+
+#If WinActive("Automated Mailing Home Page") || WinActive("ahk_exe obunity.exe",,"Perform Import")
+    F1::
+        ToolTipText := WinActive("Automated Mailing Home Page")
+        ? "Ctrl+B: Types in the current date and case number." : "
+        (
+Ctrl+B: (Mail) Types in the current date and case number, clicks Yes. Works best from Custom Query.
+          Step 1: Select documents in the query.
+          Step 2: Right Click -> Send To -> Envelope.
+          Step 3: Click 'Create Envelope'
+
+Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword field must be active.
+        )"
+        ToolTip, % ToolTipText,0,0
+        SetTimer, RemoveToolTip, -8000
+    Return
+    ^b::
+        Gui, Submit, NoHide
+        SendInput, % ShortDate " " CaseNumber
+        Sleep 500
+        If ( WinActive("ahk_exe obunity.exe") ) {
+            Sleep 250
+            Send {Tab}
+            Send {Enter}
+            MsgBox, 4100, Case Open Mail, Reminder: First add documents to envelope.`n`nOpen / switch to Automated Mailing?
+                IfMsgBox Yes
+                    If (WinExist("Automated Mailing Home Page") ) {
+                        WinActivate, "Automated Mailing Home Page"
+                            Return
+                    } Else {
+                        run http://webapp4/AutomatedMailing/
+                    }
+        }
+        
+    Return
+    !4::
+        SendInput, % "VERIFS DUE BACK " AutoDenyObject.AutoDenyExtensionDate
+    Return
+#If
+
+#If WinActive("ahk_exe bzmd.exe")
+    ^m::
+        WinSetTitle, ahk_exe bzmd.exe,,S1 - MAXIS
+        Send ^{m}
+    Return
+#If
