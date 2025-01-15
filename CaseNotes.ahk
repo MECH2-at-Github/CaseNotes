@@ -22,6 +22,10 @@
 ;version 0.3.0, The 'Look ma, I'm on GitHub' version
 ;version 0.3.1, The 'I am so tired of typing questions from redeterminations into Other because someone missed Lump Sum again' version (soonTM)
 ;version 0.3.2, The 'I don't know what your MAXIS screen is called' version
+;version 0.3.3, The 'I had to rearrage code so that Homeless prompting would be added to the Special Letter' version
+;version 0.3.4, The 'I prettied up Missing Verifications, changed MV to open/hide on load, and gave each GUI a name' version
+
+Version := "v0.3.4"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -31,9 +35,8 @@
 SetWorkingDir %A_ScriptDir%
 #Persistent
 #SingleInstance force
-; #NoTrayIcon
+#NoTrayIcon
 SetTitleMatchMode, RegEx
-
 
 IniRead, WorkerNameRead, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeName, %A_Space%
 IniRead, WorkerCounty, %A_MyDocuments%\AHK.ini, EmployeeInfo, EmployeeCounty,%A_Space%
@@ -68,13 +71,13 @@ CaseNoteEntered := { MEC2Note: 0, MAXISNote: 0 }
 MaxisNote :=, IdList := ""
 ConfirmedClear := 0
 VerificationWindowOpenedOnce := 0
-VerifCat :=, LetterTextNumber := 1, LetterText := {}
+VerifCat :=, LetterTextNumber := 1, LetterText := {}, MissingHomelessItems := ""
 
 CountySpecificText := {}
 CountySpecificText.Dakota := { OverIncomeContactInfo: " contact 651-554-6696 and", CustomHotkeys: "Custom hotkeys for your county exist for the following windows (A ToolTip reminder appears by pressing F1):`nOnBase (Alt+4, 'Verifs Due Back' detail),`nOnBase (Perform Import) - For printing docs to OnBase (Ctrl+F6-12)`nOnBase (Ctrl+B, Inserts date and case number for mail)`nAutomated Mailing (Ctrl+B, Inserts date and case number for mail)`nBrowser (Types in case note for app denied/approved, and worker signature)`nWord (Types in first name, case number, and app received date)." }
 CountySpecificText.StLouis := { OverIncomeContactInfo: "" }
-; Globals
 
+; Date variables
 DateObject := { ReceivedMDY: "", ReceivedYMD: "", AutodenyYMD: "", ReinstateDate: "" }
 AutoDenyObject := { AutoDenyExtensionMECnote: "", AutoDenyExtensionDate: "", AutoDenyExtensionSpecLetter: "", AutoDenyExtraLines: "", AutoDenyMaxisNote: "" }
 DateObject.TodayYMD := A_Now
@@ -83,152 +86,153 @@ Received := DateObject.TodayYMD
 DateObject.TodayMDY := FormatMDY(DateObject.TodayYMD)
 OverIncomeObj := { overIncomeHHsize: "your size" } ;:= "your size"
 
+If InStr(DateObject.TodayYMD, 0401)
+    Menu, Tray, Icon, compstui.dll, 100
+Else
+    Menu, Tray, Icon, azroleui.dll, 7
+
+
 ;MAIN GUI SECTION MAIN GUI SECTION MAIN GUI SECTION MAIN GUI SECTION MAIN GUI SECTION MAIN GUI SECTION MAIN GUI SECTION 
-Gui, Font,, Segoe UI
-Gui, Color, 989898, a9a9a9
+Gui MainGui: Font,, Segoe UI
+Gui MainGui: Color, a9a9a9, bebebe
 
-Gui, 1: Add, Radio, Group Section h17 x12 w75 y+5 gApplicationRadio, Application
-Gui, 1: Add, Radio, xp y+2 wp h17 gRedeterminationRadio, Redeterm.
-Gui, 1: Add, Checkbox, xp y+2 wp h17 vHomeless gHomeless, Homeless
+Gui, MainGui: Add, Radio, Group Section h17 x12 w75 y+5 gApplicationRadio, Application
+Gui, MainGui: Add, Radio, xp y+2 wp h17 gRedeterminationRadio, Redeterm.
+Gui, MainGui: Add, Checkbox, xp y+2 wp h17 vHomeless gHomeless, Homeless
 
-Gui, 1: Add, Radio, Group x+10 ys h17 w78 gMNBenefits vMNBenefitsRadio, MNBenefits
-Gui, 1: Add, Radio, xp y+2 h17 wp gApp vAppRadio, 3550 App
+Gui, MainGui: Add, Radio, Group x+10 ys h17 w78 gMNBenefits vMNBenefitsRadio, MNBenefits
+Gui, MainGui: Add, Radio, xp y+2 h17 wp gApp vAppRadio, 3550 App
 
-Gui, 1: Add, Radio, Group x+10 ys h17 w58 gBSF vBSF, BSF
-Gui, 1: Add, Radio, xp y+2 h17 wp gTY vTY, TY
-Gui, 1: Add, Radio, xp y+2 h17 wp gCCMF vCCMF, CCMF
+Gui, MainGui: Add, Radio, Group x+10 ys h17 w58 gBSF vBSF, BSF
+Gui, MainGui: Add, Radio, xp y+2 h17 wp gTY vTY, TY
+Gui, MainGui: Add, Radio, xp y+2 h17 wp gCCMF vCCMF, CCMF
 
-Gui, 1: Add, Radio, Group x+0 ys h17 w80 gPending vPendingRadio, Pending
-Gui, 1: Add, Radio, xp y+2 h17 wp gEligible vEligibleRadio, Eligible
-Gui, 1: Add, Radio, xp y+2 h17 wp gIneligible vIneligibleRadio, Ineligible
+Gui, MainGui: Add, Radio, Group x+0 ys h17 w80 gPending vPendingRadio, Pending
+Gui, MainGui: Add, Radio, xp y+2 h17 wp gEligible vEligibleRadio, Eligible
+Gui, MainGui: Add, Radio, xp y+2 h17 wp gIneligible vIneligibleRadio, Ineligible
 
-Gui, 1: Add, Radio, Group Hidden x+5 ys h17 vSaApproved gSaApproved, SA Approved
-Gui, 1: Add, Radio, Hidden xp y+2 h17 vNoSA gNoSA, No SA
-Gui, 1: Add, Radio, Hidden xp y+2 h17 vNoProvider gNoProvider, No Provider
+Gui, MainGui: Add, Radio, Group Hidden x+5 ys h17 vSaApproved gSaApproved, SA Approved
+Gui, MainGui: Add, Radio, Hidden xp y+2 h17 vNoSA gNoSA, No SA
+Gui, MainGui: Add, Radio, Hidden xp y+2 h17 vNoProvider gNoProvider, No Provider
 
-Gui, 1: Add, Text, xp-18 y+9 w200 vAutoDenyStatus,
+Gui, MainGui: Add, Text, xp-18 y+9 w200 vAutoDenyStatus,
 
-Gui, 1: Add, Text, x420 w35 h20 ys+2,Case &`#
-Gui, 1: Add, Text, xp y+2 w35 h20, Rec'd:
-Gui, 1: Add, Text, xp y+2 w35 h20 vSignText Hidden, Signed:
+Gui, MainGui: Add, Text, x420 w35 h20 ys+2,Case &`#
+Gui, MainGui: Add, Text, xp y+2 w35 h20, Rec'd:
+Gui, MainGui: Add, Text, xp y+2 w35 h20 vSignText Hidden, Signed:
 
-Gui, 1: Add, Edit, x+0 ys w75 h17 Limit8 vCaseNumber,
-Gui, 1: Add, DateTime, xp y+5 w75 h17 vReceived, M/d/yy
-Gui, 1: Add, DateTime, xp y+5 w75 h17 vSignDate Hidden, M/d/yy
+Gui, MainGui: Add, Edit, x+0 ys w75 h17 -Background Limit8 vCaseNumber,
+Gui, MainGui: Add, DateTime, xp y+5 w75 h17 vReceived, M/d/yy
+Gui, MainGui: Add, DateTime, xp y+5 w75 h17 vSignDate Hidden, M/d/yy
 
-Gui, 1: Add, Button, Section x540 ys+0 h17 w65 -TabStop vMEC2NoteButton gMEC2NoteButton, MEC2 Note
-Gui, 1: Add, Button, xs y+5 h17 w65 -TabStop Hidden vMaxisNoteButton gMaxisNoteButton, Maxis Note
-Gui, 1: Add, Button, xs y+5 h17 w65 -TabStop vNotepadBackup gNotepadBackup, To Desktop
+Gui, MainGui: Add, Button, Section x540 ys+0 h17 w65 -TabStop vMEC2NoteButton gMEC2NoteButton, MEC2 Note
+Gui, MainGui: Add, Button, xs y+5 h17 w65 -TabStop Hidden vMaxisNoteButton gMaxisNoteButton, Maxis Note
+Gui, MainGui: Add, Button, xs y+5 h17 w65 -TabStop vNotepadBackup gNotepadBackup, To Desktop
 
-Gui, 1: Add, Button, Section x615 ys+0 h17 w50 -TabStop vClearFormButton gClearFormButton, Clear
+Gui, MainGui: Add, Button, Section x615 ys+0 h17 w50 -TabStop vClearFormButton gClearFormButton, Clear
 
 SetTextAndResize(newText, fontOptions := "", fontName := "") {
     Gui 9:Font, %fontOptions%, %fontName%
     Gui 9:Add, Text, Limit200, %newText%
     GuiControlGet T, 9:Pos, Static1
     Gui 9:Destroy
-    ;GuiControl,, %controlHwnd%, %newText%
-    ;GuiControl Move, %controlHwnd%, % "h" TH " w" TW
     Return TW
 }
+; 77 characters returns 12h 565w at 3840 x 2160, 150%; returns 12h 539w at 1920 x 1080, 100% ;123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 1234567
 OneHundredChars := SetTextAndResize("1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890", "s9", "Lucida Console")
 MonoChar := OneHundredChars/100
-; 77 characters returns 12h 565w at 3840 x 2160, 150%; returns 12h 539w at 1920 x 1080, 100%
-; 100 characters is 733
-;123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 1234567
+; 100 characters is 733w at 3840 x 2160
 LabelSettings := "xm+5 y+1 w200"
-;LabelExampleSettings := "x220 yp+4 h12 w510"
 LabelExampleSettings := "x220 yp+4 h12 w" MonoChar*60
-;TextboxSettings := "xm y+1 w650" ; At w650, WinSpy shows 945 for box with scrollbar, 971 without, and 975 total. (spy * .666 = AHK #s). Which gets 20 for the (~17.4) scrollbar and (~2.6) border
 ; 995 is about the right size (* .666 = 663)
-; 22, 983, 1012; 995
 TextboxSettings := "xm y+1 w" (MonoChar*87)+27 ; At w650, WinSpy shows 945 for box with scrollbar, 971 without, and 975 total. (spy * .666 = AHK #s). Which gets 20 for the (~17.4) scrollbar and (~2.6) border
 OneRow := "h17 Limit87"
 TwoRows := "h33"
 ThreeRows := "h43"
 FourRows := "h55"
 
-Gui, Font, s9, Segoe UI
-Gui, 1: Margin, 12 12
-Gui, 1: Add, Text, xm y+45 h0 w0 ; Blank space
-Gui, 1: Add, Text, %LabelSettings% vHouseholdCompLabel, Household Comp
-Gui, 1: Add, Text, %LabelExampleSettings% vHouseholdCompLabelExample Hidden, Parent (ID), ChildOne (4, BC), ChildName (age, verif)
-Gui, 1: Add, Edit, %TextboxSettings% %TwoRows% vHouseholdComp, 
+Gui MainGui: Font, s9, Segoe UI
+Gui, MainGui: Margin, 12 12
+Gui, MainGui: Add, Text, xm y+45 h0 w0 ; Blank space
+Gui, MainGui: Add, Text, %LabelSettings% vHouseholdCompLabel, Household Comp
+Gui, MainGui: Add, Text, %LabelExampleSettings% vHouseholdCompLabelExample Hidden, Parent (ID), ChildOne (4, BC), ChildName (age, verif)
+Gui, MainGui: Add, Edit, %TextboxSettings% %TwoRows% vHouseholdComp, 
 
-Gui, 1: Add, Text, %LabelSettings% vAddressVerificationLabel, Address Verification
-Gui, 1: Add, Text, %LabelExampleSettings% vAddressVerificationLabelExample Hidden, 1234 W Minnesota St APT 21, St Paul: ID 5/4/20 (scan date)
-Gui, 1: Add, Edit, %TextboxSettings% %ThreeRows% vAddressVerification,
+Gui, MainGui: Add, Text, %LabelSettings% vAddressVerificationLabel, Address Verification
+Gui, MainGui: Add, Text, %LabelExampleSettings% vAddressVerificationLabelExample Hidden, 1234 W Minnesota St APT 21, St Paul: ID 5/4/20 (scan date)
+Gui, MainGui: Add, Edit, %TextboxSettings% %ThreeRows% vAddressVerification,
 
-Gui, 1: Add, Text, %LabelSettings% vSharedCustodyLabel, Shared Custody
-Gui, 1: Add, Text, %LabelExampleSettings% vSharedCustodyLabelExample Hidden, Absent Parent / Child: Thursday 6pm - Monday 7am
-Gui, 1: Add, Edit, %TextboxSettings% %FourRows% vSharedCustody, 
+Gui, MainGui: Add, Text, %LabelSettings% vSharedCustodyLabel, Shared Custody
+Gui, MainGui: Add, Text, %LabelExampleSettings% vSharedCustodyLabelExample Hidden, Absent Parent / Child: Thursday 6pm - Monday 7am
+Gui, MainGui: Add, Edit, %TextboxSettings% %FourRows% vSharedCustody, 
 
-Gui, 1: Add, Text, %LabelSettings% vSchoolInformationLabel, School information
-Gui, 1: Add, Text, %LabelExampleSettings% vSchoolInformationLabelExample Hidden, ChildOne, ChildTwo: Wildcat Elementary, M-F 730am - 2pm
-Gui, 1: Add, Edit, %TextboxSettings% %ThreeRows% vSchoolInformation, 
+Gui, MainGui: Add, Text, %LabelSettings% vSchoolInformationLabel, School information
+Gui, MainGui: Add, Text, %LabelExampleSettings% vSchoolInformationLabelExample Hidden, ChildOne, ChildTwo: Wildcat Elementary, M-F 730am - 2pm
+Gui, MainGui: Add, Edit, %TextboxSettings% %ThreeRows% vSchoolInformation, 
 
-Gui, 1: Add, Text, %LabelSettings% vIncomeLabel, Income 
-Gui, 1: Add, Text, %LabelExampleSettings% vIncomeLabelExample Hidden Border, Parent - Job: BW avg $1234.56, 43.2hr/wk; annual @ 32098.56
-Gui, 1: Add, Edit, %TextboxSettings% %FourRows% vIncome, 
+Gui, MainGui: Add, Text, %LabelSettings% vIncomeLabel, Income 
+Gui, MainGui: Add, Text, %LabelExampleSettings% vIncomeLabelExample Hidden Border, Parent - Job: BW avg $1234.56, 43.2hr/wk; annual @ 32098.56
+Gui, MainGui: Add, Edit, %TextboxSettings% %FourRows% vIncome, 
 
-Gui, 1: Add, Text, %LabelSettings% vChildSupportIncomeLabel, Child Support Income
-Gui, 1: Add, Text, %LabelExampleSettings% vChildSupportIncomeLabelExample Hidden, 6 month total $2345.67; annual @ 4691.34
-Gui, 1: Add, Edit, %TextboxSettings% %TwoRows% vChildSupportIncome, 
+Gui, MainGui: Add, Text, %LabelSettings% vChildSupportIncomeLabel, Child Support Income
+Gui, MainGui: Add, Text, %LabelExampleSettings% vChildSupportIncomeLabelExample Hidden, 6 month total $2345.67; annual @ 4691.34
+Gui, MainGui: Add, Edit, %TextboxSettings% %TwoRows% vChildSupportIncome, 
 
-Gui, 1: Add, Text, %LabelSettings% vChildSupportCooperationLabel Border gChildSupportCooperation, Child Support Cooperation
-Gui, 1: Add, Text, %LabelExampleSettings% vChildSupportCooperationLabelExample Hidden, Absent Parent / Child: Open, cooperating
-Gui, 1: Add, Edit, %TextboxSettings% %FourRows% vChildSupportCooperation, 
+Gui, MainGui: Add, Text, %LabelSettings% vChildSupportCooperationLabel Border gChildSupportCooperation, Child Support Cooperation
+Gui, MainGui: Add, Text, %LabelExampleSettings% vChildSupportCooperationLabelExample Hidden, Absent Parent / Child: Open, cooperating
+Gui, MainGui: Add, Edit, %TextboxSettings% %FourRows% vChildSupportCooperation, 
 
-Gui, 1: Add, Text, %LabelSettings% vExpensesLabel, Expenses
-Gui, 1: Add, Text, %LabelExampleSettings% vExpensesLabelExample Hidden, BW Medical $121.23, BW Dental $12.23, BW Vision $2.23
-Gui, 1: Add, Edit, %TextboxSettings% %TwoRows% vExpenses, 
+Gui, MainGui: Add, Text, %LabelSettings% vExpensesLabel, Expenses
+Gui, MainGui: Add, Text, %LabelExampleSettings% vExpensesLabelExample Hidden, BW Medical $121.23, BW Dental $12.23, BW Vision $2.23
+Gui, MainGui: Add, Edit, %TextboxSettings% %TwoRows% vExpenses, 
 
-Gui, 1: Add, Text, %LabelSettings% vAssetsLabel, Assets
-Gui, 1: Add, Text, %LabelExampleSettings% vAssetsLabelExample Hidden, < $1m   or   (blank)
-Gui, 1: Add, Edit, %TextboxSettings% %OneRow% Limit87 vAssets, 
+Gui, MainGui: Add, Text, %LabelSettings% vAssetsLabel, Assets
+Gui, MainGui: Add, Text, %LabelExampleSettings% vAssetsLabelExample Hidden, < $1m   or   (blank)
+Gui, MainGui: Add, Edit, %TextboxSettings% %OneRow% Limit87 vAssets, 
 
-Gui, 1: Add, Text, %LabelSettings% vProviderLabel, Provider
-Gui, 1: Add, Text, %LabelExampleSettings% vProviderLabelExample Hidden, Kid Kare (PID#, HQ): ChildOne, ChildTwo - Start date 5/4/20
-Gui, 1: Add, Edit, %TextboxSettings% %TwoRows% vProvider, 
+Gui, MainGui: Add, Text, %LabelSettings% vProviderLabel, Provider
+Gui, MainGui: Add, Text, %LabelExampleSettings% vProviderLabelExample Hidden, Kid Kare (PID#, HQ): ChildOne, ChildTwo - Start date 5/4/20
+Gui, MainGui: Add, Edit, %TextboxSettings% %TwoRows% vProvider, 
 
-Gui, 1: Add, Text, %LabelSettings% vActivityandScheduleLabel, Activity and Schedule
-Gui, 1: Add, Text, %LabelExampleSettings% vActivityandScheduleLabelExample Hidden, ParentOne - Employment: M-F 9a - 5p (8h x 5d)
-Gui, 1: Add, Edit, %TextboxSettings% %FourRows% vActivityandSchedule, 
+Gui, MainGui: Add, Text, %LabelSettings% vActivityandScheduleLabel, Activity and Schedule
+Gui, MainGui: Add, Text, %LabelExampleSettings% vActivityandScheduleLabelExample Hidden, ParentOne - Employment: M-F 9a - 5p (8h x 5d)
+Gui, MainGui: Add, Edit, %TextboxSettings% %FourRows% vActivityandSchedule, 
 
-Gui, 1: Add, Text, %LabelSettings% vServiceAuthorizationLabel, Service Authorization
-Gui, 1: Add, Text, %LabelExampleSettings% vServiceAuthorizationLabelExample Hidden, 8h work + 1h travel = 9h/day, 90h/period
-Gui, 1: Add, Edit, %TextboxSettings% %ThreeRows% vServiceAuthorization, 
+Gui, MainGui: Add, Text, %LabelSettings% vServiceAuthorizationLabel, Service Authorization
+Gui, MainGui: Add, Text, %LabelExampleSettings% vServiceAuthorizationLabelExample Hidden, 8h work + 1h travel = 9h/day, 90h/period
+Gui, MainGui: Add, Edit, %TextboxSettings% %ThreeRows% vServiceAuthorization, 
 
-Gui, 1: Add, Text, %LabelSettings% vNotesLabel, Notes
-Gui, 1: Add, Edit, %TextboxSettings% %FourRows% vNotes, 
+Gui, MainGui: Add, Text, %LabelSettings% vNotesLabel, Notes
+Gui, MainGui: Add, Edit, %TextboxSettings% %FourRows% vNotes, 
 
-Gui, 1: Add, Text, xm+5 y+1 gMissingButton vMissingButtonLabel Border, Missing
-Gui, 1: Add, Text, %LabelExampleSettings% vMissingButtonLabelExample Hidden, (Click "Missing" to bring up the missing verification list)
-Gui, 1: Add, Edit, %TextboxSettings% h115 vMissing,
+Gui, MainGui: Add, Text, xm+5 y+1 gMissingButton vMissingButtonLabel Border, Missing
+Gui, MainGui: Add, Text, %LabelExampleSettings% vMissingButtonLabelExample Hidden, (Click "Missing" to bring up the missing verification list)
+Gui, MainGui: Add, Edit, %TextboxSettings% h115 vMissing,
 
-Gui, 1: Add, Button, x40 y+4 w65 h19 -TabStop gSettingsButton, Settings
-Gui, 1: Add, Button, x+40 yp wp h19 -TabStop gExamplesButton vExamplesButton, Examples
-Gui, 1: Add, Button, x+40 yp wp h19 -TabStop gHelpButton, Help
-Gui, 1: Add, Button, x600 yp wp h19 gMissingButton, Missing
+Gui, MainGui: Add, Text, x15 y+4, %Version%
+Gui, MainGui: Add, Button, x+20 yp w65 h19 -TabStop gSettingsButton, Settings
+Gui, MainGui: Add, Button, x+40 yp wp h19 -TabStop gExamplesButton vExamplesButton, Examples
+Gui, MainGui: Add, Button, x+40 yp wp h19 -TabStop gHelpButton, Help
+Gui, MainGui: Add, Button, x600 yp wp h19 gMissingButton, Missing
 
-Gui, 1: Show, x%XCaseNotes% y%YCaseNotes%, CaseNotes
-Gui, 1: Show, AutoSize
+Gui, MainGui: Show, x%XCaseNotes% y%YCaseNotes%, CaseNotes
+Gui, MainGui: Show, AutoSize
 GuiControl, Focus, HouseholdComp
 
 EditControls := ["HouseholdComp", "SharedCustody", "AddressVerification", "SchoolInformation", "Income", "ChildSupportIncome", "ChildSupportCooperation", "Expenses", "Assets", "Provider", "ActivityandSchedule", "ServiceAuthorization", "Notes", "Missing"]
 ExampleLabels := [ "HouseholdCompLabelExample", "AddressVerificationLabelExample", "SharedCustodyLabelExample", "SchoolInformationLabelExample", "IncomeLabelExample", "ChildSupportIncomeLabelExample", "ChildSupportCooperationLabelExample", "ExpensesLabelExample", "AssetsLabelExample", "ProviderLabelExample", "ActivityandScheduleLabelExample", "ServiceAuthorizationLabelExample", "MissingButtonLabelExample" ]
 For Index, EditField in EditControls {
-    Gui, Font, s9, Lucida Console ; monospace font
-    GuiControl, 1:font, % EditField
+    Gui MainGui: Font, s9, Lucida Console ; monospace font
+    GuiControl, MainGui: Font, % EditField
 }
 For Index, Label in ExampleLabels {
-    Gui, Font, s9, Lucida Console
-    GuiControl, 1:font, % Label
+    Gui MainGui: Font, s9, Lucida Console
+    GuiControl, MainGui: Font, % Label
 }
+GoSub MissingGui
 
 If (StrLen(WorkerNameRead) < 1)
     Gosub SettingsButton
-
 Return
 
 HelpButton:
@@ -297,7 +301,7 @@ HelpButton:
     ● Please send any bug reports or feature requests to MECH2.at.github@gmail.com
     )"
 
-    Gui, HelpGui: New, ToolWindow
+    Gui, HelpGui: New, ToolWindow, CaseNotes Help
     Gui, HelpGui: Margin, 12 12
     Gui, Font, s10, Segoe UI
     Gui, HelpGui: Add, Tab3,, Features | Main| Hotkeys and Notes 
@@ -325,14 +329,14 @@ ExamplesButton:
     GuiControlGet, ExamplesButtonText,, ExamplesButton
     If (ExamplesButtonText = "Examples") {
         For Index, ExampleLabel in ExampleLabels {
-            GuiControl, 1:Show, % ExampleLabel
+            GuiControl, MainGui:Show, % ExampleLabel
         }
-        GuiControl, 1:Text, ExamplesButton, Restore
+        GuiControl, MainGui:Text, ExamplesButton, Restore
     } Else If (ExamplesButtonText = "Restore") {
         For Index, ExampleLabel in ExampleLabels {
-            GuiControl, 1:Hide, % ExampleLabel
+            GuiControl, MainGui:Hide, % ExampleLabel
         }
-        GuiControl, 1:Text, ExamplesButton, Examples
+        GuiControl, MainGui:Text, ExamplesButton, Examples
     }
 Return
 
@@ -342,7 +346,8 @@ CBTGuiClose:
         IniWrite, %XClipboardContentsGet%, %A_MyDocuments%\AHK.ini, ClipboardContents, XClipboardINI
     If (YClipboardContentsGet - YClipboard <> 0)
         IniWrite, %YClipboardContentsGet%, %A_MyDocuments%\AHK.ini, ClipboardContents, YClipboardINI
-    Gui, CBT: DestroyReturn
+    Gui, CBT: Destroy
+Return
 
 MEC2NoteButton:
 	GoSub, MakeCaseNote
@@ -355,81 +360,25 @@ NotepadBackup:
     GoSub, SetEmailText
     GoSub, MakeCaseNote
 return
+
 MaxisNoteButton:
     MaxisNote := ""
     GoSub, MakeCaseNote
 return
 
-SetEmailText:
-    Gui, Submit, NoHide
-	EmailText := {}
-	If (!InStr(Missing, "over-income")) {
-        EmailText.StartHL := (CaseDetails.Eligibility = "elig") ? " It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility." : " You may be eligible for the homeless policy, which allows us to approve eligibility even though there are verifications we need but do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility.`n`nBefore we can approve eligibility, we need information that you did not put on the application:`n`nREPLACE_THIS_WITH_QUESTIONS_THE_CLIENT_NEEDS_TO_ANSWER_TO_BE_APPROVED"
-
-        EmailText.EndHL := (CaseDetails.Eligibility = "elig") ? "`nYou are initially approved for 30 hours of child care assistance per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.`nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children.`nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay." : ""
-
-        EmailText.AreOrWillBe := (Homeless = 1) ? "will be" : "are"
-        
-        EmailText.Reason1 := (CaseDetails.Eligibility = "elig") ? "for authorizing assistance hours" : "to determine eligibility or calculate assistance hours"
-        EmailText.Reason2 := (Homeless = 1) ? "to determine on-going eligibility or calculate assistance hours after the 90-day period" : EmailText.Reason1
-        EmailText.StartNotHL := "Your Child Care Assistance " MEC2DocType " has been processed."
-
-        EmailText.Start := (Homeless = 1) ? EmailText.StartNotHL EmailText.StartHL : EmailText.StartNotHL
-        EmailText.Middle := "`n`nThe following documents or verifications " EmailText.AreOrWillBe " needed " EmailText.Reason2 ":`n`n"
-
-        EmailText.Combined := EmailText.Start EmailText.Middle
-	}
-
-    EmailTextString := StrReplace(EmailTextString, "`n ", " ")
-    EmailTextString := StrReplace(EmailTextString, "`n*", "`n`n*")
-    EmailTextString := StrReplace(EmailTextString, "sent separately", "see attached")
-    
-	EmailText.Output := (Homeless = 1) ? EmailText.Combined EmailTextString EmailText.EndHL : EmailText.Combined EmailTextString
-Return
-
-FormatEditField:
-    ;EditField := st_wordWrap(EditField, 87, "")
-    ;EditField := StrReplace(EditField, "`n", "`n             ")
-Return
-
 MakeCaseNote:
 	Gui, Submit, NoHide
     GoSub CalcDates
-    ;EditControlsTest := ["HouseholdComp"]
-;For Index, EditField in EditControlsTest {
-    ;EditField := st_wordWrap(EditField, 87, "")
-    ;EditField := StrReplace(EditField, "`n", "`n             ")
-;}
-	HouseholdComp := st_wordWrap(HouseholdComp, 87, "")
-	HouseholdComp := StrReplace(HouseholdComp, "`n", "`n             ")
-    AddressVerification := st_wordWrap(AddressVerification, 87, "")
-    AddressVerification :=  StrReplace(AddressVerification, "`n", "`n             ")
-	SharedCustody := st_wordWrap(SharedCustody, 87, "")
-	SharedCustody := StrReplace(SharedCustody, "`n", "`n             ")
-	SchoolInformation := st_wordWrap(SchoolInformation, 87, "")
-	SchoolInformation := StrReplace(SchoolInformation, "`n", "`n             ")
-	Income := st_wordWrap(Income, 87, "")
-	Income := StrReplace(Income, "`n", "`n             ")
-	ChildSupportCooperation := st_wordWrap(ChildSupportCooperation, 87, "")
-	ChildSupportCooperation := StrReplace(ChildSupportCooperation, "`n", "`n             ")
-	Expenses := st_wordWrap(Expenses, 87, "")
-	Expenses := StrReplace(Expenses, "`n", "`n             ")
-	Provider := st_wordWrap(Provider, 87, "")
-	Provider := StrReplace(Provider, "`n", "`n             ")
-	ActivityandSchedule := st_wordWrap(ActivityandSchedule, 87, "")
-	ActivityandSchedule := StrReplace(ActivityandSchedule, "`n", "`n             ")
-	ServiceAuthorization := st_wordWrap(ServiceAuthorization, 87, "")
-	ServiceAuthorization := StrReplace(ServiceAuthorization, "`n", "`n             ")
-	Missing := st_wordWrap(Missing, 87, "")
-	Missing := StrReplace(Missing, "`n", "`n             ")
-	Notes := st_wordWrap(Notes, 87, "")
-	Notes := StrReplace(Notes, "`n", "`n             ")
+    EditControlsTest := ["HouseholdComp", "SharedCustody", "AddressVerification", "SchoolInformation", "Income", "ChildSupportIncome", "ChildSupportCooperation", "Expenses", "Provider", "ActivityandSchedule", "ServiceAuthorization", "Notes", "Missing"]
+    For each, EditField in EditControlsTest {
+        %EditField% := st_wordWrap(%EditField%, 88, "")
+        %EditField% := StrReplace(%EditField%, "`n", "`n             ")
+    }
 	If (CaseDetails.Eligibility = "pends" && CaseDetails.DocType = "Redet") {
 		CaseDetails.Eligibility := "incomplete"
         CaseDetails.SaEntered := ""
         FormattedSignDate := FormatMDY(SignDate)
         CaseDetails.RedetDue := CaseDetails.Eligibility = "incomplete" ? " (due " FormatMDY(SignDate) ")" : ""
-        ;CaseDetails.RedetDue := CaseDetails.Eligibility = "incomplete" ? " (due " SubStr(FormattedSignDate, 0, (StrLen(FormattedSignDate)-3)) ")" : ""
 	}
 	If (CaseDetails.Eligibility = "pends" || CaseDetails.Eligibility = "ineligible") {
 		CaseDetails.SaEntered := ""
@@ -479,9 +428,9 @@ MakeCaseNote:
 
     If (A_GuiControl = "MEC2NoteButton") {
         StrReplace(MEC2CaseNote, "`n", "`n", MEC2CaseNoteLines) ; Counting new lines
-        If (MEC2CaseNoteLines +1 = 31) { ;31 lines, first line won't have `n
+        If (MEC2CaseNoteLines +1 = 31) { ;31 lines, signature lines combined
             MEC2CaseNote := StrReplace(MEC2CaseNote, "`n=====`n", "`n===== ")
-        } else If (MEC2CaseNoteLines +1 > 30) {
+        } else If (MEC2CaseNoteLines +1 > 31) {
             MsgBox,,MEC2 Case Note over 30 lines, Notice - Your case note is over 30 lines and will fail to save if not shortened.
         }
 		WinActivate % WorkerBrowserRead
@@ -513,8 +462,7 @@ MakeCaseNote:
             Send {Tab}
         }
         CaseNoteEntered.MEC2Note := 1
-        GuiControl, 1:Text, MEC2NoteButton, MEC2 ✔
-        ;GuiControl, 1:Text, MEC2NoteButton, MEC2 Chr(2714)
+        GuiControl, MainGui:Text, MEC2NoteButton, MEC2 ✔ ; Chr(2714)
         Sleep 500
         Clipboard := CaseNumber
     }
@@ -556,30 +504,31 @@ MakeCaseNote:
         ; Test area end
 
         CaseNoteEntered.MAXISNote := 1
-        GuiControl, 1:Text, MaxisNoteButton, Maxis ✔ ; Chr(2714)
-        ;GuiControl, 1:Text, MaxisNoteButton, Maxis Chr(2714)
+        GuiControl, MainGui:Text, MaxisNoteButton, Maxis ✔ ; Chr(2714)
         sleep 500
         Clipboard := CaseNumber
     }
 
     If (A_GuiControl = "NotepadBackup") {
-        CaseNoteEntered.MEC2Note := 1
-        CaseNoteEntered.MAXISNote := 1
-        ;GuiControl, 1:Text, NotepadBackup, Desktop ✔
-        GuiControl, 1:Text, NotepadBackup, Desktop ✔
+		NameTest := RegExMatch(HouseholdComp, "\w+\b", Notepadfilename)
+        Notepadfilename := CaseNumber !== "" ? CaseNumber : Notepadfilename
         LetterLabel2 := StrLen(LetterText2) > 0 ? "`n== Letter Page 2 ==`n`n" : ""
         LetterLabel3 := StrLen(LetterText3) > 0 ? "`n`n== Letter Page 3 ==`n`n" : ""
         LetterLabel4 := StrLen(LetterText4) > 0 ? "`n`n== Letter Page 4 ==`n`n" : ""
-		NameTest := RegExMatch(HouseholdComp, "\w+\b", Notepadfilename)
-        Notepadfilename := CaseNumber !== "" ? CaseNumber : Notepadfilename
         MaxisLabel := "`n`n== MAXIS Note ==`n"
         If (CountyNoteInMaxisRead != 1) {
             MaxisLabel := ""
             MaxisNote := ""
         }
         FileAppend, % "====== Case Note Summary ======`n" MEC2NoteTitle "`n`n====== MEC2 Case Note ======`n" MEC2CaseNote "`n`n====== Email ======`n" EmailText.Output "`n`n====== Special Letter 1 ======`n`n" LetterText1 "`n" LetterLabel2 LetterText2 LetterLabel3 LetterText3 LetterLabel4 LetterText4 MaxisLabel MaxisNote "`n`n-------------------------------------------`n`n`n", % A_Desktop "\" Notepadfilename ".txt"
+        GuiControl, MainGui:Text, NotepadBackup, Desktop ✔
+        CaseNoteEntered.MEC2Note := 1
 		CaseNoteEntered.MAXISNote := 1
 	}
+Return
+
+AllInOneNote:
+
 Return
 
 addFifteenishDays(oldDate) {
@@ -643,24 +592,24 @@ CalcDates:
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.AutoDenyMDY
                 AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
                 AutoDenyObject.AutoDenyExtraLines := 1
-                GuiControl, 1: Text, AutoDenyStatus, Has 15+ days before auto-deny
+                GuiControl, MainGui: Text, AutoDenyStatus, Has 15+ days before auto-deny
             } Else If (NeedsExtension > -1) {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
                 AutoDenyObject.AutoDenyExtensionMECnote := "Auto-deny extended to " AutoDenyObject.AutoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
                 AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
                 AutoDenyObject.AutoDenyExtraLines := 1
-                GuiControl, 1: Text, AutoDenyStatus, % "Extend auto-deny to " AutoDenyObject.AutoDenyExtensionDate
+                GuiControl, MainGui: Text, AutoDenyStatus, % "Extend auto-deny to " AutoDenyObject.AutoDenyExtensionDate
             } Else {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
                 AutoDenyObject.AutoDenyExtensionMECnote := "Reinstate date is " AutoDenyObject.AutoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
                 AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**Please note that you will be mailed an auto-denial notice.`n  You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications.`n  If you are eligible, your case will be reinstated."
                 AutoDenyObject.AutoDenyExtraLines := 3
-                GuiControl, 1: Text, AutoDenyStatus, % "Auto-denies tonight, pends until " AutoDenyObject.AutoDenyExtensionDate
+                GuiControl, MainGui: Text, AutoDenyStatus, % "Auto-denies tonight, pends until " AutoDenyObject.AutoDenyExtensionDate
             }
         }
         If (Homeless = 1) {
             AutoDenyObject.AutoDenyExtensionDate := DateObject.ExpeditedNinetyDaysMDY
-            AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**You have until " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications. Your case can be approved without all verifications, but it is currently pending as we need additional information."
+            AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**You have until " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
             AutoDenyObject.AutoDenyExtraLines := 3
         }
     }
@@ -676,37 +625,37 @@ return
 
 ApplicationRadio:
 	CaseDetails.DocType := "Application"
-	GuiControl, 1: Text, PendingRadio, Pending
-	GuiControl, 1: Text, SignText, Signed:
+	GuiControl, MainGui: Text, PendingRadio, Pending
+	GuiControl, MainGui: Text, SignText, Signed:
     if (CaseDetails.AppType != "3550") {
-        GuiControl, 1: Hide, SignText
-        GuiControl, 1: Hide, SignDate
+        GuiControl, MainGui: Hide, SignText
+        GuiControl, MainGui: Hide, SignDate
     }
     If (CountyNoteInMaxisRead = 1) {
-        GuiControl, 1: Show, MaxisNoteButton
+        GuiControl, MainGui: Show, MaxisNoteButton
     }
-    GuiControl, 1: Show, MNBenefitsRadio
-    GuiControl, 1: Show, AppRadio
+    GuiControl, MainGui: Show, MNBenefitsRadio
+    GuiControl, MainGui: Show, AppRadio
 Return
 
 RedeterminationRadio:
 	CaseDetails.DocType := "Redet"
     GoSub RevertLabels
-	GuiControl, 1: Text, PendingRadio, Incomplete
-	GuiControl, 1: Text, SignText, Due:
-	GuiControl, 1: Show, SignText
-	GuiControl, 1: Show, SignDate
-	GuiControl, 1: Hide, AutoDenyStatus
-	GuiControl, 1: Hide, MaxisNoteButton
-	GuiControl, 1: Hide, MNBenefitsRadio
-	GuiControl, 1: Hide, AppRadio
+	GuiControl, MainGui: Text, PendingRadio, Incomplete
+	GuiControl, MainGui: Text, SignText, Due:
+	GuiControl, MainGui: Show, SignText
+	GuiControl, MainGui: Show, SignDate
+	GuiControl, MainGui: Hide, AutoDenyStatus
+	GuiControl, MainGui: Hide, MaxisNoteButton
+	GuiControl, MainGui: Hide, MNBenefitsRadio
+	GuiControl, MainGui: Hide, AppRadio
 Return
 
 App:
 	CaseDetails.AppType := "3550"
     GoSub RevertLabels
-	GuiControl, 1: Show, SignText
-	GuiControl, 1: Show, SignDate
+	GuiControl, MainGui: Show, SignText
+	GuiControl, MainGui: Show, SignDate
 return
 
 Homeless:
@@ -715,51 +664,52 @@ Return
 
 MNBenefits:
 	CaseDetails.AppType := "MNB"
-    GuiControl, 1: Text, HouseholdCompLabel, Household Comp (pages 1, 3-5)
-    GuiControl, 1: Text, AddressVerificationLabel, Address Verification (page 3)
-    GuiControl, 1: Text, SharedCustodyLabel, Absent Parent / Child (page 6)
-    GuiControl, 1: Text, SchoolInformationLabel, School Information (page 7)
-    GuiControl, 1: Text, IncomeLabel, Income (pages 2, 8-9)
-    GuiControl, 1: Text, ChildSupportIncomeLabel, Child Support Income (page 9)
-    GuiControl, 1: Text, ExpensesLabel, Expenses (page 10)
-    GuiControl, 1: Text, AssetsLabel, Assets (page 10)
-    GuiControl, 1: Text, ActivityandScheduleLabel, Activity and Schedule (pages 10-11) 
-	GuiControl, 1: Hide, SignText
-	GuiControl, 1: Hide, SignDate
+    GuiControl, MainGui: Text, HouseholdCompLabel, Household Comp (pages 1, 3-5)
+    GuiControl, MainGui: Text, AddressVerificationLabel, Address Verification (page 3)
+    GuiControl, MainGui: Text, SharedCustodyLabel, Absent Parent / Child (page 6)
+    GuiControl, MainGui: Text, SchoolInformationLabel, School Information (page 7)
+    GuiControl, MainGui: Text, IncomeLabel, Income (pages 2, 8-9)
+    GuiControl, MainGui: Text, ChildSupportIncomeLabel, Child Support Income (page 9)
+    GuiControl, MainGui: Text, ExpensesLabel, Expenses (page 10)
+    GuiControl, MainGui: Text, AssetsLabel, Assets (page 10)
+    GuiControl, MainGui: Text, ActivityandScheduleLabel, Activity and Schedule (pages 10-11)
+    GuiControl, MainGui: Text, ProviderLabel, Provider (pages 12-15)
+	GuiControl, MainGui: Hide, SignText
+	GuiControl, MainGui: Hide, SignDate
     Gui, Show
 return
 
 RevertLabels:
-    GuiControl, 1: Text, HouseholdCompLabel, Household Comp
-    GuiControl, 1: Text, AddressVerificationLabel, Address Verification
-    GuiControl, 1: Text, SharedCustodyLabel, Shared Custody
-    GuiControl, 1: Text, SchoolInformationLabel, School Information
-    GuiControl, 1: Text, IncomeLabel, Income
-    GuiControl, 1: Text, ChildSupportIncomeLabel, Child Support Income
-    GuiControl, 1: Text, ExpensesLabel, Expenses
-    GuiControl, 1: Text, AssetsLabel, Assets
-    GuiControl, 1: Text, ActivityandScheduleLabel, Activity and Schedule
+    GuiControl, MainGui: Text, HouseholdCompLabel, Household Comp
+    GuiControl, MainGui: Text, AddressVerificationLabel, Address Verification
+    GuiControl, MainGui: Text, SharedCustodyLabel, Shared Custody
+    GuiControl, MainGui: Text, SchoolInformationLabel, School Information
+    GuiControl, MainGui: Text, IncomeLabel, Income
+    GuiControl, MainGui: Text, ChildSupportIncomeLabel, Child Support Income
+    GuiControl, MainGui: Text, ExpensesLabel, Expenses
+    GuiControl, MainGui: Text, AssetsLabel, Assets
+    GuiControl, MainGui: Text, ActivityandScheduleLabel, Activity and Schedule
 Return
 
 Eligible:
 	CaseDetails.Eligibility := "elig"
-    GuiControl, 1: Show, SaApproved
-    GuiControl, 1: Show, NoSA
-    GuiControl, 1: Show, NoProvider
+    GuiControl, MainGui: Show, SaApproved
+    GuiControl, MainGui: Show, NoSA
+    GuiControl, MainGui: Show, NoProvider
 return
 
 Pending:
 	CaseDetails.Eligibility := "pends"
-    GuiControl, 1: Hide, SaApproved
-    GuiControl, 1: Hide, NoSA
-    GuiControl, 1: Hide, NoProvider
+    GuiControl, MainGui: Hide, SaApproved
+    GuiControl, MainGui: Hide, NoSA
+    GuiControl, MainGui: Hide, NoProvider
 return
 
 Ineligible:
 	CaseDetails.Eligibility := "ineligible"
-    GuiControl, 1: Hide, SaApproved
-    GuiControl, 1: Hide, NoSA
-    GuiControl, 1: Hide, NoProvider
+    GuiControl, MainGui: Hide, SaApproved
+    GuiControl, MainGui: Hide, NoSA
+    GuiControl, MainGui: Hide, NoProvider
 return
 
 SaApproved:
@@ -798,7 +748,7 @@ Return
 ChildSupportCooperation:
     Gui, Submit, NoHide
     If (StrLen(ChildSupportCooperation) = 0) {
-        GuiControl, 1: Text, ChildSupportCooperation, %SharedCustody%
+        GuiControl, MainGui: Text, ChildSupportCooperation, %SharedCustody%
     }
 Return
 
@@ -811,124 +761,135 @@ Return
 ;VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION  VERIFICATION SECTION  VERIFICATION SECTION 
 ;==============================================================================================================================================================================================
 MissingButton:
-    Column1of1 := "xm w390"
-    Column1of2 := "xm w145"
-    Column2of2 := "x160 yp+0 w220"
-    Column2of3 := "x120 yp+0"
-    Column3of3 := "x240 yp+0"
-    Column2and3Of3w := "w280"
-    LightGrayLine := "x50 y+4 w250 h1 0x1000"
-
-    If VerificationWindowOpenedOnce {
-        Gui, 3: Restore
-        WinActivate, Missing Verifications
-        Return
-    }
-    VerificationWindowOpenedOnce := 1
+    Gui, MissingGui: Restore
+    Gui, MissingGui: Show, AutoSize
     Gui, Submit, NoHide
+Return
+
+MissingGui:
+    Column1of1 := "xm w390"
+
+    ; 12 + 158 (170) + 240 (410) + 12 = 422
+    Column1of2 := "xm w158"
+    Column2of2 := "x170 yp+0 w240"
+
+    ; 12 + 118 (130) + 120 (250) + 160 (400) + 12 = 422
+    Column1of3 := "xm w118"
+    Column2of3 := "x130 yp+0 w120"
+    Column3of3 := "x240 yp+0 w160"
+    ; 12 + 118 (130) + 280 (410) + 12 = 422
+    Column2and3Of3 := "x130 yp+0 w280"
+
+    LineColor := "0x5" ; https://gist.github.com/jNizM/019696878590071cf739
+    TextLine := "x60 y+4 w250 h1 " LineColor
+    ;LineColor := "717171"
+    ;ProgressLine := "x50 y+4 w250 h1 Background" LineColor
+    ;Gui, MissingGui: Add, Progress, %ProgressLine%
+
     IniRead, XVerification, %A_MyDocuments%\AHK.ini, CaseNotePositions, XVerificationINI, 0
     IniRead, YVerification, %A_MyDocuments%\AHK.ini, CaseNotePositions, YVerificationINI, 0
-    Gui, 3: Margin, 12 12
-    Gui, 3: Add, Checkbox, %Column1of1% vIDmissing gInputBoxAGUIControl, ID (input)
-    Gui, 3: Add, Checkbox, %Column1of1% vBCmissing gInputBoxAGUIControl, BC (input)
-    Gui, 3: Add, Checkbox, %Column1of1% vBCNonCitizenMissing gInputBoxAGUIControl, BC [non-citizen] (input)
-    Gui, 3: Add, Checkbox, xm vAddressMissing, Address
-    Gui, 3: Add, Checkbox, %Column1of1% vChildSupportFormsMissing gInputBoxAGUIControl, Child Support forms (input)
-    Gui, 3: Add, Checkbox, %Column1of1% vChildSupportNoncooperationMissing gInputBoxAGUIControl, CS Non-cooperation (input)
-    Gui, 3: Add, Checkbox, xm vCustodyScheduleMissing, Custody (gen.)
-    Gui, 3: Add, Checkbox, %Column2of3% %Column2and3Of3w% vCustodySchedulePlusNamesMissing gInputBoxAGUIControl, Custody (input)
-    Gui, 3: Add, Checkbox, %Column1of1% vDependentAdultStudentMissing gInputBoxAGUIControl, Dependent adult child (input)
-    Gui, 3: Add, Checkbox, xm vChildSchoolMissing, Child school information
-    Gui, 3: Add, Checkbox, %Column2of2% vChildFTSchoolMissing, Child full-time student status
-    Gui, 3: Add, Checkbox, xm vMarriageCertificateMissing, Marriage certificate
-    Gui, 3: Add, Checkbox, %Column2of2% vLegalNameChangeMissing gInputBoxAGUIControl, Name change (input)
+    Gui, MissingGui: New,, Missing Verifications
+    Gui, MissingGui: Margin, 12 12
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vIDmissing gInputBoxAGUIControl, ID (input)
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vBCmissing gInputBoxAGUIControl, BC (input)
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vBCNonCitizenMissing gInputBoxAGUIControl, BC [non-citizen] (input)
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vAddressMissing, Address
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vChildSupportFormsMissing gInputBoxAGUIControl, Child Support forms (input)
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vChildSupportNoncooperationMissing gInputBoxAGUIControl, CS Non-cooperation (input)
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vCustodyScheduleMissing, Custody ("for each child")
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vCustodySchedulePlusNamesMissing gInputBoxAGUIControl, Custody (input)
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vChildSchoolMissing, Child school information
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vChildFTSchoolMissing, Child full-time student status
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vMarriageCertificateMissing, Marriage certificate
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vLegalNameChangeMissing gInputBoxAGUIControl, Name change (input)
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vDependentAdultStudentMissing gInputBoxAGUIControl, Dependent adult child - FT Student, 50`%+ expenses (input)
 
-    Gui, 3: Font, bold
-    Gui, 3: Add, Text, Section xm+115 y+15, Earned Income
-    Gui, 3: Add, Text, xm+20 yp+7 w85 h1 0x5
-    Gui, 3: Add, Text, xs+90 yp w85 h1 0x5
-    Gui, 3: Font
-    
-    Gui, 3: Add, Checkbox, xm vIncomeMissing, Income
-    Gui, 3: Add, Checkbox, %Column2of3% vWorkScheduleMissing, Work Schedule
-    Gui, 3: Add, Checkbox, %Column3of3% vContractPeriodMissing, Contract Period
-    Gui, 3: Add, Checkbox, %Column1of2% vIncomePlusNameMissing gInputBoxAGUIControl, Income (input)
-    Gui, 3: Add, Checkbox, %Column2of2% vWorkSchedulePlusNameMissing gInputBoxAGUIControl, Work Schedule (input)
-    Gui, 3: Add, Checkbox, xm vNewEmploymentMissing, New job at app / end of job search (Wage, dates, hours)
-    Gui, 3: Add, Checkbox, xm vWorkLeaveMissing, Leave of absence (Dates, pay status, hours, work schedule)
-    Gui, 3: Add, Text, %LightGrayLine%
-    Gui, 3: Add, Checkbox, xm vSeasonalWorkMissing, Seasonal employment season length
-    Gui, 3: Add, Checkbox, xm vSeasonalOffSeasonMissing, Seasonal employment info (applied during off-season, input)
-    Gui, 3: Add, Text, %LightGrayLine%
-    Gui, 3: Add, Checkbox, xm vSelfEmploymentMissing, Self-Employment Income
-    Gui, 3: Add, Checkbox, %Column2of2% vSelfEmploymentScheduleMissing, Self-Employment Schedule
-    Gui, 3: Add, Checkbox, xm vSelfEmploymentBusinessGrossMissing, Self-Employment Business Gross Income (<$500k?)
-    Gui, 3: Add, Text, %LightGrayLine%
-    Gui, 3: Add, Checkbox, xm vExpensesMissing, Expenses
-    Gui, 3: Add, Checkbox, %Column2of2% vOverIncomeMissing gInputBoxAGUIControl, Over-income (input)
+    Gui, MissingGui: Font, bold ; EARNED INCOME SECTION ==============================================================
+    Gui, MissingGui: Add, Text, xm+10 y+22 w110 h1 %LineColor%
+    Gui, MissingGui: Add, Text, x+m yp-7, Earned Income
+    Gui, MissingGui: Add, Text, x+m yp+7 w115 h1 %LineColor%
+    Gui, MissingGui: Font
 
-    Gui, 3: Font, bold
-    Gui, 3: Add, Text, Section xm+110 y+15, Unearned Income
-    Gui, 3: Add, Text, xm+20 yp+7 w80 h1 0x5
-    Gui, 3: Add, Text, xs+105 yp w80 h1 0x5
-    Gui, 3: Font
-    
-    Gui, 3: Add, Checkbox, xm vChildSupportIncomeMissing, Child Support Income
-    Gui, 3: Add, Checkbox, %Column2of2% vSpousalSupportMissing, Spousal Support Income
-    Gui, 3: Add, Checkbox, xm vRentalMissing, Rental
-    Gui, 3: Add, Checkbox, %Column2of2% vDisabilityMissing, STD / LTD 
-    Gui, 3: Add, Checkbox, xm vInsuranceBenefitsMissing, Insurance Benefits 
-    Gui, 3: Add, Checkbox, %Column2of2% vUnearnedStatementMissing, Blank Unearned Yes/No (statement)
-    Gui, 3: Add, Checkbox, xm vAssetsBlankMissing, Assets (Blank)
-    Gui, 3: Add, Checkbox, %Column2of2% vUnearnedMailedMissing, Blank Unearned Yes/No (mailed back)
-    Gui, 3: Add, Checkbox, xm vVABenefitsMissing, VA Benefits
-    Gui, 3: Add, Checkbox, %Column2of2% vAssetsGT1mMissing, Assets (>$1m)
+    Gui, MissingGui: Add, Checkbox, %Column1of3% vIncomeMissing, Income
+    Gui, MissingGui: Add, Checkbox, %Column2of3% vWorkScheduleMissing, Work Schedule
+    Gui, MissingGui: Add, Checkbox, %Column3of3% vContractPeriodMissing, Contract Period
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vIncomePlusNameMissing gInputBoxAGUIControl, Income (input)
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vWorkSchedulePlusNameMissing gInputBoxAGUIControl, Work Schedule (input)
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vNewEmploymentMissing, New job at app / end of job search (Wage, dates, hours)
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vWorkLeaveMissing, Leave of absence (Dates, pay status, hours, work schedule)
+    Gui, MissingGui: Add, Text, %TextLine% ; -------------------------------------------------------------------------
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vSeasonalWorkMissing, Seasonal employment season length
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vSeasonalOffSeasonMissing, Seasonal employment info - app in off-season (input)
+    Gui, MissingGui: Add, Text, %TextLine% ; -------------------------------------------------------------------------
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vSelfEmploymentMissing, Self-Employment Income
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vSelfEmploymentScheduleMissing, Self-Employment Schedule
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vSelfEmploymentBusinessGrossMissing, Self-Employment Business Gross (if state min wage; <$500k = small business)
+    Gui, MissingGui: Add, Text, %TextLine% ; -------------------------------------------------------------------------
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vExpensesMissing, Expenses
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vOverIncomeMissing gInputBoxAGUIControl, Over-income (input)
 
-    Gui, 3: Font, bold
-    Gui, 3: Add, Text, Section xm+140 y+15, Activity
-    Gui, 3: Add, Text, xm+20 yp+7 w100 h1 0x5
-    Gui, 3: Add, Text, xs+55 yp w100 h1 0x5
-    Gui, 3: Font
-    
-    Gui, 3: Add, Checkbox, xm vEdBSFformMissing, EdBSF Form
-    Gui, 3: Add, Checkbox, %Column2of3% vClassScheduleMissing, Class schedule
-    Gui, 3: Add, Checkbox, %Column3of3% vTranscriptMissing, Transcript
-    Gui, 3: Add, Checkbox, xm vEdBSFOneBachelorDegreeMissing, Bachelor's limit
-    Gui, 3: Add, Checkbox, %Column2of3% vEducationEmploymentPlanMissing, ES Plan (Education)
-    Gui, 3: Add, Checkbox, %Column3of3% vStudentStatusOrIncomeMissing, Student/income (age < 19)
-    Gui, 3: Add, Text, %LightGrayLine%
-    Gui, 3: Add, Checkbox, xm y+4 vJobSearchHoursMissing, BSF Job search hours
-    Gui, 3: Add, Checkbox, %Column2of2% vSelfEmploymentIneligibleMissing, Self-Employment not enough hours
-    Gui, 3: Add, Checkbox, xm vEligibleActivityMissing, No Eligible Activity Listed
-    Gui, 3: Add, Checkbox, %Column2of2% vEmploymentIneligibleMissing, Employment not enough hours
-    Gui, 3: Add, Checkbox, xm vActivityAfterHomelessMissing, Activity Requirement After 3-Month Homeless Period
-    
-    Gui, 3: Font, bold
-    Gui, 3: Add, Text, Section xm+137 y+15, Provider
-    Gui, 3: Add, Text, xm+20 yp+7 w100 h1 0x5
-    Gui, 3: Add, Text, xs+60 yp w100 h1 0x5
-    Gui, 3: Font
-    
-    Gui, 3: Add, Checkbox, xm vNoProviderMissing, No Provider Listed
-    Gui, 3: Add, Checkbox, %Column2of2% vUnregisteredProviderMissing,Unregistered Provider
-    Gui, 3: Add, Checkbox, xm vInHomeCareMissing, In-Home Care form
-    Gui, 3: Add, Checkbox, %Column2of2% vLNLProviderMissing, LNL Acknowledgement
-    Gui, 3: Add, Checkbox, xm vStartDateMissing, Provider start date
-    Gui, 3: Add, Checkbox, %Column2of2% vProviderForNonImmigrantMissing, Non-citizen/immigrant Provider Reqs.
+    Gui, MissingGui: Font, bold ; UNEARNED INCOME SECTION ============================================================
+    Gui, MissingGui: Add, Text, xm+10 y+22 w105 h1 %LineColor%
+    Gui, MissingGui: Add, Text, x+m yp-7, Unearned Income
+    Gui, MissingGui: Add, Text, x+m yp+7 w120 h1 %LineColor%
+    Gui, MissingGui: Font
 
-    Gui, 3: Add, Checkbox, %Column1of1% h40 vOther1 gOther, Other
-    Gui, 3: Add, Checkbox, %Column1of1% h40 vOther2 gOther, Other
-    Gui, 3: Add, Checkbox, %Column1of1% h40 vOther3 gOther, Other ;TODO Figure out AutoSize
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vChildSupportIncomeMissing, Child Support Income
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vSpousalSupportMissing, Spousal Support Income
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vRentalMissing, Rental
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vDisabilityMissing, STD / LTD 
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vInsuranceBenefitsMissing, Insurance Benefits 
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vUnearnedStatementMissing, Blank Unearned Yes/No (statement)
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vAssetsBlankMissing, Assets (Blank)
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vUnearnedMailedMissing, Blank Unearned Yes/No (mailed back)
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vVABenefitsMissing, VA Benefits
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vAssetsGT1mMissing, Assets (>$1m)
 
-    Gui, 3: Add, Button, h17 gMissingButtonDoneButton, Done
-    Gui, 3: Add, Button, x+20 w40 h17 hidden gEmail vEmail, Email
-    Gui, 3: Add, Button, x+20 w42 h17 hidden gLetter vLetter1, Letter 1
-    Gui, 3: Add, Button, x+20 w42 h17 hidden gLetter vLetter2, Letter 2
-    Gui, 3: Add, Button, x+20 w42 h17 hidden gLetter vLetter3, Letter 3
-    Gui, 3: Add, Button, x+20 w42 h17 hidden gLetter vLetter4, Letter 4
-    
-    Gui, 3: Show, x%XVerification% y%YVerification% w375, Missing Verifications
-    Gui, 3: Show, AutoSize
+    Gui, MissingGui: Font, bold ; ACTIVITY SECTION ===================================================================
+    Gui, MissingGui: Add, Text, xm+10 y+22 w130 h1 %LineColor%
+    Gui, MissingGui: Add, Text, x+m yp-7, Activity
+    Gui, MissingGui: Add, Text, x+m yp+7 w140 h1 %LineColor%
+    Gui, MissingGui: Font
+
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vEdBSFformMissing, BSF/TY Education Form
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vEdBSFOneBachelorDegreeMissing, BSF/TY Bachelor's limit notice
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vClassScheduleMissing, Class schedule
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vTranscriptMissing, Transcript
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vEducationEmploymentPlanMissing, ES Plan (CCMF Education)
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vStudentStatusOrIncomeMissing, Adult student w/ income (age < 20)
+    Gui, MissingGui: Add, Text, %TextLine% ; -------------------------------------------------------------------------
+    Gui, MissingGui: Add, Checkbox, %Column1of2% y+4 vJobSearchHoursMissing, BSF Job search hours
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vSelfEmploymentIneligibleMissing, Self-Employment not enough hours
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vEligibleActivityMissing, No Eligible Activity Listed
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vEmploymentIneligibleMissing, Employment not enough hours
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vESPlanOnlyMissing, ES Plan Only hours notice
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vActivityAfterHomelessMissing, Activity Req. After 3-Mo Homeless Period
+
+    Gui, MissingGui: Font, bold ; PROVIDER SECTION ===================================================================
+    Gui, MissingGui: Add, Text, xm+10 y+22 w125 h1 %LineColor%
+    Gui, MissingGui: Add, Text, x+m yp-7, Provider
+    Gui, MissingGui: Add, Text, x+m yp+7 w130 h1 %LineColor%
+    Gui, MissingGui: Font
+
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vNoProviderMissing, No Provider Listed
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vUnregisteredProviderMissing,Unregistered Provider
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vInHomeCareMissing, In-Home Care form
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vLNLProviderMissing, LNL Acknowledgement
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vStartDateMissing, Provider start date
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vProviderForNonImmigrantMissing, Non-citizen/immigrant Provider Reqs.
+
+    Gui, MissingGui: Add, Checkbox, %Column1of1% h50 vOther1 gOther, Other
+    Gui, MissingGui: Add, Checkbox, %Column1of1% h50 vOther2 gOther, Other
+    Gui, MissingGui: Add, Checkbox, %Column1of1% h50 vOther3 gOther, Other
+
+    Gui, MissingGui: Add, Button, h17 gMissingButtonDoneButton, Done
+    Gui, MissingGui: Add, Button, x+20 w40 h17 hidden gEmail vEmail, Email
+    Gui, MissingGui: Add, Button, x+20 w42 h17 hidden gLetter vLetter1, Letter 1
+    Gui, MissingGui: Add, Button, x+20 w42 h17 hidden gLetter vLetter2, Letter 2
+    Gui, MissingGui: Add, Button, x+20 w42 h17 hidden gLetter vLetter3, Letter 3
+    Gui, MissingGui: Add, Button, x+20 w42 h17 hidden gLetter vLetter4, Letter 4
+
+    Gui, MissingGui: Show, Hide x%XVerification% y%YVerification%
 Return
 
 MissingButtonDoneButton:
@@ -937,22 +898,52 @@ MissingButtonDoneButton:
 	MissingVerifications := {}, ClarifiedVerifications := {}, LineCount := 0
     EmailTextString := "", LetterText1 := "", LetterText2 := "", LetterText3 := "", LetterText4 := ""
     MEC2DocType := CaseDetails.DocType = "Redet" ? "Redetermination" : CaseDetails.DocType
-	GuiControl, 3:Hide, Letter2
-	GuiControl, 3:Hide, Letter3
-	GuiControl, 3:Hide, Letter4
+	GuiControl, MissingGui:Hide, Letter2
+	GuiControl, MissingGui:Hide, Letter3
+	GuiControl, MissingGui:Hide, Letter4
 	MissingVerifications := new OrderedAssociativeArray()
     ClarifiedVerifications := new OrderedAssociativeArray()
     MecCheckboxIds := {}
 	LetterTextVar := "LetterText1", LetterNumber := 1, LineNumber := 1, ListItem := 1, ClarifyListItem := 1, EmailListItem := 1, CaseNoteMissing := "", Email := ""
     VerifCat :=, LetterTextNumber := 1, LetterText := {}
+    PendingHomelessText1 := "You may be eligible for the homeless policy, which allows us to approve eligibility even though there are verifications we need but do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility.`n`nBefore we can approve eligibility, we need information that you did not put on the application:`n"
+
     If OverIncomeMissing {
         OverIncomeMissingText1 := "Using information you provided your case is ineligible as your income is over the limit for a household of " OverIncomeObj.overIncomeHHsize ". The gross limit is $" OverIncomeObj.overIncomeText ".`n"
         OverIncomeMissingText2 := "If your gross income does not match this calculation, you must" CountySpecificText[WorkerCounty].OverIncomeContactInfo " submit updated income and expense documents along with the following verifications:`n"
-        EmailTextString := "ITour Child Care Assistance " MEC2DocType " has been processed.`n`n" OverIncomeMissingText1 OverIncomeMissingText2 "`n"
+        EmailTextString := "Your Child Care Assistance " MEC2DocType " has been processed.`n`n" OverIncomeMissingText1 OverIncomeMissingText2 "`n"
         MissingVerifications[OverIncomeMissingText1] := 3
         MissingVerifications[OverIncomeMissingText2] := 3
         CaseNoteMissing .= "Household is calculated to be over-income by $" OverIncomeObj.overIncomeDifference " ($" OverIncomeObj.overIncomeReceived " - $" OverIncomeObj.overIncomeLimit ");`n"
     }
+    If (Homeless = 1 && CaseDetails.Eligibility = "pends") {
+        InputBox, MissingHomelessItems, Homeless Info Missing, What information is needed from the client to approve expedited eligibility?`n`nUse a double space "  " without quotation marks to start a new line.,,,,,,,, % StrReplace(MissingHomelessItems, "`n", "  ")
+        If (ErrorLevel = 0) {
+            MissingHomelessItems := StrReplace(MissingHomelessItems, "  ", "`n")
+            PendingHomelessMissing := getRowCount(MissingHomelessItems, 57, "   ")
+            MissingVerifications[st_wordwrap(PendingHomelessText1, 59, " ") "`n"] := 8
+            MissingVerifications[PendingHomelessMissing[1] "`n"] := PendingHomelessMissing[2]
+            CaseNoteMissing .= "Missing for expedited approval:`n" PendingHomelessMissing[1] "`n"
+        }
+    }
+
+	EmailText := {}
+	If (!InStr(Missing, "over-income")) {
+        EmailText.StartHL := (CaseDetails.Eligibility = "elig") ? "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility." : PendingHomelessText1 MissingHomelessItems
+
+        EmailText.EndHL := (CaseDetails.Eligibility = "elig") ? "`nThe initial approval of child care assistance is 30 hours per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.`nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children.`nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay." : ""
+
+        EmailText.AreOrWillBe := (Homeless = 1) ? "will be" : "are"
+
+        EmailText.Reason1 := (CaseDetails.Eligibility = "elig") ? "for authorizing assistance hours" : "to determine eligibility or calculate assistance hours"
+        EmailText.Reason2 := (Homeless = 1) ? "to determine on-going eligibility or calculate assistance hours after the 90-day period" : EmailText.Reason1
+        EmailText.StartAll := "Your Child Care Assistance " MEC2DocType " has been processed. "
+
+        EmailText.Start := (Homeless = 1) ? EmailText.StartAll EmailText.StartHL : EmailText.StartAll
+        EmailText.Middle := "`n`nThe following documents or verifications " EmailText.AreOrWillBe " needed " EmailText.Reason2 ":`n`n"
+
+        EmailText.Combined := EmailText.Start EmailText.Middle
+	}
     
 	If IDmissing {
         IDmissingText := "ID for " IDmissingInput ";`n"
@@ -964,10 +955,10 @@ MissingButtonDoneButton:
         MecCheckboxIds.proofOfIdentity := 1
     }
 	If BCmissing {
-        BCmissingText := "Birth date / relationship / citizenship verification for: " BCmissingInput ";`n"
-		ClarifiedVerifications[ClarifyListItem ". " BCmissingText] := 2
-        EmailTextString .= EmailListItem ". " BCmissingText
-		CaseNoteMissing .= "Birth date / relationship / citizenship verification for: " BCmissingInput ";`n"
+        BCmissingText := "Birth date / relationship / citizenship verification for: " BCmissingInput
+		ClarifiedVerifications[ClarifyListItem ". " BCmissingText ";`n"] := 2
+        EmailTextString .= EmailListItem ". " BCmissingText ", such as a birth certificate;`n"
+		CaseNoteMissing .= BCmissingText ";`n"
         ClarifyListItem++
         EmailListItem++
         MecCheckboxIds.proofOfBirth := 1
@@ -1015,18 +1006,18 @@ MissingButtonDoneButton:
         EmailListItem++
     }
 	If CustodyScheduleMissing {
-        CustodyScheduleMissingText := "Statement, written by you, that is signed and dated, with the current Parenting Time (shared custody) schedule for each child that has a parent that is not in your household;`n"
-		MissingVerifications[ListItem ". " CustodyScheduleMissingText] := 3
+        CustodyScheduleMissingText := "A statement, written by you that is signed and dated, for each child that has a parent not in your household:`n  A. Stating that you have full custody, or`n  B. Your current Parenting Time (shared custody) schedule `n     listing the days and times of the custody switches;`n"
+		MissingVerifications[ListItem ". " CustodyScheduleMissingText] := 5
         EmailTextString .= EmailListItem ". " CustodyScheduleMissingText
-		CaseNoteMissing .= "Custody / parenting time;`n"
+		CaseNoteMissing .= "Shared custody / parenting time;`n"
 		ListItem++
         EmailListItem++
     }
 	If CustodySchedulePlusNamesMissing {
-        CustodyScheduleMissingText := "Statement, written by you, that is signed and dated, with the current Parenting Time (shared custody) schedule for " CustodySchedulePlusNamesMissingInput ";`n"
-		MissingVerifications[ListItem ". " CustodyScheduleMissingText] := 3
+        CustodyScheduleMissingText := "A statement, written by you that is signed and dated, for " CustodySchedulePlusNamesMissingInput ":`n  A. Stating that you have full custody, or`n  B. Your current Parenting Time (shared custody) schedule `n     listing the days and times of the custody switches;`n"
+		MissingVerifications[ListItem ". " CustodyScheduleMissingText] := 5
         EmailTextString .= EmailListItem ". " CustodyScheduleMissingText
-		CaseNoteMissing .= "Custody / parenting time for " CustodySchedulePlusNamesMissingInput ";`n"
+		CaseNoteMissing .= "Shared custody / parenting time for " CustodySchedulePlusNamesMissingInput ";`n"
 		ListItem++
         EmailListItem++
     }
@@ -1132,7 +1123,7 @@ MissingButtonDoneButton:
         EmailListItem++
     }
     If WorkLeaveMissing {
-        WorkLeaveMissingText := "Verification of leave of absence, including:`n paid/unpaid status, leave start date, and`n Expected: return date, wage, hours per week, and work`n schedule showing days of the week and start/end times;`n"
+        WorkLeaveMissingText := "Verification of leave of absence, including: `nPaid/unpaid status, start date, and expected: return date, wage, and hours per week. Upon returning, we need your work schedule showing days of the week and start/end times;`n"
 		MissingVerifications[ListItem ". " WorkLeaveMissingText] := 4
         EmailTextString .= EmailListItem ". " WorkLeaveMissingText
 		CaseNoteMissing .= "Leave of absence details;`n"
@@ -1142,7 +1133,7 @@ MissingButtonDoneButton:
 ;----------------------------
     If SeasonalWorkMissing {
         SeasonalWorkMissingText := "Verification of seasonal employment expected season length;`n"
-		MissingVerifications[ListItem ". " SeasonalWorkMissingText] := 1
+		MissingVerifications[ListItem ". " SeasonalWorkMissingText] := 2
         EmailTextString .= EmailListItem ". " SeasonalWorkMissingText
 		CaseNoteMissing .= "Seasonal employment season length;`n"
         EmailListItem++
@@ -1180,7 +1171,7 @@ MissingButtonDoneButton:
         SelfEmploymentBusinessGrossMissingText := "Information regarding your self-employment business' annual gross income, if it is less than $500,000 (optional);`n"
         MissingVerifications[ListItem ". " SelfEmploymentBusinessGrossMissingText] := 2
         EmailTextString .= EmailListItem ". " SelfEmploymentBusinessGrossMissingText
-		CaseNoteMissing .= "Self-Employment business' gross (if less than $500k/yr) - not required;`n"
+		CaseNoteMissing .= "Self-Employment gross (if subject to small/large min wage: <$500k/yr?) - not required;`n"
 		ListItem++
         EmailListItem++
     }
@@ -1236,7 +1227,7 @@ MissingButtonDoneButton:
         EmailListItem++
     }
     If UnearnedStatementMissing {
-        UnearnedStatementMissingText := "Statement, written by you, that is signed and dated, stating if you have any unearned income. Submit verification if you answer yes.`n This includes: Child/Spousal support, Unemployment, RSDI, Rentals, Insurance payments, RSDI, VA benefits, Contract for deed, Trust income, Interest, Dividends, Worker's comp, Gambling winnings, Inheritance, Capital gains, etc.;`n"
+        UnearnedStatementMissingText := "A statement written by you that is signed and dated, stating if you have any unearned income. Submit verification if yes.`nThis includes: Child/Spousal support, Rentals, Unemployment, RSDI, Insurance payments, VA benefits, Trust income, Contract for deed, Interest, Dividends, Gambling winnings, Inheritance, Capital gains, etc.;`n"
         MissingVerifications[ListItem ". " UnearnedStatementMissingText] := 6
         EmailTextString .= EmailListItem ". " UnearnedStatementMissingText
         CaseNoteMissing .= "Unearned income yes / no questions (statement);`n"
@@ -1397,17 +1388,11 @@ MissingButtonDoneButton:
     }
 	While (A_Index < 4) { ; Other
 		If Other%A_Index% {
-			TextToPass := Other%A_Index%Input
-			TextToPass := StrReplace(TextToPass, "  ", "`n")
-			Other%A_Index%Input := StrReplace(TextToPass, "  ", "`n")
-			TextToPass := st_wordwrap(TextToPass, 57, " ")
-			xCount := 0
-			StrReplace(TextToPass, "`n", "`n", xCount)
-			xCount++
-            OtherText := TextToPass ";`n"
-			MissingVerifications[ListItem ". " OtherText] := xCount
-            EmailTextString .= EmailListItem ". " OtherText
-			CaseNoteMissing .= Other%A_Index%Input ";`n"
+			TextToPass := StrReplace(Other%A_Index%Input, "  ", "`n")
+			CaseNoteMissing .= TextToPass ";`n"
+            CountedRows := getRowCount(TextToPass, 57, " ")
+			MissingVerifications[ListItem ". " CountedRows[1] ";`n"] := CountedRows[2]
+            EmailTextString .= EmailListItem ". " CountedRows[1] ";`n"
 			ListItem++
             EmailListItem++
         }
@@ -1449,26 +1434,37 @@ MissingButtonDoneButton:
         EmailTextString .= EdBSFOneBachelorDegreeMissingText
 		CaseNoteMissing .= "* Client informed only up to first bachelor's degree is BSF/TY eligible;`n"
     }
+
+    EligibleActivityWithJSText := "Eligible activities are:`n  A. Employment of 20+ hours per week (10+ for FT students)`n  B. Education with an approved plan`n  C. Job Search up to 20 hours per week`n  D. Activities on a Cash Assistance Employment Plan."
+    EligibleActivityWithoutJSText := "Eligible activities are:`n  A. Employment of 20+ hours per week (10+ for FT students)`n  B. Education with an approved plan`n  C. Activities on a Cash Assistance Employment Plan."
+
+
     If SelfEmploymentIneligibleMissing {
-        SelfEmploymentIneligibleMissingText := "* Your self-employment does not meet activity requirements. Self-employment hours are calculated using 50% of recent gross income, or gross minus expenses on tax return divided by minimum wage. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, Job Search up to 20 hours per week, and activities on a Cash Assistance Employment Plan.`n"
-		MissingVerifications[SelfEmploymentIneligibleMissingText] := 7
+        SelfEmploymentIneligibleMissingText := "* Your self-employment does not meet activity requirements. Self-employment hours are calculated using 50% of recent gross income, or gross minus expenses on tax return divided by minimum wage. " EligibleActivityWithJSText "`n"
+		MissingVerifications[SelfEmploymentIneligibleMissingText] := 8
         EmailTextString .= SelfEmploymentIneligibleMissingText
 		CaseNoteMissing .= "Self-employment hours meeting minimum requirement, or other eligible activity;`n"
     }
-	If EligibleActivityMissing {
-        EligibleActivityMissingText := "* You did not select an eligible activity on the application. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, Job Search up to 20 hours per week, and activities on a Cash Assistance Employment Plan.`n"
-		MissingVerifications[EligibleActivityMissingText] := 5
+    If EligibleActivityMissing {
+        EligibleActivityMissingText := "* You did not select an eligible activity on the application. " EligibleActivityWithJSText "`n"
+		MissingVerifications[EligibleActivityMissingText] := 6
         EmailTextString .= EligibleActivityMissingText
 		CaseNoteMissing .= "Eligible activity (none selected on form);`n"
     }
     If EmploymentIneligibleMissing {
-        EmploymentIneligibleMissingText := "* Your employment does not meet eligible activity requirements. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, Job Search up to 20 hours per week, and activities on a Cash Assistance Employment Plan. You can submit up to the past 6 months of paystubs to average above 20 hours.`n"
-		MissingVerifications[EmploymentIneligibleMissingText] := 6
+        EmploymentIneligibleMissingText := "* Your employment does not meet eligible activity requirements. " EligibleActivityWithJSText "`nYou can submit up to 6 months of recent paystubs to average above 20 hours.`n"
+		MissingVerifications[EmploymentIneligibleMissingText] := 8
         EmailTextString .= EmploymentIneligibleMissingText
 		CaseNoteMissing .= "Employment hours meeting minimum requirement, or other eligible activity;`n"
     }
+    If ESPlanOnlyMissing {
+        ESPlanOnlyMissingText := "* Please note that while you have an Employment Plan, the assistance hours that can be approved are limited to the activities on the Plan;`n"
+		MissingVerifications[ESPlanOnlyMissing] := 3
+        EmailTextString .= ESPlanOnlyMissingText
+		CaseNoteMissing .= "Client has ES Plan - informed hours are limited to ES Plan activities;`n"
+    }
 	If ActivityAfterHomelessMissing {
-        ActivityAfterHomelessMissingText := "* At the end of the 90-day homeless exemption period, you must have an eligible activity to keep your Child Care Assistance case open. Eligible activities are: Employment of 20+ hours per week (10+ for full-time students), Education with an approved plan, and activities listed on a Cash Assistance Employment Plan.`n"
+        ActivityAfterHomelessMissingText := "* At the end of the 90-day homeless exemption period, you must have an eligible activity to keep your Child Care Assistance case open. " EligibleActivityWithoutJSText "`n"
 		MissingVerifications[ActivityAfterHomelessMissingText] := 6
         EmailTextString .= ActivityAfterHomelessMissingText
 		CaseNoteMissing .= "Eligible activity after the 3-month homeless period;`n"
@@ -1503,12 +1499,14 @@ MissingButtonDoneButton:
         IdList .= key
     }
     If !OverIncomeMissing {
-        If (MissingVerifications.Length() > 0) {
-            If (StrLen(IdList) > 5) { ; other will always add at least 5
-                MissingVerifications.InsertAt(1, "__In addition to the above, please submit following items:__`n", 1)
+        InsertFollowing := (Homeless = 1 && CaseDetails.Eligibility = "pends") ? 3 : 1
+        MissingMod := (Homeless = 1 && CaseDetails.Eligibility = "pends") ? 2 : 0
+        If (MissingVerifications.Length() > (0 + MissingMod)) {
+            If (StrLen(IdList) > 5 || InsertFollowing = 3) { ; "other" will always add at least 5
+                MissingVerifications.InsertAt(InsertFollowing, "__In addition to the above, please submit following items:__`n", 1)
             }
-            If (StrLen(IdList) = 5) {
-                MissingVerifications.InsertAt(1, "_____________Please submit the following items:_____________`n", 1)
+            Else If (StrLen(IdList) = 5) {
+                MissingVerifications.InsertAt(InsertFollowing, "_____________Please submit the following items:_____________`n", 1)
             }
         }
     }
@@ -1525,10 +1523,10 @@ MissingButtonDoneButton:
 	CaseNoteMissing := SubStr(CaseNoteMissing, 1, -1)
 	While LetterText%A_Index% {
 		TempVar := "Letter" . A_Index
-		GuiControl, 3:Show, %TempVar%
+		GuiControl, MissingGui:Show, %TempVar%
     }
-	GuiControl, 1:Text, Missing, %CaseNoteMissing%
-	GuiControl, 3:Show, Email
+	GuiControl, MainGui:Text, Missing, %CaseNoteMissing%
+	GuiControl, MissingGui:Show, Email
 	WinActivate, CaseNotes
 Return
 
@@ -1612,8 +1610,21 @@ Email:
     Clipboard := EmailText.Output
 Return
 
+SetEmailText:
+    Gui, Submit, NoHide
+    EmailTextString := StrReplace(EmailTextString, "`n ", " ")
+    EmailTextString := StrReplace(EmailTextString, "    ", " ")
+    EmailTextString := StrReplace(EmailTextString, "   ", " ")
+    EmailTextString := StrReplace(EmailTextString, "`n*", "`n`n*")
+    EmailTextString := StrReplace(EmailTextString, "sent separately", "see attached")
+	EmailText.Output := (Homeless = 1) ? EmailText.Combined EmailTextString EmailText.EndHL : EmailText.Combined EmailTextString
+Return
+
 Letter:
     Gui, Submit, NoHide
+    If (Homeless = 1 && CaseDetails.Eligibility = "pends" && StrLen(MissingHomelessItems) < 1) {
+        GoSub MissingButtonDoneButton
+    }
     WinActivate % WorkerBrowserRead
     Sleep 500
 	LetterGUINumber := "LetterText" . SubStr(A_GuiControl, 0)
@@ -1635,7 +1646,7 @@ Other:
 	If (%A_GuiControl% = 0)
 		Return
 	InputBoxAGUIControlVariable := %A_GuiControl%Input
-	InputBox, %A_GuiControl%Input, Additional Input Required, Enter the requested item below. Use double space "  " to make a new line., , 500, , , , , ,%InputBoxAGUIControlVariable%
+	InputBox, %A_GuiControl%Input, Additional Input Required, Enter the requested item below. Use double space "  " to make a new line.,, 500,,,,,,%InputBoxAGUIControlVariable%
 	If ErrorLevel
 		Return
 	InputBoxAGUIControlVariable := %A_GuiControl%Input
@@ -1654,19 +1665,19 @@ InputBoxAGUIControl:
     InputBoxAGUIControlVariable := %InputBoxEntry%Input
 
     If (InputBoxEntry = "IDmissing")
-        PromptText := "Who is ID needed for? (Name1, Name2)"
+        PromptText := "Who is ID needed for?`n`nExample: 'Susanne, Robert Sr'"
     Else If (InputBoxEntry = "BCmissing")
-        PromptText := "Who is birth verification needed for? (Name1, Name2)"
+        PromptText := "Who is birth verification needed for?`n`nExample: 'Susie, Bobby Jr'"
     Else If (InputBoxEntry = "IncomePlusNameMissing")
         PromptText := "Who is the income verification needed for?"
     Else If (InputBoxEntry = "CustodySchedulePlusNamesMissing")
-        PromptText := "Who is the schedule needed for? (Name1, Name2)`n'...stating the current parenting time schedule for ____________'"
+        PromptText := "Who is the schedule needed for? `n'...stating the current parenting time schedule for: ____________'`n`nExample: 'Susie and Bobby Jr' or 'your children'"
     Else If (InputBoxEntry = "WorkSchedulePlusNameMissing")
         PromptText := "Who is the work schedule needed for?"
     Else If (InputBoxEntry = "DependentAdultStudentMissing")
         PromptText := "Who is the adult dependent student?"
     Else If (InputBoxEntry = "ChildSupportFormsMissing")
-        PromptText := "Enter either the number of sets of Child Support forms needed,`nor the names of the ABPS/children.`n`n(Example: Marcus / Susie)"
+        PromptText := "Enter the number of sets of Child Support forms needed`nor the names of the absent parent/children.`n`nExample: 'Robert Sr / Susie, Bobby Jr' or '2'"
     Else If (InputBoxEntry = "ChildSupportNoncooperationMissing")
         PromptText := "What is the phone number of the Child Support officer?"
     Else If (InputBoxEntry = "LegalNameChangeMissing")
@@ -1674,7 +1685,7 @@ InputBoxAGUIControl:
     Else If (InputBoxEntry = "SeasonalOffSeasonMissing")
         PromptText := "Who is the employer? (optional)"
     Else if (InputBoxEntry = "OverIncomeMissing")
-        PromptText := "Without dollar signs, enter the calculated income less expenses, income limit, and household size.`n`n(Example: 76392 49605 3)"
+        PromptText := "Without dollar signs, enter the calculated income less expenses, income limit, and household size.`nOnly type numbers separated by spaces - no commas or periods.`n`n(Example: 76392 49605 3)"
 
     InputBox, %InputBoxEntry%Input, Additional Input Required, %PromptText%, , , , , , , ,%InputBoxAGUIControlVariable%
     If ErrorLevel
@@ -1723,46 +1734,52 @@ OverIncomeSub:
     OverIncomeObj.overIncomeDifference := OverIncomeObj.overIncomeReceived - OverIncomeObj.overIncomeLimit
     GuiControl,, %InputBoxEntry%, % "Over-income by $" OverIncomeObj.overIncomeDifference
 Return
+getRowCount(Text, columns, indentString) {
+    indentString := StrLen(indentString) > 0 ? indentString : ""
+    Text := st_wordwrap(Text, columns, indentString)
+    StrReplace(Text, "`n", "`n", xCount)
+    Return [Text, xCount +1]
+}
 ;=============================================================================================================================
 ;VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION 
 ;=============================================================================================================================
 
 
 
-;===============================================================================================================================
-;ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION
-;===============================================================================================================================
+;=========================================================================================================================================================
+;ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION
+;=========================================================================================================================================================
 
-3GuiClose:
-    Gosub, SaveVerificationGUICoords
-	Gui, 3: Hide
+MissingGuiGuiClose:
+    Gosub, SaveMissingGuiGUICoords
+	Gui, MissingGui: Hide
 Return
 
-GuiClose:
+MainGuiGuiClose:
     GoSub, SaveMainGuiCoords
-    Gosub, SaveVerificationGUICoords
+    Gosub, SaveMissingGuiGUICoords
     GoSub, ClearFormButton
 Return
 
 SaveMainGuiCoords:
 	WinGetPos, XCaseNotesGet, YCaseNotesGet,,, CaseNotes
-	If (XCaseNotesGet - XCaseNotes <> 0 and XCaseNotesGet > -10000)
+	If (XCaseNotesGet - XCaseNotes <> 0 and Abs(XCaseNotesGet) < 9999)
 		IniWrite, %XCaseNotesGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, XCaseNotesINI
-	If (YCaseNotesGet - YCaseNotes <> 0 and YCaseNotesGet > -10000)
+	If (yDifference := YCaseNotesGet <> 0 and Abs(YCaseNotesGet) < 9999)
 		IniWrite, %YCaseNotesGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, YCaseNotesINI
 Return
 
-SaveVerificationGUICoords:
+SaveMissingGuiGUICoords:
 	WinGetPos, XVerificationsGet, YVerificationsGet,,, Missing Verifications
-	If (XVerificationsGet - XVerifications <> 0 and XVerificationsGet > -10000)
+	If (XVerificationsGet - XCaseNotes <> 0 and Abs(XVerificationsGet) < 9999)
 		IniWrite, %XVerificationsGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, XVerificationINI
-	If (YVerificationsGet - YVerifications <> 0 and YVerificationsGet > -10000)
+	If (YVerificationsGet - YCaseNotes <> 0 and Abs(YVerificationsGet) < 9999)
 		IniWrite, %YVerificationsGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, YVerificationINI
 Return
 
 ClearFormButton:
     GoSub, SaveMainGuiCoords
-    Gosub, SaveVerificationGUICoords
+    Gosub, SaveMissingGuiGUICoords
     ClearingForm := A_GuiControl = "ClearFormButton" ? 1 : 0
     If (ConfirmedClear > 0) {
         run %A_ScriptName%
@@ -1784,9 +1801,9 @@ ClearFormButton:
                 run %A_ScriptName%
             Return
         }
-        GuiControl, 1: Text, ClearFormButton, Confirm
+        GuiControl, MainGui: Text, ClearFormButton, Confirm
         Gui, Font, s9, Segoe UI
-        GuiControl, 1: Font, ClearFormButton
+        GuiControl, MainGui: Font, ClearFormButton
         ConfirmedClear++
     }
     If (!ClearingForm) {
@@ -1801,9 +1818,9 @@ ClearFormButton:
     }
 Return
 
-;==================================================================================================================================
-;SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION
-;==================================================================================================================================
+;=====================================================================================================================================================
+;SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION
+;=====================================================================================================================================================
 SettingsButton:
     CountyContact := {}
     CountyContact.Dakota := { Email: "EEADOCS@co.dakota.mn.us", Fax: "651-306-3187", ProviderWorker: "651-554-5764", EdBSF: "Training Request for Childcare", CountyNoteInMaxis: 1 }
@@ -1866,7 +1883,8 @@ WorkerUsingMec2Functions:
         Return
     }
     GuiControl, CSG: Show, WorkerBrowserWrite
-ReturnCountyNoteInMaxis:
+Return
+CountyNoteInMaxis:
     Gui, Submit, NoHide
     GuiControlGet, MaxisChecked,,CountyNoteInMaxisWrite
     If (MaxisChecked = 0) {
@@ -1934,6 +1952,7 @@ CountySelection:
     GoSub, CountyNoteInMaxis
 Return
 
+;================================================================================================================================================================
 ;BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION 
 st_wordWrap(string, column, indentChar) { ; String Things - Common String & Array Functions
     indentLength := StrLen(indentChar)
@@ -1954,7 +1973,7 @@ st_wordWrap(string, column, indentChar) { ; String Things - Common String & Arra
             out .= "`n"
         } Else {
             If (StrLen(A_LoopField) > 0) {
-                out .= A_LoopField "`n"
+                out .= indentChar A_LoopField "`n"
             }
         }
     }
@@ -2019,12 +2038,34 @@ Class OrderedAssociativeArray { ; Capt Odin https://www.autohotkey.com/boards/vi
 		}
 	}
 }
-;BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION 
-
-;HOTKEYS SECTION HOTKEYS SECTION HOTKEYS SECTION HOTKEYS SECTION HOTKEYS SECTION HOTKEYS SECTION HOTKEYS SECTION HOTKEYS SECTION
+;BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION
+;===========================================================================================================================================================================
+;=================================================================================================================================================================================
+;HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION
 !3::
     Gui, Submit, NoHide
     Clipboard := CaseNumber
+Return
+
+#v::
+    If WinActive(ahk_exe Outlook.exe) {
+        SendInput, % EmailText.Output
+    }
+    Else If WinActive(WorkerBrowserRead) {
+        Gui, Submit, NoHide
+        Sleep 500
+        If (UseMEC2FunctionsRead = 1) {
+            CaseStatus := InStr(CaseDetails.DocType, "?") ? "" : (Homeless = 1) ? "Homeless App" : (CaseDetails.DocType = "Redet") ? "Redetermination" : CaseDetails.DocType
+            concatLetterText := "LetterTextFromAHKSPLIT" %Letter1% "SPLIT" CaseStatus "SPLIT" IdList
+            Clipboard := concatLetterText
+            Send, ^v
+        } Else {
+            Clipboard := %Letter1%
+            Send, ^v
+        }
+        Sleep 500
+        Clipboard := CaseNumber
+    }
 Return
 
 RemoveToolTip:
@@ -2079,6 +2120,7 @@ ResetPositions() {
     XVerification := 0
     YVerification := 0
 }
+
 #If WinActive(WorkerBrowserRead)
     ^F12:: ;CtrlF12/AltF12 Add worker signature
     !F12::
@@ -2086,6 +2128,7 @@ ResetPositions() {
         Send, %WorkerNameRead%
     Return
 #If
+
 If (WorkerCounty = "Dakota") {
     #If WinActive("ahk_exe WINWORD.EXE")
         F1::
