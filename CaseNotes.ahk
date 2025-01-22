@@ -26,8 +26,9 @@
 ;version 0.3.4, The 'I prettied up Missing Verifications, changed MV to open/hide on load, and gave each GUI a name' version
 ;version 0.3.5, The 'If the Special Letter line count ain't right now, it ain't ever gonna be' version
 ;version 0.3.6, The 'Added some parens and fixed some copy/paste errors in the MissingGuiGUIClose subroutine' version
+;version 0.3.7, The 'Redid how coordinates were done. Next is EmployeeInfo/CaseNoteCountyInfo INI' version
 
-Version := "v0.3.6"
+Version := "v0.3.7"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -55,15 +56,19 @@ IniRead, CountyDocsEmailRead, %A_MyDocuments%\AHK.ini, CaseNoteCountyInfo, Count
 IniRead, ProviderWorkerPhoneRead, %A_MyDocuments%\AHK.ini, CaseNoteCountyInfo, CountyProviderWorkerPhone, %A_Space%
 IniRead, CountyEdBSFformRead, %A_MyDocuments%\AHK.ini, CaseNoteCountyInfo, CountyEdBSF, %A_Space%
 
-IniRead, XClipboard, %A_MyDocuments%\AHK.ini, ClipboardContents, XClipboardINI, 0
-IniRead, YClipboard, %A_MyDocuments%\AHK.ini, ClipboardContents, YClipboardINI, 0
-
-IniRead, XCaseNotes, %A_MyDocuments%\AHK.ini, CaseNotePositions, XCaseNotesINI, 0
-IniRead, YCaseNotes, %A_MyDocuments%\AHK.ini, CaseNotePositions, YCaseNotesINI, 0
-If (XCaseNotes < -3000 || YCaseNotes < -3000) {
-    XCaseNotes := 0
-    YCaseNotes := 0
+XCaseNotes := 0, YCaseNotes := 0, XVerification := 0, YVerification := 0, XClipboard := 0, YClipboard := 0
+IniRead, CaseNotePositionsSection, %A_MyDocuments%\AHK.ini, CaseNotePositions
+LocCoords := StrSplit(CaseNotePositionsSection, "`n")
+For i, Row in LocCoords
+{
+    SetCoord := StrSplit(Row, "INI=")
+    SetCoordName := SetCoord[1]
+    %SetCoordName% := SetCoord[2] != "" ? SetCoord[2] : 0
 }
+If (Abs(XCaseNotes) > 9000 || Abs(YCaseNotes) > 9000) {
+    XCaseNotes := 0, YCaseNotes := 0, XVerification := 0, YVerification := 0, XClipboard := 0, YClipboard := 0
+}
+
 ;Declaring Global Variables
 MissingVerifications := {}, ClarifiedVerifications := {}, EmailText := {}, LineCount := 0, Homeless := 0
 
@@ -340,15 +345,6 @@ ExamplesButton:
         }
         GuiControl, MainGui:Text, ExamplesButton, Examples
     }
-Return
-
-CBTGuiClose:
-    WinGetPos, XClipboardContentsGet, YClipboardContentsGet,,, A
-    If (XClipboardContentsGet - XClipboard <> 0)
-        IniWrite, %XClipboardContentsGet%, %A_MyDocuments%\AHK.ini, ClipboardContents, XClipboardINI
-    If (YClipboardContentsGet - YClipboard <> 0)
-        IniWrite, %YClipboardContentsGet%, %A_MyDocuments%\AHK.ini, ClipboardContents, YClipboardINI
-    Gui, CBT: Destroy
 Return
 
 MEC2NoteButton:
@@ -788,8 +784,6 @@ MissingGui:
     ;ProgressLine := "x50 y+4 w250 h1 Background" LineColor
     ;Gui, MissingGui: Add, Progress, %ProgressLine%
 
-    IniRead, XVerification, %A_MyDocuments%\AHK.ini, CaseNotePositions, XVerificationINI, 0
-    IniRead, YVerification, %A_MyDocuments%\AHK.ini, CaseNotePositions, YVerificationINI, 0
     Gui, MissingGui: New,, Missing Verifications
     Gui, MissingGui: Margin, 12 12
     Gui, MissingGui: Add, Checkbox, %Column1of1% vIDmissing gInputBoxAGUIControl, ID (input)
@@ -1765,36 +1759,46 @@ getRowCount(Text, columns, indentString) {
 ;ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION
 ;=========================================================================================================================================================
 
+CBTGuiClose:
+    WinGetPos, XClipboardContentsGet, YClipboardContentsGet,,, A
+    If (XClipboardContentsGet - XClipboard != 0)
+        IniWrite, %XClipboardContentsGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, XClipboardINI
+    If (YClipboardContentsGet - YClipboard != 0)
+        IniWrite, %YClipboardContentsGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, YClipboardINI
+    Gui, CBT: Destroy
+Return
+
 MissingGuiGuiClose:
-    Gosub, SaveMissingGuiGUICoords
+    ;Gosub, SaveMissingGuiGUICoords
 	Gui, MissingGui: Hide
 Return
 
 MainGuiGuiClose:
-    GoSub, SaveMainGuiCoords
-    Gosub, SaveMissingGuiGUICoords
+    GoSub, SaveGuiCoords
+    ;Gosub, SaveMissingGuiGUICoords
     GoSub, ClearFormButton
 Return
 
-SaveMainGuiCoords:
+SaveGuiCoords:
 	WinGetPos, XCaseNotesGet, YCaseNotesGet,,, CaseNotes
-	If ((XCaseNotesGet - XCaseNotes) <> 0 && Abs(XCaseNotesGet) < 9999)
+    CurrentGuiCoords.xMain := XCaseNotesGet
+    CurrentGuiCoords.yMain := YCaseNotesGet
+	If ((XCaseNotesGet - XCaseNotes) != 0 && Abs(XCaseNotesGet) < 9999)
 		IniWrite, %XCaseNotesGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, XCaseNotesINI
-	If ((YCaseNotesGet - YCaseNotes) <> 0 && Abs(YCaseNotesGet) < 9999)
+	If ((YCaseNotesGet - YCaseNotes) != 0 && Abs(YCaseNotesGet) < 9999)
 		IniWrite, %YCaseNotesGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, YCaseNotesINI
-Return
-
-SaveMissingGuiGUICoords:
 	WinGetPos, XVerificationsGet, YVerificationsGet,,, Missing Verifications
-	If ((XVerificationsGet - XVerification) <> 0 && Abs(XVerificationsGet) < 9999)
+    CurrentGuiCoords.xMissing := XVerificationsGet
+    CurrentGuiCoords.yMissing := YVerificationsGet
+	If ((XVerificationsGet - XVerification) != 0 && Abs(XVerificationsGet) < 9999)
 		IniWrite, %XVerificationsGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, XVerificationINI
-	If ((YVerificationsGet - YVerification) <> 0 && Abs(YVerificationsGet) < 9999)
+	If ((YVerificationsGet - YVerification) != 0 && Abs(YVerificationsGet) < 9999)
 		IniWrite, %YVerificationsGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, YVerificationINI
 Return
 
 ClearFormButton:
-    GoSub, SaveMainGuiCoords
-    Gosub, SaveMissingGuiGUICoords
+    GoSub, SaveGuiCoords
+    ;Gosub, SaveMissingGuiGUICoords
     ClearingForm := A_GuiControl = "ClearFormButton" ? 1 : 0
     If (ConfirmedClear > 0) {
         run %A_ScriptName%
