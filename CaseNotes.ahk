@@ -24,8 +24,9 @@
 ;version 0.3.2, The 'I don't know what your MAXIS screen is called' version
 ;version 0.3.3, The 'I had to rearrage code so that Homeless prompting would be added to the Special Letter' version
 ;version 0.3.4, The 'I prettied up Missing Verifications, changed MV to open/hide on load, and gave each GUI a name' version
+;version 0.3.5, The 'If the Special Letter line count ain't right now, it ain't ever gonna be' version
 
-Version := "v0.3.4"
+Version := "v0.3.5"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -590,32 +591,32 @@ CalcDates:
         If (CaseDetails.Eligibility = "pends") {
             If (NeedsNoExtension > -1) {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.AutoDenyMDY
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo`n**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
                 AutoDenyObject.AutoDenyExtraLines := 1
                 GuiControl, MainGui: Text, AutoDenyStatus, Has 15+ days before auto-deny
             } Else If (NeedsExtension > -1) {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
                 AutoDenyObject.AutoDenyExtensionMECnote := "Auto-deny extended to " AutoDenyObject.AutoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo`n**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
                 AutoDenyObject.AutoDenyExtraLines := 1
                 GuiControl, MainGui: Text, AutoDenyStatus, % "Extend auto-deny to " AutoDenyObject.AutoDenyExtensionDate
             } Else {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
                 AutoDenyObject.AutoDenyExtensionMECnote := "Reinstate date is " AutoDenyObject.AutoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**Please note that you will be mailed an auto-denial notice.`n  You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications.`n  If you are eligible, your case will be reinstated."
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo`n**Please note that you will be mailed an auto-denial notice.`n  You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications.`n  If you are eligible, your case will be reinstated."
                 AutoDenyObject.AutoDenyExtraLines := 3
                 GuiControl, MainGui: Text, AutoDenyStatus, % "Auto-denies tonight, pends until " AutoDenyObject.AutoDenyExtensionDate
             }
         }
         If (Homeless = 1) {
             AutoDenyObject.AutoDenyExtensionDate := DateObject.ExpeditedNinetyDaysMDY
-            AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo**You have until " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
+            AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo`n**You have until " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
             AutoDenyObject.AutoDenyExtraLines := 3
         }
     }
     
     If (CaseDetails.DocType = "Redet") {
-            AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo*  If your redetermination is not completed by " DateObject.SignedMDY ",`n   your case will close on " DateObject.RedetCaseCloseMDY ". If it closes,`n   the latest it can be reinstated is " DateObject.RedetDocsLastDayMDY "."
+            AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo`n*  If your redetermination is not completed by " DateObject.SignedMDY ",`n   your case will close on " DateObject.RedetCaseCloseMDY ". If it closes,`n   the latest it can be reinstated is " DateObject.RedetDocsLastDayMDY "."
             AutoDenyObject.AutoDenyExtraLines := 3
     }
     If (CaseDetails.Eligibility = "elig") {
@@ -776,7 +777,7 @@ MissingGui:
     ; 12 + 118 (130) + 120 (250) + 160 (400) + 12 = 422
     Column1of3 := "xm w118"
     Column2of3 := "x130 yp+0 w120"
-    Column3of3 := "x240 yp+0 w160"
+    Column3of3 := "x262 yp+0 w138"
     ; 12 + 118 (130) + 280 (410) + 12 = 422
     Column2and3Of3 := "x130 yp+0 w280"
 
@@ -862,7 +863,7 @@ MissingGui:
     Gui, MissingGui: Add, Checkbox, %Column2of2% vSelfEmploymentIneligibleMissing, Self-Employment not enough hours
     Gui, MissingGui: Add, Checkbox, %Column1of2% vEligibleActivityMissing, No Eligible Activity Listed
     Gui, MissingGui: Add, Checkbox, %Column2of2% vEmploymentIneligibleMissing, Employment not enough hours
-    Gui, MissingGui: Add, Checkbox, %Column1of2% vESPlanOnlyMissing, ES Plan Only hours notice
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vESPlanOnlyJSMissing, ES Plan-only JS notice
     Gui, MissingGui: Add, Checkbox, %Column2of2% vActivityAfterHomelessMissing, Activity Req. After 3-Mo Homeless Period
 
     Gui, MissingGui: Font, bold ; PROVIDER SECTION ===================================================================
@@ -957,7 +958,7 @@ MissingButtonDoneButton:
 	If BCmissing {
         BCmissingText := "Birth date / relationship / citizenship verification for: " BCmissingInput
 		ClarifiedVerifications[ClarifyListItem ". " BCmissingText ";`n"] := 2
-        EmailTextString .= EmailListItem ". " BCmissingText ", such as a birth certificate;`n"
+        EmailTextString .= EmailListItem ". " BCmissingText ", such as the official birth certificate;`n"
 		CaseNoteMissing .= BCmissingText ";`n"
         ClarifyListItem++
         EmailListItem++
@@ -1346,7 +1347,7 @@ MissingButtonDoneButton:
         EmailListItem++
     }
 	If ClassScheduleMissing {
-        ClassScheduleMissingText := "Class schedule showing class start/end times and credits;`n"
+        ClassScheduleMissingText := "Class schedule with class start/end times and credits;`n"
 		MissingVerifications[ListItem ". " ClassScheduleMissingText] := 1
         EmailTextString .= EmailListItem ". " ClassScheduleMissingText
 		CaseNoteMissing .= "Adult class schedule;`n"
@@ -1370,7 +1371,7 @@ MissingButtonDoneButton:
         EmailListItem++
     }
     If StudentStatusOrIncomeMissing {
-        StudentStatusOrIncomeMissingText := "Verification of your student status of being at least halftime, OR your most recent 30 days income.`n (if you are 19 or under and attending school at least halftime, your income is not counted);`n"
+        StudentStatusOrIncomeMissingText := "Verification of your student status of being at least halftime, OR your most recent 30 days income.`n (if you are 19 or under and attending school at least`n   halftime, your income is not counted);`n"
 		MissingVerifications[ListItem ". " StudentStatusOrIncomeMissingText] := 4
         EmailTextString .= EmailListItem ". " StudentStatusOrIncomeMissingText
 		CaseNoteMissing .= "Halftime+ student status or income (PRI age 19 or under);`n"
@@ -1380,9 +1381,17 @@ MissingButtonDoneButton:
 ;-------------------------
 	If JobSearchHoursMissing {
         JobSearchHoursMissingText := "Job search hours needed per week: Assistance can be approved for 1 to 20 hours of job search each week, limited to a total of 240 hours per calendar year;`n"
-		MissingVerifications[ListItem ". " JobSearchHoursMissingText] := 4
+		MissingVerifications[ListItem ". " JobSearchHoursMissingText] := 3
         EmailTextString .= EmailListItem ". " JobSearchHoursMissingText
 		CaseNoteMissing .= "Job search hours per week;`n"
+		ListItem++
+        EmailListItem++
+    }
+    If ESPlanUpdateMissing {
+        ESPlanUpdateMissingText := "Updated Employment Plan ...;`n"
+		MissingVerifications[ListItem ". " ESPlanUpdateMissingText] := 4
+        EmailTextString .= EmailListItem ". " ESPlanUpdateMissingText
+		CaseNoteMissing .= "Updated Employment Plan ...;`n"
 		ListItem++
         EmailListItem++
     }
@@ -1457,11 +1466,11 @@ MissingButtonDoneButton:
         EmailTextString .= EmploymentIneligibleMissingText
 		CaseNoteMissing .= "Employment hours meeting minimum requirement, or other eligible activity;`n"
     }
-    If ESPlanOnlyMissing {
-        ESPlanOnlyMissingText := "* Please note that while you have an Employment Plan, the assistance hours that can be approved are limited to the activities on the Plan;`n"
-		MissingVerifications[ESPlanOnlyMissing] := 3
-        EmailTextString .= ESPlanOnlyMissingText
-		CaseNoteMissing .= "Client has ES Plan - informed hours are limited to ES Plan activities;`n"
+    If ESPlanOnlyJSMissing {
+        ESPlanOnlyJSMissingText := "* While you have an Employment Plan, assistance hours cannot be approved for job search unless it is listed on the Plan;`n"
+		MissingVerifications[ESPlanOnlyJSMissingText] := 2
+        EmailTextString .= ESPlanOnlyJSMissingText
+		CaseNoteMissing .= "Client has ES Plan - informed JS hours are required to be on the Plan;`n"
     }
 	If ActivityAfterHomelessMissing {
         ActivityAfterHomelessMissingText := "* At the end of the 90-day homeless exemption period, you must have an eligible activity to keep your Child Care Assistance case open. " EligibleActivityWithoutJSText "`n"
@@ -1511,7 +1520,7 @@ MissingButtonDoneButton:
         }
     }
     If (ClarifiedVerifications.Length() > 1) {
-        ClarifiedVerifications.InsertAt(1, "`n__Clarification of items listed above the Worker Comments:__`n", 1)
+        ClarifiedVerifications.InsertAt(1, "__Clarification of items listed above the Worker Comments:__`n", 1)
     }
     GoSub SetEmailText
     ArrayLines := 0
@@ -1522,6 +1531,12 @@ MissingButtonDoneButton:
     GoSub ListifyMissing
 	CaseNoteMissing := SubStr(CaseNoteMissing, 1, -1)
 	While LetterText%A_Index% {
+        If (InStr(LetterText%A_Index%, "__Clarification",,2)) {
+            StrReplace(st_wordWrap(LetterText%A_Index%, 60, ""), "`n", "`n", LetterLineCount)
+            If (LetterLineCount < 27) {
+                LetterText%A_Index% := StrReplace(LetterText%A_Index%, "__Clarification", "`n__Clarification")
+            }
+        }
 		TempVar := "Letter" . A_Index
 		GuiControl, MissingGui:Show, %TempVar%
     }
@@ -1546,25 +1561,25 @@ CountLines(VerificationArray) {
 
 ListifyMissing:
     VerificationList := (VerifCat = "Clarified") ? ClarifiedVerifications : MissingVerifications
-    If (LineCount + ArrayLines > 29) { ; puts Missing verifications on the next letter if it will exceed the current letter's available space
+    If ((LineCount + ArrayLines) > 30) { ; puts ClarifiedVerifications on the next letter if it will exceed the current letter's available space
         LetterTextNumber++
         LetterTextPassed[LetterTextNumber] .= "                   Continued on letter " LetterTextNumber
         LetterTextPassed[LetterTextNumber] .= "                  Continued from letter " LetterTextNumber-1 "`n"
-        ;Gosub IncrementLetterPage
         
         LetterNumber++
         %LetterTextVar% .= "                   Continued on letter " LetterNumber
         LetterTextVar := "LetterText" . LetterNumber
-        LineCount := value + 1 ; For the continued from line
+        LineCount := 1 ; For the continued from line
         %LetterTextVar% .= "                  Continued from letter " LetterNumber-1 "`n"
     }
     For key, value in VerificationList {
-        If (InStr(key, "faxed")) { ; faxed = last key in MissingVerifications
-            If (LineCount+value = 30) {
-                key := StrReplace(key, "NewLineAutoreplaceTwo", "`n")
+        If (InStr(key, "faxed")) { ; faxed = last key in group
+            LineCountPlusFaxed := LineCount + value
+            If (LineCountPlusFaxed = 30) {
+                key := StrReplace(key, "NewLineAutoreplaceTwo", "")
                 key := StrReplace(key, "NewLineAutoreplaceOne", "")
-            } Else If (LineCount+value > 30) {
-                key := StrReplace(key, "NewLineAutoreplaceTwo", "`n`n")
+            } Else If (LineCountPlusFaxed > 30) {
+                key := StrReplace(key, "NewLineAutoreplaceTwo", "`n")
                 key := StrReplace(key, "NewLineAutoreplaceOne", "`n")
                 
                     LetterTextNumber++
@@ -1575,10 +1590,9 @@ ListifyMissing:
                     %LetterTextVar% .= "                   Continued on letter " LetterNumber
                     LetterTextVar := "LetterText" . LetterNumber
                     %LetterTextVar% .= "                  Continued from letter " LetterNumber-1 "`n"
-            } Else If (LineCount+value < 30) {
-                key := StrReplace(key, "NewLineAutoreplaceTwo", "`n`n")
-                LineCount++
-                If (LineCount+value < 30) {
+            } Else If (LineCountPlusFaxed < 30) {
+                key := StrReplace(key, "NewLineAutoreplaceTwo", "`n")
+                If (LineCountPlusFaxed < 29) {
                     key := StrReplace(key, "NewLineAutoreplaceOne", "`n")
                 } Else {
                     key := StrReplace(key, "NewLineAutoreplaceOne", "")
@@ -1586,7 +1600,7 @@ ListifyMissing:
             }
             %LetterTextVar% .= key
         } Else { ; does not contain faxed
-            If (LineCount + value > 29) {
+            If ((LineCount + value) > 29) {
             
                     LetterTextNumber++
                     LetterText[LetterTextNumber] .= "                   Continued on letter " LetterTextNumber
@@ -1597,7 +1611,7 @@ ListifyMissing:
                     LetterTextVar := "LetterText" . LetterNumber
                     %LetterTextVar% .= "                  Continued from letter " LetterNumber-1 "`n"
                     %LetterTextVar% .= key
-                    LineCount := value + 1 ; For the continued from line
+                    LineCount := (value + 1) ; For the continued from line
             } Else {
                 LineCount += value
                 %LetterTextVar% .= key
@@ -1765,7 +1779,7 @@ SaveMainGuiCoords:
 	WinGetPos, XCaseNotesGet, YCaseNotesGet,,, CaseNotes
 	If (XCaseNotesGet - XCaseNotes <> 0 and Abs(XCaseNotesGet) < 9999)
 		IniWrite, %XCaseNotesGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, XCaseNotesINI
-	If (yDifference := YCaseNotesGet <> 0 and Abs(YCaseNotesGet) < 9999)
+	If (YCaseNotesGet - YCaseNotes <> 0 and Abs(YCaseNotesGet) < 9999)
 		IniWrite, %YCaseNotesGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, YCaseNotesINI
 Return
 
@@ -2313,4 +2327,8 @@ If (WorkerCounty = "Dakota") {
             Send, !{s}
         Return
     #If
+}
+DisplayResult(Result) {
+    ToolTip, %Result%
+    SetTimer, RemoveToolTip, -2000
 }
