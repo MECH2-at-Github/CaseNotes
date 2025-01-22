@@ -25,8 +25,9 @@
 ;version 0.3.3, The 'I had to rearrage code so that Homeless prompting would be added to the Special Letter' version
 ;version 0.3.4, The 'I prettied up Missing Verifications, changed MV to open/hide on load, and gave each GUI a name' version
 ;version 0.3.5, The 'If the Special Letter line count ain't right now, it ain't ever gonna be' version
+;version 0.3.6, The 'Added some parens and fixed some copy/paste errors in the MissingGuiGUIClose subroutine' version
 
-Version := "v0.3.5"
+Version := "v0.3.6"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -1777,17 +1778,17 @@ Return
 
 SaveMainGuiCoords:
 	WinGetPos, XCaseNotesGet, YCaseNotesGet,,, CaseNotes
-	If (XCaseNotesGet - XCaseNotes <> 0 and Abs(XCaseNotesGet) < 9999)
+	If ((XCaseNotesGet - XCaseNotes) <> 0 && Abs(XCaseNotesGet) < 9999)
 		IniWrite, %XCaseNotesGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, XCaseNotesINI
-	If (YCaseNotesGet - YCaseNotes <> 0 and Abs(YCaseNotesGet) < 9999)
+	If ((YCaseNotesGet - YCaseNotes) <> 0 && Abs(YCaseNotesGet) < 9999)
 		IniWrite, %YCaseNotesGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, YCaseNotesINI
 Return
 
 SaveMissingGuiGUICoords:
 	WinGetPos, XVerificationsGet, YVerificationsGet,,, Missing Verifications
-	If (XVerificationsGet - XCaseNotes <> 0 and Abs(XVerificationsGet) < 9999)
+	If ((XVerificationsGet - XVerification) <> 0 && Abs(XVerificationsGet) < 9999)
 		IniWrite, %XVerificationsGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, XVerificationINI
-	If (YVerificationsGet - YCaseNotes <> 0 and Abs(YVerificationsGet) < 9999)
+	If ((YVerificationsGet - YVerification) <> 0 && Abs(YVerificationsGet) < 9999)
 		IniWrite, %YVerificationsGet%, %A_MyDocuments%\AHK.ini, CaseNotePositions, YVerificationINI
 Return
 
