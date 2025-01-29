@@ -28,7 +28,7 @@
 ;version 0.3.6, The 'Added some parens and fixed some copy/paste errors in the MissingGuiGUIClose subroutine' version
 ;version 0.3.7, The 'Redid how coordinates were done. Next is EmployeeInfo/CaseNoteCountyInfo INI' version
 
-Version := "v0.3.7"
+Version := "v0.3.83"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -86,7 +86,7 @@ CountySpecificText.StLouis := { OverIncomeContactInfo: "" }
 
 ; Date variables
 DateObject := { ReceivedMDY: "", ReceivedYMD: "", AutodenyYMD: "", ReinstateDate: "" }
-AutoDenyObject := { AutoDenyExtensionMECnote: "", AutoDenyExtensionDate: "", AutoDenyExtensionSpecLetter: "", AutoDenyExtraLines: "", AutoDenyMaxisNote: "" }
+AutoDenyObject := { AutoDenyExtensionMECnote: "", AutoDenyExtensionDate: "", AutoDenyExtensionSpecLetter: "", AutoDenyMaxisNote: "" }
 DateObject.TodayYMD := A_Now
 FormatTime, ShortDate, %A_Now%, M/d/yy ; for sending to envelope
 Received := DateObject.TodayYMD
@@ -583,38 +583,33 @@ CalcDates:
     DateObject.RedetDocsLastDayMDY := FormatMDY(AddDays(DateObject.RedetCaseCloseYMD, 29))
     
     NeedsFakeExtension := DateObject.RecdPlusFifteenishMDY
-    AutoDenyObject.AutoDenyExtraLines := 0, AutoDenyObject.AutoDenyExtensionSpecLetter :=
+    AutoDenyObject.AutoDenyExtensionSpecLetter :=
     If (CaseDetails.DocType = "Application") {
         If (CaseDetails.Eligibility = "pends") {
             If (NeedsNoExtension > -1) {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.AutoDenyMDY
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo`n**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
-                AutoDenyObject.AutoDenyExtraLines := 1
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications"
                 GuiControl, MainGui: Text, AutoDenyStatus, Has 15+ days before auto-deny
             } Else If (NeedsExtension > -1) {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
                 AutoDenyObject.AutoDenyExtensionMECnote := "Auto-deny extended to " AutoDenyObject.AutoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo`n**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
-                AutoDenyObject.AutoDenyExtraLines := 1
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications"
                 GuiControl, MainGui: Text, AutoDenyStatus, % "Extend auto-deny to " AutoDenyObject.AutoDenyExtensionDate
             } Else {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
                 AutoDenyObject.AutoDenyExtensionMECnote := "Reinstate date is " AutoDenyObject.AutoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo`n**Please note that you will be mailed an auto-denial notice.`n  You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications.`n  If you are eligible, your case will be reinstated."
-                AutoDenyObject.AutoDenyExtraLines := 3
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "**Please note that you will be mailed an auto-denial notice.`n  You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications.`n  If you are eligible, your case will be reinstated."
                 GuiControl, MainGui: Text, AutoDenyStatus, % "Auto-denies tonight, pends until " AutoDenyObject.AutoDenyExtensionDate
             }
         }
         If (Homeless = 1) {
             AutoDenyObject.AutoDenyExtensionDate := DateObject.ExpeditedNinetyDaysMDY
-            AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo`n**You have until " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
-            AutoDenyObject.AutoDenyExtraLines := 3
+            AutoDenyObject.AutoDenyExtensionSpecLetter := "**You have until " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications"
         }
     }
     
     If (CaseDetails.DocType = "Redet") {
-            AutoDenyObject.AutoDenyExtensionSpecLetter := "NewLineAutoreplaceTwo`n*  If your redetermination is not completed by " DateObject.SignedMDY ",`n   your case will close on " DateObject.RedetCaseCloseMDY ". If it closes,`n   the latest it can be reinstated is " DateObject.RedetDocsLastDayMDY "."
-            AutoDenyObject.AutoDenyExtraLines := 3
+            AutoDenyObject.AutoDenyExtensionSpecLetter := "** If your redetermination is not completed by " DateObject.SignedMDY ",`n   your case will close on " DateObject.RedetCaseCloseMDY ". If it closes,`n   the latest it can be reinstated is " DateObject.RedetDocsLastDayMDY "."
     }
     If (CaseDetails.Eligibility = "elig") {
         AutoDenyObject := {}
@@ -815,7 +810,7 @@ MissingGui:
     Gui, MissingGui: Add, Checkbox, %Column1of1% vWorkLeaveMissing, Leave of absence (Dates, pay status, hours, work schedule)
     Gui, MissingGui: Add, Text, %TextLine% ; -------------------------------------------------------------------------
     Gui, MissingGui: Add, Checkbox, %Column1of1% vSeasonalWorkMissing, Seasonal employment season length
-    Gui, MissingGui: Add, Checkbox, %Column1of1% vSeasonalOffSeasonMissing, Seasonal employment info - app in off-season (input)
+    Gui, MissingGui: Add, Checkbox, %Column1of1% vSeasonalOffSeasonMissing gInputBoxAGUIControl, Seasonal employment info - app in off-season (input)
     Gui, MissingGui: Add, Text, %TextLine% ; -------------------------------------------------------------------------
     Gui, MissingGui: Add, Checkbox, %Column1of2% vSelfEmploymentMissing, Self-Employment Income
     Gui, MissingGui: Add, Checkbox, %Column2of2% vSelfEmploymentScheduleMissing, Self-Employment Schedule
@@ -902,7 +897,7 @@ MissingButtonDoneButton:
     MecCheckboxIds := {}
 	LetterTextVar := "LetterText1", LetterNumber := 1, LineNumber := 1, ListItem := 1, ClarifyListItem := 1, EmailListItem := 1, CaseNoteMissing := "", Email := ""
     VerifCat :=, LetterTextNumber := 1, LetterText := {}
-    PendingHomelessText1 := "You may be eligible for the homeless policy, which allows us to approve eligibility even though there are verifications we need but do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility.`n`nBefore we can approve eligibility, we need information that you did not put on the application:`n"
+    PendingHomelessPreText := "You may be eligible for the homeless policy, which allows us to approve eligibility even though there are verifications we need but do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility.`n`nBefore we can approve expedited eligibility, we need`n information that was not on the application:`n"
 
     If OverIncomeMissing {
         OverIncomeMissingText1 := "Using information you provided your case is ineligible as your income is over the limit for a household of " OverIncomeObj.overIncomeHHsize ". The gross limit is $" OverIncomeObj.overIncomeText ".`n"
@@ -912,20 +907,20 @@ MissingButtonDoneButton:
         MissingVerifications[OverIncomeMissingText2] := 3
         CaseNoteMissing .= "Household is calculated to be over-income by $" OverIncomeObj.overIncomeDifference " ($" OverIncomeObj.overIncomeReceived " - $" OverIncomeObj.overIncomeLimit ");`n"
     }
-    If (Homeless = 1 && CaseDetails.Eligibility = "pends") {
+    If (Homeless = 1 && CaseDetails.Eligibility = "pends" && CaseDetails.DocType = "Application") {
         InputBox, MissingHomelessItems, Homeless Info Missing, What information is needed from the client to approve expedited eligibility?`n`nUse a double space "  " without quotation marks to start a new line.,,,,,,,, % StrReplace(MissingHomelessItems, "`n", "  ")
         If (ErrorLevel = 0) {
             MissingHomelessItems := StrReplace(MissingHomelessItems, "  ", "`n")
-            PendingHomelessMissing := getRowCount(MissingHomelessItems, 57, "   ")
-            MissingVerifications[st_wordwrap(PendingHomelessText1, 59, " ") "`n"] := 8
+            PendingHomelessMissing := getRowCount("  " MissingHomelessItems, 58, "  ")
+            MissingVerifications[st_wordwrap(PendingHomelessPreText, 59, " ") "`n"] := 8
             MissingVerifications[PendingHomelessMissing[1] "`n"] := PendingHomelessMissing[2]
-            CaseNoteMissing .= "Missing for expedited approval:`n" PendingHomelessMissing[1] "`n"
+            CaseNoteMissing .= "Missing for expedited approval:`n" StrReplace(MissingHomelessItems, "`n", "`n  ") ";`n"
         }
     }
 
 	EmailText := {}
 	If (!InStr(Missing, "over-income")) {
-        EmailText.StartHL := (CaseDetails.Eligibility = "elig") ? "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility." : PendingHomelessText1 MissingHomelessItems
+        EmailText.StartHL := (CaseDetails.Eligibility = "elig") ? "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility." : PendingHomelessPreText MissingHomelessItems
 
         EmailText.EndHL := (CaseDetails.Eligibility = "elig") ? "`nThe initial approval of child care assistance is 30 hours per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.`nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children.`nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay." : ""
 
@@ -1136,8 +1131,9 @@ MissingButtonDoneButton:
         ListItem++
     }
     If SeasonalOffSeasonMissing {
-        SeasonalOffSeasonMissing := StrLen(SeasonalOffSeasonMissing) > 0 ? " at " SeasonalOffSeasonMissing : ""
-        SeasonalOffSeasonMissingText := "Verification of either seasonal employment" SeasonalOffSeasonMissing ", including expected season length and typical wages, or a signed statement that you are no longer an employee at this job.`n Upon returning to work, verification of work schedule will be needed, showing days of the week and start/end times;`n"
+        ;SeasonalOffSeasonMissing := StrLen(SeasonalOffSeasonMissing) > 0 ? " at " SeasonalOffSeasonMissing : ""
+        SeasonalOffSeasonMissing := SeasonalOffSeasonMissing != "" ? " at " SeasonalOffSeasonMissing : ""
+        SeasonalOffSeasonMissingText := "Verification of either seasonal employment " SeasonalOffSeasonMissing ", including expected season length and typical wages, or a signed statement that you are no longer an employee at this job.`n Upon returning to work, verification of work schedule will`n be needed, showing days of the week and start/end times;`n"
 		MissingVerifications[ListItem ". " SeasonalOffSeasonMissingText] := 6
         EmailTextString .= EmailListItem ". " SeasonalOffSeasonMissingText
 		CaseNoteMissing .= "Seasonal employment (applied during off season);`n"
@@ -1146,7 +1142,7 @@ MissingButtonDoneButton:
     }
 ;----------------------------
 	If SelfEmploymentMissing {
-        SelfEmploymentMissingText := "Self-employment income and expenses, such as federal tax return/schedules, or if less than a full tax year of self-employment or if last year's taxes don't represent expected ongoing income, a report or ledger with the most recent 3 months of gross income;`n"
+        SelfEmploymentMissingText := "Self-employment income such as your recent complete federal tax return. (For new self-employment, state your start date). If you haven't yet filed taxes or your taxes don't represent expected ongoing income, submit monthly reports or ledgers with the most recent full 3 months of gross income;`n"
         ;MEC2 text: Proof of Financial Information- You can provide proof of financial information and income with the last 30 days of check stubs, income tax records, business ledger, award letter, or a letter from your employer with pay rate, number of hours worked per week and how often you are paid. 
 		MissingVerifications[ListItem ". " SelfEmploymentMissingText] := 5
         EmailTextString .= EmailListItem ". " SelfEmploymentMissingText
@@ -1474,7 +1470,7 @@ MissingButtonDoneButton:
 		CaseNoteMissing .= "Eligible activity after the 3-month homeless period;`n"
     }
 	If NoProviderMissing {
-        NoProviderMissingText := "* Once you have a daycare provider, please notify me with the provider’s name and location, and the start date.`n`n   If you need help locating a daycare provider, contact Parent Aware at 888-291-9811 or www.parentaware.org/search`n"
+        NoProviderMissingText := "* Once you have a daycare provider, please notify me with the provider’s name, location, and the start date.`n`n   If you need help locating a daycare provider, contact Parent Aware at 888-291-9811 or www.parentaware.org/search`n"
         EmailTextString .= NoProviderMissingText
 		CaseNoteMissing .= "Provider;`n"
         MecCheckboxIds.providerInformation := 1
@@ -1492,8 +1488,15 @@ MissingButtonDoneButton:
         EmailTextString .= ProviderForNonImmigrantMissingText
         CaseNoteMissing .= "Provider subject to Public Educational Standards (4.15), if child not citizen/immigrant;`n"
     }
-    
-    ClarifiedVerifications["NewLineAutoreplaceOne Documents can also be faxed to " CountyFaxRead " or emailed to`n " CountyDocsEmailRead ". Please include your case number." AutoDenyObject.AutoDenyExtensionSpecLetter] := 2+AutoDenyObject.AutoDenyExtraLines
+
+    FaxInfo := (StrLen(CountyFaxRead) > 1) ? "faxed to " . CountyFaxRead : ""
+    EmailInfo := (StrLen(CountyDocsEmailRead) > 1) ? "emailed to " CountyDocsEmailRead : ""
+    FaxAndEmail := (StrLen(FaxInfo) > 1 && StrLen(EmailInfo) > 1) ? " and " : ""
+    FaxAndEmailWrapped := ((StrLen(FaxInfo) > 1 || StrLen(EmailInfo) > 1))
+        ? " Documents can also be " FaxInfo . FaxAndEmail . EmailInfo ". Please include your case number." : ""
+    FaxAndEmailWrapped := getRowCount(FaxAndEmailWrapped, 60, " ")
+    AutoDeny := getRowCount(AutoDenyObject.AutoDenyExtensionSpecLetter, 60, "")
+    ClarifiedVerifications[ "NewLineAutoreplace" FaxAndEmailWrapped[1] "`nNewLineAutoreplace" AutoDeny[1] ] := FaxAndEmailWrapped[2]+AutoDeny[2]
 
     MecCheckboxIds.other := 1
     IdList := ""
@@ -1568,14 +1571,14 @@ ListifyMissing:
         %LetterTextVar% .= "                  Continued from letter " LetterNumber-1 "`n"
     }
     For key, value in VerificationList {
-        If (InStr(key, "faxed")) { ; faxed = last key in group
+        If (InStr(key, "NewLineAutoreplace")) { ; last key in group
             LineCountPlusFaxed := LineCount + value
             If (LineCountPlusFaxed = 30) {
-                key := StrReplace(key, "NewLineAutoreplaceTwo", "")
-                key := StrReplace(key, "NewLineAutoreplaceOne", "")
+                key := StrReplace(key, "NewLineAutoreplace", "")
+                key := StrReplace(key, "NewLineAutoreplace", "")
             } Else If (LineCountPlusFaxed > 30) {
-                key := StrReplace(key, "NewLineAutoreplaceTwo", "`n")
-                key := StrReplace(key, "NewLineAutoreplaceOne", "`n")
+                key := StrReplace(key, "NewLineAutoreplace", "`n")
+                key := StrReplace(key, "NewLineAutoreplace", "`n")
                 
                     LetterTextNumber++
                     LetterText[LetterTextNumber] .= "                   Continued on letter " LetterTextNumber
@@ -1585,16 +1588,15 @@ ListifyMissing:
                     %LetterTextVar% .= "                   Continued on letter " LetterNumber
                     LetterTextVar := "LetterText" . LetterNumber
                     %LetterTextVar% .= "                  Continued from letter " LetterNumber-1 "`n"
-            } Else If (LineCountPlusFaxed < 30) {
-                key := StrReplace(key, "NewLineAutoreplaceTwo", "`n")
-                If (LineCountPlusFaxed < 29) {
-                    key := StrReplace(key, "NewLineAutoreplaceOne", "`n")
-                } Else {
-                    key := StrReplace(key, "NewLineAutoreplaceOne", "")
+            } Else {
+                While (InStr(key, "NewLineAutoreplace") && LineCountPlusFaxed < 30) {
+                    key := StrReplace(key, "NewLineAutoreplace", "`n",,1)
+                    LineCountPlusFaxed++
                 }
+                key := StrReplace(key, "NewLineAutoreplace", "")
             }
             %LetterTextVar% .= key
-        } Else { ; does not contain faxed
+        } Else { ; does not contain "NewLineAutoreplace"
             If ((LineCount + value) > 29) {
             
                     LetterTextNumber++
@@ -1638,7 +1640,7 @@ Letter:
     Sleep 500
 	LetterGUINumber := "LetterText" . SubStr(A_GuiControl, 0)
     If (UseMEC2FunctionsRead = 1) {
-        CaseStatus := InStr(CaseDetails.DocType, "?") ? "" : (Homeless = 1) ? "Homeless App" : (CaseDetails.DocType = "Redet") ? "Redetermination" : CaseDetails.DocType
+        CaseStatus := InStr(CaseDetails.DocType, "?") ? "" : (CaseDetails.DocType = "Redet") ? "Redetermination" : (Homeless = 1) ? "Homeless App" : CaseDetails.DocType
         concatLetterText := "LetterTextFromAHKSPLIT" %LetterGUINumber% "SPLIT" CaseStatus "SPLIT" IdList
         Clipboard := concatLetterText
         Send, ^v
@@ -1743,12 +1745,6 @@ OverIncomeSub:
     OverIncomeObj.overIncomeDifference := OverIncomeObj.overIncomeReceived - OverIncomeObj.overIncomeLimit
     GuiControl,, %InputBoxEntry%, % "Over-income by $" OverIncomeObj.overIncomeDifference
 Return
-getRowCount(Text, columns, indentString) {
-    indentString := StrLen(indentString) > 0 ? indentString : ""
-    Text := st_wordwrap(Text, columns, indentString)
-    StrReplace(Text, "`n", "`n", xCount)
-    Return [Text, xCount +1]
-}
 ;=============================================================================================================================
 ;VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION 
 ;=============================================================================================================================
@@ -1971,6 +1967,12 @@ CountySelection:
     GoSub, CountyNoteInMaxis
 Return
 
+getRowCount(Text, columns, indentString) {
+    indentString := StrLen(indentString) > 0 ? indentString : ""
+    Text := st_wordwrap(Text, columns, indentString)
+    StrReplace(Text, "`n", "`n", xCount)
+    Return [Text, xCount +1]
+}
 ;================================================================================================================================================================
 ;BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION 
 st_wordWrap(string, column, indentChar) { ; String Things - Common String & Array Functions
