@@ -28,7 +28,7 @@
 ;version 0.3.6, The 'Added some parens and fixed some copy/paste errors in the MissingGuiGUIClose subroutine' version
 ;version 0.3.7, The 'Redid how coordinates were done. Next is EmployeeInfo/CaseNoteCountyInfo INI' version
 
-Version := "v0.3.83"
+Version := "v0.3.85"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -369,7 +369,7 @@ MakeCaseNote:
     GoSub CalcDates
     EditControlsTest := ["HouseholdComp", "SharedCustody", "AddressVerification", "SchoolInformation", "Income", "ChildSupportIncome", "ChildSupportCooperation", "Expenses", "Provider", "ActivityandSchedule", "ServiceAuthorization", "Notes", "Missing"]
     For each, EditField in EditControlsTest {
-        %EditField% := st_wordWrap(%EditField%, 88, "")
+        %EditField% := st_wordWrap(%EditField%, 87, "")
         %EditField% := StrReplace(%EditField%, "`n", "`n             ")
     }
 	If (CaseDetails.Eligibility = "pends" && CaseDetails.DocType = "Redet") {
@@ -829,12 +829,12 @@ MissingGui:
     Gui, MissingGui: Add, Checkbox, %Column2of2% vSpousalSupportMissing, Spousal Support Income
     Gui, MissingGui: Add, Checkbox, %Column1of2% vRentalMissing, Rental
     Gui, MissingGui: Add, Checkbox, %Column2of2% vDisabilityMissing, STD / LTD 
-    Gui, MissingGui: Add, Checkbox, %Column1of2% vInsuranceBenefitsMissing, Insurance Benefits 
+    Gui, MissingGui: Add, Checkbox, %Column1of2% vAssetsGT1mMissing, Assets (>$1m)
     Gui, MissingGui: Add, Checkbox, %Column2of2% vUnearnedStatementMissing, Blank Unearned Yes/No (statement)
     Gui, MissingGui: Add, Checkbox, %Column1of2% vAssetsBlankMissing, Assets (Blank)
     Gui, MissingGui: Add, Checkbox, %Column2of2% vUnearnedMailedMissing, Blank Unearned Yes/No (mailed back)
     Gui, MissingGui: Add, Checkbox, %Column1of2% vVABenefitsMissing, VA Benefits
-    Gui, MissingGui: Add, Checkbox, %Column2of2% vAssetsGT1mMissing, Assets (>$1m)
+    Gui, MissingGui: Add, Checkbox, %Column2of2% vInsuranceBenefitsMissing, Insurance Benefits
 
     Gui, MissingGui: Font, bold ; ACTIVITY SECTION ===================================================================
     Gui, MissingGui: Add, Text, xm+10 y+22 w130 h1 %LineColor%
@@ -996,8 +996,9 @@ MissingButtonDoneButton:
 		ListItem++
         EmailListItem++
     }
+    CustodyScheduleText := ":`n  A. Stating that you have full custody, or`n  B. Your current Parenting Time (shared custody) schedule `n     listing the days and times of the custody switches;`n"
 	If CustodyScheduleMissing {
-        CustodyScheduleMissingText := "A statement, written by you that is signed and dated, for each child that has a parent not in your household:`n  A. Stating that you have full custody, or`n  B. Your current Parenting Time (shared custody) schedule `n     listing the days and times of the custody switches;`n"
+        CustodyScheduleMissingText := "A statement, written by you that is signed and dated, for each child that has a parent not in your household:" CustodyScheduleText
 		MissingVerifications[ListItem ". " CustodyScheduleMissingText] := 5
         EmailTextString .= EmailListItem ". " CustodyScheduleMissingText
 		CaseNoteMissing .= "Shared custody / parenting time;`n"
@@ -1005,7 +1006,7 @@ MissingButtonDoneButton:
         EmailListItem++
     }
 	If CustodySchedulePlusNamesMissing {
-        CustodyScheduleMissingText := "A statement, written by you that is signed and dated, for " CustodySchedulePlusNamesMissingInput ":`n  A. Stating that you have full custody, or`n  B. Your current Parenting Time (shared custody) schedule `n     listing the days and times of the custody switches;`n"
+        CustodyScheduleMissingText := "A statement, written by you that is signed and dated, for " CustodySchedulePlusNamesMissingInput CustodyScheduleText
 		MissingVerifications[ListItem ". " CustodyScheduleMissingText] := 5
         EmailTextString .= EmailListItem ". " CustodyScheduleMissingText
 		CaseNoteMissing .= "Shared custody / parenting time for " CustodySchedulePlusNamesMissingInput ";`n"
@@ -1392,7 +1393,7 @@ MissingButtonDoneButton:
 			CaseNoteMissing .= TextToPass ";`n"
             CountedRows := getRowCount(TextToPass, 57, " ")
 			MissingVerifications[ListItem ". " CountedRows[1] ";`n"] := CountedRows[2]
-            EmailTextString .= EmailListItem ". " CountedRows[1] ";`n"
+            EmailTextString .= EmailListItem ". " TextToPass ";`n"
 			ListItem++
             EmailListItem++
         }
@@ -1446,7 +1447,7 @@ MissingButtonDoneButton:
 		CaseNoteMissing .= "Self-employment hours meeting minimum requirement, or other eligible activity;`n"
     }
     If EligibleActivityMissing {
-        EligibleActivityMissingText := "* You did not select an eligible activity on the application. " EligibleActivityWithJSText "`n"
+        EligibleActivityMissingText := "* You did not select an eligible activity on the " MEC2DocType ". " EligibleActivityWithJSText "`n"
 		MissingVerifications[EligibleActivityMissingText] := 6
         EmailTextString .= EligibleActivityMissingText
 		CaseNoteMissing .= "Eligible activity (none selected on form);`n"
@@ -1458,9 +1459,9 @@ MissingButtonDoneButton:
 		CaseNoteMissing .= "Employment hours meeting minimum requirement, or other eligible activity;`n"
     }
     If ESPlanOnlyJSMissing {
-        ESPlanOnlyJSMissingText := "* While you have an Employment Plan, assistance hours cannot be approved for job search unless it is listed on the Plan;`n"
-		MissingVerifications[ESPlanOnlyJSMissingText] := 2
-        EmailTextString .= ESPlanOnlyJSMissingText
+        ESPlanOnlyJSMissingText := "* While you have an Employment Plan, assistance hours cannot be approved for job search unless it is listed on the Plan"
+		MissingVerifications[ESPlanOnlyJSMissingText ";`n"] := 2
+        EmailTextString .= ESPlanOnlyJSMissingText ". Contact your Job Counselor to have an updated Plan written if job search hours are needed;`n"
 		CaseNoteMissing .= "Client has ES Plan - informed JS hours are required to be on the Plan;`n"
     }
 	If ActivityAfterHomelessMissing {
@@ -1980,15 +1981,16 @@ st_wordWrap(string, column, indentChar) { ; String Things - Common String & Arra
     Loop, Parse, string, `n, `r
     {
         If (StrLen(A_LoopField) > column) {
-            pos := 1
+            pos := 0
             Loop, Parse, A_LoopField, %A_Space% ; A_LoopField is the individual word
             {
-                If (pos + (loopLength := StrLen(A_LoopField)) <= column) {
-                    out .= (A_Index = 1 ? "" : " ") A_LoopField
-                    , pos += loopLength + 1
+            CombinedLen := pos + (loopLength := StrLen(A_LoopField))
+                If (CombinedLen <= column) {
+                    out .= A_LoopField (CombinedLen < column ? " " : "")
+                    , pos += (loopLength + 1) ; += word + space
                 } Else {
-                    pos := loopLength + 1 + indentLength
-                    , out .= "`n" indentChar A_LoopField
+                    pos := (indentLength + loopLength + 1) ; := indent + word + space
+                    , out .= "`n" indentChar A_LoopField (NewLen < column ? " " : "")
                 }
             }
             out .= "`n"
@@ -2066,6 +2068,7 @@ Class OrderedAssociativeArray { ; Capt Odin https://www.autohotkey.com/boards/vi
 !3::
     Gui, Submit, NoHide
     Clipboard := CaseNumber
+    DisplayResult("Copied: " Clipboard)
 Return
 
 #v::
