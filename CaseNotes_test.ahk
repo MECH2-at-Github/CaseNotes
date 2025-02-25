@@ -28,7 +28,7 @@
 ;version 0.3.6, The 'Added some parens and fixed some copy/paste errors in the MissingGuiGUIClose subroutine' version
 ;version 0.3.7, The 'Redid how coordinates were done. Next is EmployeeInfo/CaseNoteCountyInfo INI' version
 ;version 0.4.0, The 'I rewrote how settings were done. Fewer read/writes to harddrive. Hurray! Also added WaitList functionality.' version
-Version := "v0.4.0"
+Version := "v0.4.1"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -449,12 +449,8 @@ MakeCaseNote:
 		Sleep 500
         MEC2DocType := CaseDetails.DocType = "Redet" ? "Redetermination" : CaseDetails.DocType
         If (Ini.EmployeeInfo.EmployeeUseMec2Functions = 1) {
-            concatCaseNote := "CaseNoteFromAHKSPLIT" MEC2DocType "SPLIT" MEC2NoteTitle "SPLIT" MEC2CaseNote "SPLIT" CaseDetails.Eligibility
             jsonCaseNote := JSONstring("CaseNoteFromAHKJSON{""noteDocType"":""" MEC2DocType """,""noteTitle"":""" MEC2NoteTitle """,""noteText"":""" MEC2CaseNote """,""noteElig"":""" CaseDetails.Eligibility """ }")
             Clipboard := jsonCaseNote
-            Send, ^v
-            Return
-            Clipboard := concatCaseNote
             Send, ^v
         } Else If (Ini.EmployeeInfo.EmployeeUseMec2Functions = 0) {
             catNum := { Application: { letter: "A ", pends: 5, elig: 4, denied: 4 }, Redet: { letter: "R ", incomplete: 1, elig: 2, denied: 2 } }
@@ -1514,17 +1510,11 @@ MissingButtonDoneButton:
         EmailTextString .= ProviderForNonImmigrantMissingText
         CaseNoteMissing .= "Provider subject to Public Educational Standards (4.15), if child not citizen/immigrant;`n"
     }
-    FaxAndEmailText() {
-        FaxInfo := (StrLen(Ini.CaseNoteCountyInfo.CountyFax) > 1) ? "faxed to " Ini.CaseNoteCountyInfo.CountyFax : ""
-        EmailInfo := (StrLen(Ini.CaseNoteCountyInfo.CountyDocsEmail) > 1) ? "emailed to " Ini.CaseNoteCountyInfo.CountyDocsEmail : ""
-        FaxAndEmail := (StrLen(FaxInfo) > 1 && StrLen(EmailInfo) > 1) ? " and " : ""
-        Return ((StrLen(FaxInfo) > 1 || StrLen(EmailInfo) > 1))
-        ? " Documents can also be " FaxInfo . FaxAndEmail . EmailInfo ". Please include your case number." : ""
-    }
     FaxAndEmailWrapped := FaxAndEmailText()
     FaxAndEmailWrapped := getRowCount(FaxAndEmailWrapped, 60, " ")
     AutoDeny := getRowCount(AutoDenyObject.AutoDenyExtensionSpecLetter, 60, "")
     ClarifiedVerifications[ "NewLineAutoreplace" FaxAndEmailWrapped[1] "`nNewLineAutoreplace" AutoDeny[1] ] := FaxAndEmailWrapped[2]+AutoDeny[2]
+    EmailTextString .= AutoDeny[1]
 
     MecCheckboxIds.other := 1
     IdList := ""
@@ -1576,6 +1566,15 @@ IncrementLetterPage:
     LetterText[LetterTextNumber] .= "                   Continued on letter " LetterTextNumber
     LetterText[LetterTextNumber] .= "                  Continued from letter " LetterTextNumber-1 "`n"
 Return
+
+FaxAndEmailText() {
+    Global Ini
+    FaxInfo := (StrLen(Ini.CaseNoteCountyInfo.CountyFax) > 1) ? "faxed to " Ini.CaseNoteCountyInfo.CountyFax : ""
+    EmailInfo := (StrLen(Ini.CaseNoteCountyInfo.CountyDocsEmail) > 1) ? "emailed to " Ini.CaseNoteCountyInfo.CountyDocsEmail : ""
+    FaxAndEmail := (StrLen(FaxInfo) > 1 && StrLen(EmailInfo) > 1) ? " and " : ""
+    Return ((StrLen(FaxInfo) > 1 || StrLen(EmailInfo) > 1))
+    ? " Documents can also be " FaxInfo . FaxAndEmail . EmailInfo ". Please include your case number." : ""
+}
 
 CountLines(VerificationArray) {
     TotalLines := 0
@@ -1647,6 +1646,7 @@ Return
 
 Email:
     Clipboard := EmailText.Output
+    WinActivate, Message - 
 Return
 
 SetEmailText:
@@ -1666,13 +1666,11 @@ Letter:
     }
     WinActivate % Ini.EmployeeInfo.EmployeeBrowser
     Sleep 500
-	LetterGUINumber := "LetterText" . SubStr(A_GuiControl, 0)
+	LetterGUINumber := "LetterText" SubStr(A_GuiControl, 0)
     If (Ini.EmployeeInfo.EmployeeUseMec2Functions = 1) {
         CaseStatus := InStr(CaseDetails.DocType, "?") ? "" : (CaseDetails.DocType = "Redet") ? "Redetermination" : (Homeless = 1) ? "Homeless App" : CaseDetails.DocType
-        concatLetterText := "LetterTextFromAHKSPLIT" %LetterGUINumber% "SPLIT" CaseStatus "SPLIT" IdList
         jsonLetterText := JSONstring("LetterTextFromAHKJSON{""LetterText"":""" %LetterGUINumber% """,""CaseStatus"":""" CaseStatus """,""IdList"":""" IdList """ }")
         Clipboard := jsonLetterText
-        ;Clipboard := concatLetterText
         Send, ^v
     } Else {
         Clipboard := %LetterGUINumber%
@@ -2120,25 +2118,26 @@ Return
     Clipboard := CaseNumber
 Return
 
-#v::
-    If WinActive(ahk_exe Outlook.exe) {
-        SendInput, % EmailText.Output
-    }
-    Else If WinActive(Ini.EmployeeInfo.EmployeeBrowser) {
+#m::
+    Global EmailText, Ini, CaseDetails, CaseNumber
+    If WinActive("Message" ahk_exe Outlook.exe) {
+        Clipboard := EmailText.Output
+        Send, ^v
+    } Else If WinActive(Ini.EmployeeInfo.EmployeeBrowser) {
         Gui, Submit, NoHide
         Sleep 500
         If (Ini.EmployeeInfo.EmployeeUseMec2Functions = 1) {
             CaseStatus := InStr(CaseDetails.DocType, "?") ? "" : (Homeless = 1) ? "Homeless App" : (CaseDetails.DocType = "Redet") ? "Redetermination" : CaseDetails.DocType
-            concatLetterText := "LetterTextFromAHKSPLIT" %Letter1% "SPLIT" CaseStatus "SPLIT" IdList
-            Clipboard := concatLetterText
+            jsonLetterText := JSONstring("LetterTextFromAHKJSON{""LetterText"":""" LetterText1 """,""CaseStatus"":""" CaseStatus """,""IdList"":""" IdList """ }")
+            Clipboard := jsonLetterText
             Send, ^v
         } Else {
-            Clipboard := %Letter1%
+            Clipboard := LetterText1
             Send, ^v
         }
-        Sleep 500
-        Clipboard := CaseNumber
     }
+    Sleep 500
+    Clipboard := CaseNumber
 Return
 
 RemoveToolTip:
