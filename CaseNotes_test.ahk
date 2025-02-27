@@ -1,4 +1,4 @@
-; Note: This script requires BOM encoding (UTF-8) to display characters properly. 
+﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly. 
 
 ;version 0.1.1, The 'Sending Case Note Update' version
 ;version 0.1.2, The 'Dude, Where's My GUI' version
@@ -27,7 +27,7 @@
 ;version 0.3.5, The 'If the Special Letter line count ain't right now, it ain't ever gonna be' version
 ;version 0.3.6, The 'Added some parens and fixed some copy/paste errors in the MissingGuiGUIClose subroutine' version
 ;version 0.3.7, The 'Redid how coordinates were done. Next is EmployeeInfo/CaseNoteCountyInfo INI' version
-;version 0.4.0, The 'I rewrote how settings were done. Fewer read/writes to harddrive. Hurray! Also added WaitList functionality.' version
+;version 0.4.0, The 'I rewrote how settings were done. Fewer read/writes to harddrive. Hurray! Also added Waitlist functionality.' version
 Version := "v0.4.1"
 
 ;Future todo ideas:
@@ -41,9 +41,9 @@ SetWorkingDir %A_ScriptDir%
 #SingleInstance force
 #NoTrayIcon
 SetTitleMatchMode, RegEx
-Ini := { CBTPositions: { XClipboard: 0, YClipboard: 0 }
+Global Ini := { CBTPositions: { XClipboard: 0, YClipboard: 0 }
         , CaseNotePositions: { XCaseNotes: 0, YCaseNotes: 0, XVerification: 0, YVerification: 0 }
-        , CaseNoteCountyInfo: { CountyNoteInMaxis: 0, CountyFax: A_Space, CountyDocsEmail: A_Space, CountyProviderWorkerPhone: A_Space, CountyEdBSF: A_Space, WaitList: 1 }
+        , CaseNoteCountyInfo: { CountyNoteInMaxis: 0, CountyFax: A_Space, CountyDocsEmail: A_Space, CountyProviderWorkerPhone: A_Space, CountyEdBSF: A_Space, Waitlist: 1 }
         , EmployeeInfo: { EmployeeName: A_Space, EmployeeCounty: A_Space, EmployeeEmail: A_Space, EmployeePhone: A_Space, EmployeeUseEmail: 0, EmployeeUseMec2Functions: 0, EmployeeBrowser: A_Space, EmployeeMaxis: MAXIS-WINDOW-TITLE } }
 
 SetCoords(CoordObj) {
@@ -53,7 +53,6 @@ SetCoords(CoordObj) {
     }
 }
 SetFromIni() {
-    Global Ini
     FileRead, StoredIni, %A_MyDocuments%\AHK.ini
     StoredIni := StrReplace(StoredIni, "INI=", "=",, -1)
     Section := ""
@@ -73,33 +72,36 @@ SetFromIni() {
 }
 SetFromIni()
 
-;Declaring Global Variables
-
 GroupAdd, AutoMail, Automated Mailing Home Page
 GroupAdd, AutoMail, ahk_exe obunity.exe,,, Perform Import
 CheckGroupAdd()
-MissingVerifications := {}, ClarifiedVerifications := {}, EmailText := {}, LineCount := 0, Homeless := 0
+Global MissingVerifications := {}, ClarifiedVerifications := {}, EmailText := {}, MissingInput := {}, LineCount := 0, Homeless := 0
 
-CaseDetails := { DocType: "_DOC?", Eligibility: "_ELIG?", SaEntered: "_SA?", CaseType: "_PRG?", AppType: "_APP?", isHomeless: "" }
-SignDate := 0
-CaseNoteEntered := { MEC2Note: 0, MAXISNote: 0 }
-MaxisNote :=, IdList := ""
-ConfirmedClear := 0
-VerificationWindowOpenedOnce := 0
-VerifCat :=, LetterTextNumber := 1, LetterText := {}, MissingHomelessItems := ""
+Global CaseDetails := { DocType: "_DOC?", Eligibility: "_ELIG?", SaEntered: "_SA?", CaseType: "_PRG?", AppType: "_APP?", isHomeless: "", HaveWaitlist: false }
+Global CaseNoteEntered := { MEC2Note: 0, MAXISNote: 0 }
+Global MaxisNote :=, IdList := ""
+Global ConfirmedClear := 0, VerificationWindowOpenedOnce := 0, VerifCat :=, LetterTextNumber := 1, LetterText := {}, MissingHomelessItems := "", SignDate := 0
 
-CountySpecificText := {}
-CountySpecificText.Dakota := { CountyName: "Dakota", OverIncomeContactInfo: " contact 651-554-6696 and", CustomHotkeys: "Custom hotkeys for your county exist for the following windows (A ToolTip reminder appears by pressing F1):`nOnBase (Alt+4, 'Verifs Due Back' detail),`nOnBase (Perform Import) - For printing docs to OnBase (Ctrl+F6-12)`nOnBase (Ctrl+B, Inserts date and case number for mail)`nAutomated Mailing (Ctrl+B, Inserts date and case number for mail)`nBrowser (Types in case note for app denied/approved, and worker signature)`nWord (Types in first name, case number, and app received date)." }
-CountySpecificText.StLouis := { OverIncomeContactInfo: "", CountyName: "St. Louis" }
+Global CountySpecificText := { StLouis: { OverIncomeContactInfo: "", CountyName: "St. Louis County" }
+, Dakota: { OverIncomeContactInfo: " contact 651-554-6696 and", CountyName: "Dakota County", CustomHotkeys: "
+(
+    Custom hotkeys for your county exist for the following windows (A ToolTip reminder appears by pressing F1):
+    ● OnBase (Alt+4: 'Verifs Due Back' detail),
+    ● OnBase (Ctrl+F6-12: Enters keywords on the Perform Import screen)
+    ● OnBase (Ctrl+B: Inserts date and case number for mail)
+    ● Automated Mailing (Ctrl+B: Inserts date and case number for mail)
+    ● Browser (Types an Approved (Alt+F1) or Denied (Alt+F2) app case note. Ctrl+F12 or Alt+F12: worker signature)
+    ● Word (Alt+4: Types in first name, case number, and app received date).
+    ● MAXIS (Alt+M: Changes the title of the MAXIS window to ""MAXIS"" to enable screen-scraping.)
+)" } }
 
 ; Date variables
-DateObject := { ReceivedMDY: "", ReceivedYMD: "", AutodenyYMD: "", ReinstateDate: "" }
-AutoDenyObject := { AutoDenyExtensionMECnote: "", AutoDenyExtensionDate: "", AutoDenyExtensionSpecLetter: "", AutoDenyMaxisNote: "" }
+Global DateObject := { ReceivedMDY: "", ReceivedYMD: "", AutodenyYMD: "", ReinstateDate: "" }
+Global AutoDenyObject := { AutoDenyExtensionMECnote: "", AutoDenyExtensionDate: "", AutoDenyExtensionSpecLetter: "", AutoDenyMaxisNote: "" }
 DateObject.TodayYMD := A_Now
 FormatTime, ShortDate, %A_Now%, M/d/yy ; for sending to envelope
-Received := DateObject.TodayYMD
+Global Received := DateObject.TodayYMD, OverIncomeObj := { overIncomeHHsize: "your size" }
 DateObject.TodayMDY := FormatMDY(DateObject.TodayYMD)
-OverIncomeObj := { overIncomeHHsize: "your size" }
 
 If InStr(DateObject.TodayYMD, 0401)
     Menu, Tray, Icon, compstui.dll, 100
@@ -127,6 +129,7 @@ Gui, MainGui: Add, Radio, xp y+2 h17 wp gEligible vEligibleRadio, Eligible
 Gui, MainGui: Add, Radio, xp y+2 h17 wp gIneligible vIneligibleRadio, Ineligible
 
 Gui, MainGui: Add, Radio, Group Hidden x+5 ys h17 vSaApproved gSaApproved, SA Approved
+Gui, MainGui: Add, Checkbox, Group Hidden xp yp h17 vManualWaitlistBox, Waitlist
 Gui, MainGui: Add, Radio, Hidden xp y+2 h17 vNoSA gNoSA, No SA
 Gui, MainGui: Add, Radio, Hidden xp y+2 h17 vNoProvider gNoProvider, No Provider
 
@@ -147,8 +150,8 @@ Gui, MainGui: Add, Button, xs y+5 h17 w65 -TabStop vNotepadBackup gNotepadBackup
 Gui, MainGui: Add, Button, Section x615 ys+0 h17 w50 -TabStop vClearFormButton gClearFormButton, Clear
 
 SetTextAndResize(newText, fontOptions := "", fontName := "") {
-    Gui 9:Font, %fontOptions%, %fontName%
-    Gui 9:Add, Text, Limit200, %newText%
+    Gui 9:Font, % fontOptions, % fontName
+    Gui 9:Add, Text, Limit200, % newText
     GuiControlGet T, 9:Pos, Static1
     Gui 9:Destroy
     Return TW
@@ -398,6 +401,9 @@ MakeCaseNote:
     If (OverIncomeMissing && CaseDetails.Eligibility = "ineligible") {
         CaseDetails.Eligibility := "over-income"
     }
+    If (InStr(CaseDetails.CaseType, "BSF") && CaseDetails.Eligibility == "ineligible" && Ini.CaseNoteCountyInfo.Waitlist > 1 || WaitlistMissing == 1) {
+        CaseDetails.Eligibility .= " - BSF Waitlist"
+    }
 	MEC2CaseNote := AutoDenyObject.AutoDenyExtensionMECnote " HH COMP:    " HouseholdComp "`n CUSTODY:    " SharedCustody "`n ADDRESS:    " AddressVerification "`n  SCHOOL:    " SchoolInformation  "`n  INCOME:    " Income "`n      CS:    " ChildSupportIncome  "`n CS COOP:    " ChildSupportCooperation  "`nEXPENSES:    " Expenses  "`n  ASSETS:    " Assets "`nPROVIDER:    " Provider "`nACTIVITY:    " ActivityandSchedule "`n      SA:    " ServiceAuthorization "`n   NOTES:    " Notes "`n MISSING:    " Missing "`n=====`n" Ini.EmployeeInfo.EmployeeName
 	If (Homeless = 1) {
 		CaseDetails.IsHomeless := "*HL "
@@ -480,12 +486,12 @@ MakeCaseNote:
     If (A_GuiControl = "MaxisNoteButton") {
         ;StrReplace(MaxisNote, "`n", "`n", MaxisNoteCaseNoteLines) ; Counting new lines
         Ini.EmployeeInfo.EmployeeMaxis := Ini.EmployeeInfo.EmployeeMaxis = "MAXIS-WINDOW-TITLE" ? "MAXIS" : Ini.EmployeeInfo.EmployeeMaxis
-        MaxisWindow := WinExist(Ini.EmployeeInfo.EmployeeMaxis)
+        MaxisWindow := WinExist(Ini.EmployeeInfo.EmployeeMaxis " ahk_exe bzmd.exe")
         If (MaxisWindow = "0x0")
-            MaxisWindow := WinExist("BlueZone Mainframe")
+            MaxisWindow := WinExist("BlueZone Mainframe ahk_exe bzmd.exe")
 
         If (WinExist(ahk_id %MaxisWindow%)) {
-            WinActivate ahk_id %MaxisWindow%
+            WinActivate, ahk_id %MaxisWindow% ahk_exe bzmd.exe
             Clipboard := MaxisNote
             Sleep 500
             Send, ^v
@@ -699,6 +705,8 @@ Return
 
 Eligible:
 	CaseDetails.Eligibility := "elig"
+    GuiControl,, ManualWaitlistBox, 0
+    GuiControl, MainGui: Hide, ManualWaitlistBox
     GuiControl, MainGui: Show, SaApproved
     GuiControl, MainGui: Show, NoSA
     GuiControl, MainGui: Show, NoProvider
@@ -709,10 +717,15 @@ Pending:
     GuiControl, MainGui: Hide, SaApproved
     GuiControl, MainGui: Hide, NoSA
     GuiControl, MainGui: Hide, NoProvider
+    If (InStr(CaseDetails.CaseType, "BSF") && Ini.CaseNoteCountyInfo.Waitlist > 1) {
+        GuiControl, MainGui: Show, ManualWaitlistBox
+    }
 return
 
 Ineligible:
 	CaseDetails.Eligibility := "ineligible"
+    GuiControl,, ManualWaitlistBox, 0
+    GuiControl, MainGui: Hide, ManualWaitlistBox
     GuiControl, MainGui: Hide, SaApproved
     GuiControl, MainGui: Hide, NoSA
     GuiControl, MainGui: Hide, NoProvider
@@ -898,7 +911,7 @@ Return
 MissingButtonDoneButton:
 	Gui, Submit, NoHide
     GoSub CalcDates
-	MissingVerifications := {}, ClarifiedVerifications := {}, LineCount := 0
+	MissingVerifications := {}, ClarifiedVerifications := {}, LineCount := 0, EmailText := {}
     EmailTextString := "", LetterText1 := "", LetterText2 := "", LetterText3 := "", LetterText4 := ""
     MEC2DocType := CaseDetails.DocType = "Redet" ? "Redetermination" : CaseDetails.DocType
 	GuiControl, MissingGui:Hide, Letter2
@@ -911,17 +924,6 @@ MissingButtonDoneButton:
     VerifCat :=, LetterTextNumber := 1, LetterText := {}
     PendingHomelessPreText := "You may be eligible for the homeless policy, which allows us to approve eligibility even though there are verifications we need but do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility.`n`nBefore we can approve expedited eligibility, we need`n information that was not on the application:`n"
     
-    WaitlistText := ""
-    if (InStr(CaseDetails.CaseType, "BSF") && CaseDetails.Eligibility == "ineligible" && Ini.CaseNoteCountyInfo.WaitList > 1) {
-        WaitListNumber := Ini.CaseNoteCountyInfo.WaitList -1
-        WaitListPriorities := { 1: "* Are attending High School, GED, or ESL classes;`n" }
-        WaitListPriorities.2 := WaitListPriorities.1 "* Families in which an applicant is a veteran;`n"
-        WaitListPriorities.3 := WaitListPriorities.2 "* Families which don't qualify for other priorities;`n"
-        WaitListText := "Due to limited funding, new eligibility for CCAP in " CountySpecificText[Ini.EmployeeInfo.EmployeeCounty].CountyName " County is currently limited to those who:`n* Received Cash Assistance (MFIP/DWP) within the past year;`n* Are applying for and are approved for Cash Assistance;`n" WaitListPriorities[WaitListNumber]
-        EmailTextString .= WaitListText
-        WaitListText := getRowCount(WaitListText, 60, "")
-        MissingVerifications[WaitListText[1]] := WaitListText[2]
-    }
     If OverIncomeMissing {
         OverIncomeMissingText1 := "Using information you provided your case is ineligible as your income is over the limit for a household of " OverIncomeObj.overIncomeHHsize ". The gross limit is $" OverIncomeObj.overIncomeText ".`n"
         OverIncomeMissingText2 := "If your gross income does not match this calculation, you must" CountySpecificText[Ini.EmployeeInfo.EmployeeCounty].OverIncomeContactInfo " submit updated income and expense documents along with the following verifications:`n"
@@ -930,7 +932,7 @@ MissingButtonDoneButton:
         MissingVerifications[OverIncomeMissingText2] := 3
         CaseNoteMissing .= "Household is calculated to be over-income by $" OverIncomeObj.overIncomeDifference " ($" OverIncomeObj.overIncomeReceived " - $" OverIncomeObj.overIncomeLimit ");`n"
     }
-    If (Homeless = 1 && CaseDetails.Eligibility = "pends" && CaseDetails.DocType = "Application") {
+    If (Homeless && CaseDetails.Eligibility = "pends" && CaseDetails.DocType = "Application") {
         InputBox, MissingHomelessItems, Homeless Info Missing, What information is needed from the client to approve expedited eligibility?`n`nUse a double space "  " without quotation marks to start a new line.,,,,,,,, % StrReplace(MissingHomelessItems, "`n", "  ")
         If (ErrorLevel = 0) {
             MissingHomelessItems := StrReplace(MissingHomelessItems, "  ", "`n")
@@ -940,9 +942,7 @@ MissingButtonDoneButton:
             CaseNoteMissing .= "Missing for expedited approval:`n" StrReplace(MissingHomelessItems, "`n", "`n  ") ";`n"
         }
     }
-
-	EmailText := {}
-	If (!InStr(Missing, "over-income")) {
+	If (!OverIncomeMissing) {
         EmailText.StartHL := (CaseDetails.Eligibility = "elig") ? "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility." : PendingHomelessPreText MissingHomelessItems
 
         EmailText.EndHL := (CaseDetails.Eligibility = "elig") ? "`nThe initial approval of child care assistance is 30 hours per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.`nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children.`nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay." : ""
@@ -951,7 +951,7 @@ MissingButtonDoneButton:
 
         EmailText.Reason1 := (CaseDetails.Eligibility = "elig") ? "for authorizing assistance hours" : "to determine eligibility or calculate assistance hours"
         EmailText.Reason2 := (Homeless = 1) ? "to determine on-going eligibility or calculate assistance hours after the 90-day period" : EmailText.Reason1
-        EmailText.StartAll := "Your Child Care Assistance " MEC2DocType " has been processed. "
+        EmailText.StartAll := "Your Child Care Assistance " MEC2DocType " has been processed. " EmailText.WaitList
 
         EmailText.Start := (Homeless = 1) ? EmailText.StartAll EmailText.StartHL : EmailText.StartAll
         EmailText.Middle := "`n`nThe following documents or verifications " EmailText.AreOrWillBe " needed " EmailText.Reason2 ":`n`n"
@@ -960,16 +960,16 @@ MissingButtonDoneButton:
 	}
     
 	If IDmissing {
-        IDmissingText := "ID for " IDmissingInput ";`n"
+        IDmissingText := "ID for " MissingInput.IDmissing ";`n"
 		ClarifiedVerifications[ClarifyListItem ". " IDmissingText] := 1
         EmailTextString .= EmailListItem ". " IDmissingText
-		CaseNoteMissing .= "ID for " IDmissingInput ";`n"
+		CaseNoteMissing .= "ID for " MissingInput.IDmissing ";`n"
         ClarifyListItem++
         EmailListItem++
         MecCheckboxIds.proofOfIdentity := 1
     }
 	If BCmissing {
-        BCmissingText := "Birth date / relationship / citizenship verification for: " BCmissingInput
+        BCmissingText := "Birth date / relationship / citizenship verification for: " MissingInput.BCmissing
 		ClarifiedVerifications[ClarifyListItem ". " BCmissingText ";`n"] := 2
         EmailTextString .= EmailListItem ". " BCmissingText ", such as the official birth certificate;`n"
 		CaseNoteMissing .= BCmissingText ";`n"
@@ -980,10 +980,10 @@ MissingButtonDoneButton:
         MecCheckboxIds.citizenStatus := 1
     }
 	If BCNonCitizenMissing {
-        BCNonCitizenMissingText := "Birth date / relationship / immigration verification for: " BCNonCitizenMissingInput ";`n"
+        BCNonCitizenMissingText := "Birth date / relationship / immigration verification for: " MissingInput.BCNonCitizenMissing ";`n"
 		ClarifiedVerifications[ClarifyListItem ". " BCNonCitizenMissingText] := 2
         EmailTextString .= EmailListItem ". " BCNonCitizenMissingText
-		CaseNoteMissing .= "Birth date / relationship / immigration verification for: " BCNonCitizenMissingInput ";`n"
+		CaseNoteMissing .= "Birth date / relationship / immigration verification for: " MissingInput.BCNonCitizenMissing ";`n"
         ClarifyListItem++
         EmailListItem++
         MecCheckboxIds.proofOfBirth := 1
@@ -1008,14 +1008,14 @@ MissingButtonDoneButton:
         MecCheckboxIds.proofOfResidence := 1
     }
 	If ChildSupportFormsMissing {
-        If (ChildSupportFormsMissingInput ~= "^\d$") {
-            ChildSupportFormsMissingInput .= ChildSupportFormsMissingInput < 2 ? " set" : " sets"
+        If (MissingInput.ChildSupportFormsMissing ~= "^\d$") {
+            MissingInput.ChildSupportFormsMissing .= MissingInput.ChildSupportFormsMissing < 2 ? " set" : " sets"
         }
-        ChildSupportFormsMissingText := "Cooperation with Child Support forms (" ChildSupportFormsMissingInput ", sent separately);`n"
-        ;CSFMlines := ChildSupportFormsMissingInput ~= "^\d" ? 1 : 2
+        ChildSupportFormsMissingText := "Cooperation with Child Support forms (" MissingInput.ChildSupportFormsMissing ", sent separately);`n"
+        ;CSFMlines := MissingInput.ChildSupportFormsMissing ~= "^\d" ? 1 : 2
 		MissingVerifications[ListItem ". " ChildSupportFormsMissingText] := 2 ; CSFMlines
         EmailTextString .= EmailListItem ". " ChildSupportFormsMissingText
-		CaseNoteMissing .= "CS forms (" ChildSupportFormsMissingInput ");`n"
+		CaseNoteMissing .= "CS forms (" MissingInput.ChildSupportFormsMissing ");`n"
 		ListItem++
         EmailListItem++
     }
@@ -1028,15 +1028,15 @@ MissingButtonDoneButton:
         EmailListItem++
     }
 	If CustodySchedulePlusNamesMissing {
-        CustodyScheduleMissingText := "A statement, written by you that is signed and dated, for " CustodySchedulePlusNamesMissingInput ":`n  A. Stating that you have full custody, or`n  B. Your current Parenting Time (shared custody) schedule `n     listing the days and times of the custody switches;`n"
+        CustodyScheduleMissingText := "A statement, written by you that is signed and dated, for " MissingInput.CustodySchedulePlusNamesMissing ":`n  A. Stating that you have full custody, or`n  B. Your current Parenting Time (shared custody) schedule `n     listing the days and times of the custody switches;`n"
 		MissingVerifications[ListItem ". " CustodyScheduleMissingText] := 5
         EmailTextString .= EmailListItem ". " CustodyScheduleMissingText
-		CaseNoteMissing .= "Shared custody / parenting time for " CustodySchedulePlusNamesMissingInput ";`n"
+		CaseNoteMissing .= "Shared custody / parenting time for " MissingInput.CustodySchedulePlusNamesMissing ";`n"
 		ListItem++
         EmailListItem++
     }
     if DependentAdultStudentMissing {
-        DependentAdultStudentMissingText := "Verification of full-time student status for " DependentAdultStudentMissingInput ", verification of their most recent 30 days income, and a signed statement that you provide at least 50% of their financial support;`n"
+        DependentAdultStudentMissingText := "Verification of full-time student status for " MissingInput.DependentAdultStudentMissing ", verification of their most recent 30 days income, and a signed statement that you provide at least 50% of their financial support;`n"
         MissingVerifications[ListItem ". " DependentAdultStudentMissingText] := 3
         EmailTextString .= EmailListItem ". " DependentAdultStudentMissingText
 		CaseNoteMissing .= "Dependant Adult FT school status, income, statement of 50% support;`n"
@@ -1069,10 +1069,10 @@ MissingButtonDoneButton:
         MecCheckboxIds.proofOfRelation := 1
     }
 	If LegalNameChangeMissing {
-        LegalNameChangeMissingText := "Legal name change verification for " LegalNameChangeMissingInput ";`n"
+        LegalNameChangeMissingText := "Legal name change verification for " MissingInput.LegalNameChangeMissing ";`n"
 		MissingVerifications[ListItem ". " LegalNameChangeMissingText] := 1
         EmailTextString .= EmailListItem ". " LegalNameChangeMissingText
-		CaseNoteMissing .= "Legal name change for " LegalNameChangeMissingInput ";`n"
+		CaseNoteMissing .= "Legal name change for " MissingInput.LegalNameChangeMissing ";`n"
 		ListItem++
         EmailListItem++
     }
@@ -1090,11 +1090,11 @@ MissingButtonDoneButton:
         ;MEC2 text: Proof of Financial Information- You can provide proof of financial information and income with the last 30 days of check stubs, income tax records, business ledger, award letter, or a letter from your employer with pay rate, number of hours worked per week and how often you are paid.
     }
 	If IncomePlusNameMissing {
-        IncomeText := NeedsExtension > -1 ? IncomePlusNameMissingInput "'s most recent 30 days income" : CaseDetails.DocType = "Redet" ? IncomePlusNameMissingInput "'s 30 days income prior to " DateObject.SignedMDY : IncomePlusNameMissingInput "'s 30 days income prior to " DateObject.ReceivedMDY
+        IncomeText := NeedsExtension > -1 ? MissingInput.IncomePlusNameMissing "'s most recent 30 days income" : CaseDetails.DocType = "Redet" ? MissingInput.IncomePlusNameMissing "'s 30 days income prior to " DateObject.SignedMDY : MissingInput.IncomePlusNameMissing "'s 30 days income prior to " DateObject.ReceivedMDY
         IncomeMissingText := "Verification of " IncomeText ";`n"
         ClarifiedVerifications[ClarifyListItem ". Proof of Financial Information: " IncomeMissingText] := 2
         EmailTextString .= EmailListItem ". " IncomeMissingText
-		CaseNoteMissing .= "Earned income (" IncomePlusNameMissingInput ");`n"
+		CaseNoteMissing .= "Earned income (" MissingInput.IncomePlusNameMissing ");`n"
         ClarifyListItem++
         EmailListItem++
         MecCheckboxIds.proofOfFInfo := 1
@@ -1111,11 +1111,11 @@ MissingButtonDoneButton:
         ;MEC2 text: Proof of Activity Schedule- You can provide proof of adult activity schedules with work schedules, school schedules, time cards, or letter from the employer or school with the days and times working or in school. If you have a flexible work schedule, include a statement with typical or possible times worked.
     }
 	If WorkSchedulePlusNameMissing {
-        WorkScheduleText := NeedsExtension > -1 ? WorkSchedulePlusNameMissingInput "'s work schedule" : CaseDetails.DocType = "Redet" ? WorkSchedulePlusNameMissingInput "'s work schedule from " DateObject.SignedMDY : WorkSchedulePlusNameMissingInput "'s work schedule from " DateObject.ReceivedMDY
+        WorkScheduleText := NeedsExtension > -1 ? MissingInput.WorkSchedulePlusNameMissing "'s work schedule" : CaseDetails.DocType = "Redet" ? MissingInput.WorkSchedulePlusNameMissing "'s work schedule from " DateObject.SignedMDY : MissingInput.WorkSchedulePlusNameMissing "'s work schedule from " DateObject.ReceivedMDY
         WorkScheduleMissingText := "Verification of " WorkScheduleText " showing days of the week and start/end times;`n"
         ClarifiedVerifications[ClarifyListItem ". Proof of Activity Schedule: " WorkScheduleMissingText] := 2
         EmailTextString .= EmailListItem ". " WorkScheduleMissingText
-		CaseNoteMissing .= "Work schedule (" WorkSchedulePlusNameMissingInput ");`n"
+		CaseNoteMissing .= "Work schedule (" MissingInput.WorkSchedulePlusNameMissing ");`n"
         ClarifyListItem++
         EmailListItem++
         MecCheckboxIds.proofOfActivitySchedule := 1
@@ -1155,7 +1155,7 @@ MissingButtonDoneButton:
     }
     If SeasonalOffSeasonMissing {
         ;SeasonalOffSeasonMissing := StrLen(SeasonalOffSeasonMissing) > 0 ? " at " SeasonalOffSeasonMissing : ""
-        SeasonalOffSeasonMissing := SeasonalOffSeasonMissing != "" ? " at " SeasonalOffSeasonMissing : ""
+        SeasonalOffSeasonMissing := MissingInput.SeasonalOffSeasonMissing != "" ? " at " MissingInput.SeasonalOffSeasonMissing : ""
         SeasonalOffSeasonMissingText := "Verification of either seasonal employment " SeasonalOffSeasonMissing ", including expected season length and typical wages, or a signed statement that you are no longer an employee at this job.`n Upon returning to work, verification of work schedule will`n be needed, showing days of the week and start/end times;`n"
 		MissingVerifications[ListItem ". " SeasonalOffSeasonMissingText] := 6
         EmailTextString .= EmailListItem ". " SeasonalOffSeasonMissingText
@@ -1446,10 +1446,10 @@ MissingButtonDoneButton:
         EmailListItem++
     }
 	If ChildSupportNoncooperationMissing {
-        ChildSupportNoncooperationMissingText := "* You are currently in a non-cooperation status with Child Support. Contact Child Support at " ChildSupportNoncooperationMissingInput " for details. Child Support cooperation is a requirement for eligibility.`n"
+        ChildSupportNoncooperationMissingText := "* You are currently in a non-cooperation status with Child Support. Contact Child Support at " MissingInput.ChildSupportNoncooperationMissing " for details. Child Support cooperation is a requirement for eligibility.`n"
 		MissingVerifications[ChildSupportNoncooperationMissingText] := 3
         EmailTextString .= ChildSupportNoncooperationMissingText
-		CaseNoteMissing .= "Cooperation status with Child Support, CS number: " ChildSupportNoncooperationMissingInput ";`n"
+		CaseNoteMissing .= "Cooperation status with Child Support, CS number: " MissingInput.ChildSupportNoncooperationMissing ";`n"
     }
 	If EdBSFOneBachelorDegreeMissing {
         EdBSFOneBachelorDegreeMissingText := "* Unless listed on a Cash Assistance Employment Plan, education is an eligible activity only up to your first bachelor's degree, plus CEUs (no additional degrees).`n"
@@ -1510,11 +1510,14 @@ MissingButtonDoneButton:
         EmailTextString .= ProviderForNonImmigrantMissingText
         CaseNoteMissing .= "Provider subject to Public Educational Standards (4.15), if child not citizen/immigrant;`n"
     }
-    FaxAndEmailWrapped := FaxAndEmailText()
-    FaxAndEmailWrapped := getRowCount(FaxAndEmailWrapped, 60, " ")
-    AutoDeny := getRowCount(AutoDenyObject.AutoDenyExtensionSpecLetter, 60, "")
-    ClarifiedVerifications[ "NewLineAutoreplace" FaxAndEmailWrapped[1] "`nNewLineAutoreplace" AutoDeny[1] ] := FaxAndEmailWrapped[2]+AutoDeny[2]
-    EmailTextString .= AutoDeny[1]
+    CaseDetails.HaveWaitlist := ( InStr(CaseDetails.CaseType, "BSF") && CaseDetails.Eligibility == "ineligible" && Ini.CaseNoteCountyInfo.Waitlist > 1 )
+    If (!CaseDetails.HaveWaitlist) {
+        FaxAndEmailWrapped := FaxAndEmailText()
+        FaxAndEmailWrapped := getRowCount(FaxAndEmailWrapped, 60, " ")
+        AutoDeny := getRowCount(AutoDenyObject.AutoDenyExtensionSpecLetter, 60, "")
+        ClarifiedVerifications[ "NewLineAutoreplace" FaxAndEmailWrapped[1] "`nNewLineAutoreplace" AutoDeny[1] ] := FaxAndEmailWrapped[2]+AutoDeny[2]
+        EmailTextString .= AutoDeny[1] 
+    }
 
     MecCheckboxIds.other := 1
     IdList := ""
@@ -1523,17 +1526,37 @@ MissingButtonDoneButton:
             IdList .= ","
         IdList .= key
     }
-    If !OverIncomeMissing {
-        InsertFollowing := (Homeless = 1 && CaseDetails.Eligibility = "pends") ? 3 : 1
-        MissingMod := (Homeless = 1 && CaseDetails.Eligibility = "pends") ? 2 : 0
-        If (MissingVerifications.Length() > (0 + MissingMod)) {
-            If (StrLen(IdList) > 5 || InsertFollowing = 3) { ; "other" will always add at least 5
-                MissingVerifications.InsertAt(InsertFollowing, "__In addition to the above, please submit following items:__`n", 1)
-            }
-            Else If (StrLen(IdList) = 5) {
-                MissingVerifications.InsertAt(InsertFollowing, "_____________Please submit the following items:_____________`n", 1)
-            }
+    
+    InsertAtOffset := (CaseDetails.Eligibility = "pends" && Homeless) ? 2 : 0
+    If ( !OverIncomeMissing && !CaseDetails.HaveWaitlist && !ManualWaitlistBox && MissingVerifications.Length() > (0 + InsertAtOffset) ) {
+        If (StrLen(IdList) > 5 || InsertAtOffset = 2) { ; "other" will always add at least 5
+            MissingVerifications.InsertAt(1 + InsertAtOffset, "__In addition to the above, please submit following items:__`n", 1)
         }
+        Else If (StrLen(IdList) = 5) {
+            MissingVerifications.InsertAt(1+ InsertAtOffset, "_____________Please submit the following items:_____________`n", 1)
+        }
+    }
+    WaitlistText := ""
+    If (CaseDetails.HaveWaitlist || ManualWaitlistBox) {
+        WaitlistNumber := Ini.CaseNoteCountyInfo.Waitlist -1
+        WaitlistPriorities := { 1: "• Are attending High School, GED, or ESL classes;`n" }
+        WaitlistPriorities.2 := WaitlistPriorities.1 "• Families in which an applicant is a veteran;`n"
+        WaitlistPriorities.3 := WaitlistPriorities.2 "• Families which don't qualify for other priorities;`n"
+        WaitlistText := "
+(
+Due to limited funding, new eligibility for CCAP in " CountySpecificText[Ini.EmployeeInfo.EmployeeCounty].CountyName " is currently limited to those who:
+• Received Cash Assistance (MFIP/DWP) within the past year;
+• Are applying for and are approved for Cash Assistance;
+" WaitlistPriorities[WaitlistNumber] "`n
+)"
+        EmailText.Waitlist := "`n`n" WaitlistText "`n" (ManualWaitlistBox ? SubmitOnlyCommentItemsText "`n" : "")
+        SubmitOnlyCommentItemsText := "If you meet one of the above criteria, please submit the following items:`n", SubmitCommentAndCheckboxItemsText := "If you meet one of the above criteria, in addition to items above the Worker Comments, please submit the following:`n"
+        If (ManualWaitlistBox) {
+            WaitlistText .= StrLen(IdList) == 5 ? SubmitOnlyCommentItemsText : SubmitCommentAndCheckboxItemsText
+        }
+        WaitlistText := getRowCount(WaitlistText, 60, "")
+        MissingVerifications.InsertAt(1, WaitlistText[1] "`n", WaitlistText[2])
+        CaseNoteMissing .= "Approved MFIP/DWP or meet current Waitlist criteria;`n"
     }
     If (ClarifiedVerifications.Length() > 1) {
         ClarifiedVerifications.InsertAt(1, "__Clarification of items listed above the Worker Comments:__`n", 1)
@@ -1568,7 +1591,6 @@ IncrementLetterPage:
 Return
 
 FaxAndEmailText() {
-    Global Ini
     FaxInfo := (StrLen(Ini.CaseNoteCountyInfo.CountyFax) > 1) ? "faxed to " Ini.CaseNoteCountyInfo.CountyFax : ""
     EmailInfo := (StrLen(Ini.CaseNoteCountyInfo.CountyDocsEmail) > 1) ? "emailed to " Ini.CaseNoteCountyInfo.CountyDocsEmail : ""
     FaxAndEmail := (StrLen(FaxInfo) > 1 && StrLen(EmailInfo) > 1) ? " and " : ""
@@ -1656,7 +1678,8 @@ SetEmailText:
     EmailTextString := StrReplace(EmailTextString, "   ", " ")
     EmailTextString := StrReplace(EmailTextString, "`n*", "`n`n*")
     EmailTextString := StrReplace(EmailTextString, "sent separately", "see attached")
-	EmailText.Output := (Homeless = 1) ? EmailText.Combined EmailTextString EmailText.EndHL : EmailText.Combined EmailTextString
+	;EmailText.Output := (Homeless = 1) ? EmailText.Combined EmailTextString EmailText.EndHL : EmailText.Combined EmailTextString
+	EmailText.Output := EmailText.Combined EmailTextString EmailText.EndHL
 Return
 
 Letter:
@@ -1708,78 +1731,74 @@ InputBoxAGUIControl:
     Gui, Submit, NoHide
     Gui +OwnDialogs
     PromptText := ""
-    If (%A_GuiControl% == 0)
+    If (%A_GuiControl% == 0) ; unchecked
         Return
-    InputBoxEntry := SubStr(A_GuiControl, 1, InStr(A_GuiControl, "Missing")+7)
-    InputBoxAGUIControlVariable := %InputBoxEntry%Input
 
-    If (InputBoxEntry = "IDmissing")
+    ;v2: convert to switch:
+    If (A_GuiControl = "IDmissing")
         PromptText := "Who is ID needed for?`n`nExample: 'Susanne, Robert Sr'"
-    Else If (InputBoxEntry = "BCmissing")
+    Else If (A_GuiControl = "BCmissing")
         PromptText := "Who is birth verification needed for?`n`nExample: 'Susie, Bobby Jr'"
-    Else If (InputBoxEntry = "IncomePlusNameMissing")
+    Else If (A_GuiControl = "IncomePlusNameMissing")
         PromptText := "Who is the income verification needed for?"
-    Else If (InputBoxEntry = "CustodySchedulePlusNamesMissing")
+    Else If (A_GuiControl = "CustodySchedulePlusNamesMissing")
         PromptText := "Who is the schedule needed for? `n'...stating the current parenting time schedule for: ____________'`n`nExample: 'Susie and Bobby Jr' or 'your children'"
-    Else If (InputBoxEntry = "WorkSchedulePlusNameMissing")
+    Else If (A_GuiControl = "WorkSchedulePlusNameMissing")
         PromptText := "Who is the work schedule needed for?"
-    Else If (InputBoxEntry = "DependentAdultStudentMissing")
+    Else If (A_GuiControl = "DependentAdultStudentMissing")
         PromptText := "Who is the adult dependent student?"
-    Else If (InputBoxEntry = "ChildSupportFormsMissing")
+    Else If (A_GuiControl = "ChildSupportFormsMissing")
         PromptText := "Enter the number of sets of Child Support forms needed`nor the names of the absent parent/children.`n`nExample: 'Robert Sr / Susie, Bobby Jr' or '2'"
-    Else If (InputBoxEntry = "ChildSupportNoncooperationMissing")
+    Else If (A_GuiControl = "ChildSupportNoncooperationMissing")
         PromptText := "What is the phone number of the Child Support officer?"
-    Else If (InputBoxEntry = "LegalNameChangeMissing")
+    Else If (A_GuiControl = "LegalNameChangeMissing")
         PromptText := "Who is the name change proof needed for?"
-    Else If (InputBoxEntry = "SeasonalOffSeasonMissing")
+    Else If (A_GuiControl = "SeasonalOffSeasonMissing")
         PromptText := "Who is the employer? (optional)"
-    Else if (InputBoxEntry = "OverIncomeMissing")
+    Else if (A_GuiControl = "OverIncomeMissing")
         PromptText := "Without dollar signs, enter the calculated income less expenses, income limit, and household size.`nOnly type numbers separated by spaces - no commas or periods.`n`n(Example: 76392 49605 3)"
 
-    InputBox, %InputBoxEntry%Input, Additional Input Required, %PromptText%, , , , , , , ,%InputBoxAGUIControlVariable%
+    InputBox, InputBoxInput, Additional Input Required, % PromptText, , , , , , , ,% MissingInput[A_GuiControl]
+    MissingInput[A_GuiControl] := InputBoxInput
 	If ErrorLevel {
         GuiControl, MissingGui:, % A_GuiControl, 0
 		Return
     }
-
-    InputBoxAGUIControlVariable := %InputBoxEntry%Input
-    If (StrLen(InputBoxAGUIControlVariable) == 0) {
-        InputBoxAGUIControlVariable := "(input)"
-        GuiControl, MissingGui:, % A_GuiControl, 0
+    If (StrLen(MissingInput[A_GuiControl]) == 0) {
+        MissingInput[A_GuiControl] := "(input)"
+        GuiControl, MissingGui:, % A_GuiControl, 0 ; uncheck box if input is blank
     }
-    GuiControlGet, VerificationName,,%InputBoxEntry%, Text
+    GuiControlGet, VerificationName,,%A_GuiControl%, Text ; VerificationName := %A_GuiControl% text value
+    ;v2: convert to switch:
     If (InStr(VerificationName, "(")) {
-        RemoveAmount := InStr(VerificationName, " (")
-        VerificationName := SubStr(VerificationName, 1, RemoveAmount-1)
+        VerificationName := SubStr(VerificationName, 1, InStr(VerificationName, " (") -1)
     }
-    If (InStr(VerificationName, " for ")) {
-        RemoveAmount := InStr(VerificationName, " for ")
-        VerificationName := SubStr(VerificationName, 1, RemoveAmount-1)
+    Else If (InStr(VerificationName, " for ")) {
+        VerificationName := SubStr(VerificationName, 1, InStr(VerificationName, " for ") -1)
     }
-    If (InStr(VerificationName, " at ")) {
-        RemoveAmount := InStr(VerificationName, " at ")
-        VerificationName := SubStr(VerificationName, 1, RemoveAmount-1)
+    Else If (InStr(VerificationName, " at ")) {
+        VerificationName := SubStr(VerificationName, 1, InStr(VerificationName, " at ") -1)
     }
 
-    If (InputBoxEntry = "ChildSupportNoncooperationMissing")
-        GuiControl,,%InputBoxEntry%, %VerificationName% - CS phone: %InputBoxAGUIControlVariable%
-    Else If (InputBoxEntry = "ChildSupportFormsMissing") {
+    If (A_GuiControl = "ChildSupportNoncooperationMissing")
+        GuiControl,,%A_GuiControl%, % VerificationName " - CS phone: " MissingInput[A_GuiControl]
+    Else If (A_GuiControl = "ChildSupportFormsMissing") {
         SetWording :=
-        If (InputBoxAGUIControlVariable ~= "\d") {
-            setWording .= InputBoxAGUIControlVariable < 2 ? " set" : " sets"
+        If (StrLen(MissingInput[A_GuiControl]) == 1) {
+            SetWording .= MissingInput[A_GuiControl] < 2 ? " set" : " sets"
         } else {
             SetWording := ""
         }
-        GuiControl,,%InputBoxEntry%, Child Support forms - %InputBoxAGUIControlVariable% %SetWording%
+        GuiControl,, %A_GuiControl%, % "Child Support forms - " MissingInput[A_GuiControl] SetWording
     }
-    Else if (InputBoxEntry = "OverIncomeMissing")
-        GoSub OverIncomeSub
+    Else if (A_GuiControl = "OverIncomeMissing")
+        OverIncomeSub(MissingInput[A_GuiControl])
     Else 
-        GuiControl,,%InputBoxEntry%, %VerificationName% for %InputBoxAGUIControlVariable%
+        GuiControl,, %A_GuiControl%, % VerificationName " for " MissingInput[A_GuiControl]
 Return
 
-OverIncomeSub:
-    overIncomeEntriesArray := StrSplit(InputBoxAGUIControlVariable, A_Space, ",", -1)
+OverIncomeSub(OverIncomeString) {
+    overIncomeEntriesArray := StrSplit(OverIncomeString, A_Space, ",", -1)
     If (StrLen(overIncomeEntriesArray[3]) > 0) {
         OverIncomeObj.overIncomeHHsize := overIncomeEntriesArray[3]
     }
@@ -1787,8 +1806,8 @@ OverIncomeSub:
     OverIncomeObj.overIncomeLimit := StrReplace(overIncomeEntriesArray[2], ",")
     OverIncomeObj.overIncomeText := OverIncomeObj.overIncomeLimit ", your income is calculated as $" OverIncomeObj.overIncomeReceived
     OverIncomeObj.overIncomeDifference := OverIncomeObj.overIncomeReceived - OverIncomeObj.overIncomeLimit
-    GuiControl,, %InputBoxEntry%, % "Over-income by $" OverIncomeObj.overIncomeDifference
-Return
+    GuiControl,, %A_GuiControl%, % "Over-income by $" OverIncomeObj.overIncomeDifference
+}
 ;=============================================================================================================================
 ;VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION VERIFICATION SECTION 
 ;=============================================================================================================================
@@ -1863,7 +1882,6 @@ ClearFormButton:
 Return
 
 SaveCoordsAndRun(ReOpen := 0) {
-    Global Ini
 	WinGetPos, XCaseNotesGet, YCaseNotesGet,,, CaseNotes
 	WinGetPos, XVerificationGet, YVerificationGet,,, Missing Verifications
     If (XVerificationGet == "") {
@@ -1943,7 +1961,7 @@ SettingsButton:
     Gui, CSG: Add, Text, % TextLabelOptions, BSF Education Form Name:
     Gui, CSG: Add, Edit, % EditboxOptions "vCountyEdBSFWrite", % Ini.CaseNoteCountyInfo.CountyEdBSF
     Gui, CSG: Add, Text, % TextLabelOptions, Waiting List Priority
-    Gui, CSG: Add, DropDownList, % EditboxOptions "vWaitListWrite R4 AltSubmit Choose" Ini.CaseNoteCountyInfo.WaitList, None|HS / GED / ESL|A PRI is a veteran|All others
+    Gui, CSG: Add, DropDownList, % EditboxOptions "vWaitlistWrite R4 AltSubmit Choose" Ini.CaseNoteCountyInfo.Waitlist, None|HS / GED / ESL|A PRI is a veteran|All others
     Gui, CSG: Add, Button, w80 gUpdateIniFile, Save
     Gui, CSG:+OwnerMainGui
     Gui, CSG: Show,w450,Update CaseNotes Settings
@@ -1975,7 +1993,7 @@ UpdateIniFile:
         ;change border of EmployeeMaxisWrite, blink, dance, return?
     ;}
     SettingsArrays := { EmployeeInfo: [ "EmployeeName", "EmployeePhone", "EmployeeEmail", "EmployeeUseEmail", "EmployeeUseMec2Functions", "EmployeeBrowser", "EmployeeCounty", "EmployeeMaxis" ]
-    , CaseNoteCountyInfo: [ "CountyFax", "CountyDocsEmail", "CountyProviderWorkerPhone", "CountyEdBSF", "CountyNoteInMaxis", "WaitList" ] }
+    , CaseNoteCountyInfo: [ "CountyFax", "CountyDocsEmail", "CountyProviderWorkerPhone", "CountyEdBSF", "CountyNoteInMaxis", "Waitlist" ] }
     For Key, Value in SettingsArrays {
         UpdateIniFileText(Key, Value)
     }
@@ -1984,7 +2002,6 @@ UpdateIniFile:
 Return
 
 UpdateIniFileText(Section, IniArray) {
-    Global
     IniSettingsValues := ""
     For Key, Value in IniArray {
         IniSettingsValues .= Value "=" %Value%Write "`n"
@@ -1993,7 +2010,6 @@ UpdateIniFileText(Section, IniArray) {
     IniWrite, % IniSettingsValues, % A_MyDocuments "\AHK.ini", % Section
 }
 CheckGroupAdd() {
-    Global
     If (Ini.EmployeeInfo.EmployeeBrowser != "")
         GroupAdd, Browser, % Ini.EmployeeInfo.EmployeeBrowser
     If (Ini.EmployeeInfo.EmployeeMaxis != "MAXIS-WINDOW-TITLE")
@@ -2119,7 +2135,7 @@ Return
 Return
 
 #m::
-    Global EmailText, Ini, CaseDetails, CaseNumber
+    ;Global EmailText, Ini, CaseDetails, CaseNumber
     If WinActive("Message" ahk_exe Outlook.exe) {
         Clipboard := EmailText.Output
         Send, ^v
@@ -2159,20 +2175,18 @@ return
 Return
 
 #IfWinActive CaseNotes
-    ;^PgDn::
-        ;ControlFocus,,\d ahk_exe obunity.exe
-        ;ControlSend,,^{PgDn}, \d ahk_exe obunity.exe
-        ;If (!WinActive(ahk_class AutoHotkeyGUI)) {
-            ;WinActivate ahk_class AutoHotkeyGUI
-        ;}
-    ;Return
-    ;^PgUp::
-        ;ControlFocus,,\d ahk_exe obunity.exe
-        ;ControlSend,,^{PgUp}, \d ahk_exe obunity.exe
-        ;If (!WinActive(ahk_class AutoHotkeyGUI)) {
-            ;WinActivate ahk_class AutoHotkeyGUI
-        ;}
-    ;Return
+    PgDn::
+        ControlFocus,,\d ahk_exe obunity.exe
+        ControlSend,,^{PgDn}, \d ahk_exe obunity.exe
+        Sleep 150
+        WinActivate, CaseNotes
+    Return
+    PgUp::
+        ControlFocus,,\d ahk_exe obunity.exe
+        ControlSend,,^{PgUp}, \d ahk_exe obunity.exe
+        Sleep 150
+        WinActivate, CaseNotes
+    Return
 
     #Left::
     #Right::
