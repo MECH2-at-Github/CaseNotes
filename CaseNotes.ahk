@@ -28,7 +28,7 @@
 ;version 0.3.6, The 'Added some parens and fixed some copy/paste errors in the MissingGuiGUIClose subroutine' version
 ;version 0.3.7, The 'Redid how coordinates were done. Next is EmployeeInfo/CaseNoteCountyInfo INI' version
 
-Version := "v0.3.85"
+Version := "v0.3.86"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -61,7 +61,7 @@ IniRead, CaseNotePositionsSection, %A_MyDocuments%\AHK.ini, CaseNotePositions
 LocCoords := StrSplit(CaseNotePositionsSection, "`n")
 For i, Row in LocCoords
 {
-    SetCoord := StrSplit(Row, "INI=")
+    SetCoord := InStr(Row, "INI") ? StrSplit(Row, "INI=") : StrSplit(Row, "=")
     SetCoordName := SetCoord[1]
     %SetCoordName% := SetCoord[2] != "" ? SetCoord[2] : 0
 }
@@ -80,9 +80,18 @@ ConfirmedClear := 0
 VerificationWindowOpenedOnce := 0
 VerifCat :=, LetterTextNumber := 1, LetterText := {}, MissingHomelessItems := ""
 
-CountySpecificText := {}
-CountySpecificText.Dakota := { OverIncomeContactInfo: " contact 651-554-6696 and", CustomHotkeys: "Custom hotkeys for your county exist for the following windows (A ToolTip reminder appears by pressing F1):`nOnBase (Alt+4, 'Verifs Due Back' detail),`nOnBase (Perform Import) - For printing docs to OnBase (Ctrl+F6-12)`nOnBase (Ctrl+B, Inserts date and case number for mail)`nAutomated Mailing (Ctrl+B, Inserts date and case number for mail)`nBrowser (Types in case note for app denied/approved, and worker signature)`nWord (Types in first name, case number, and app received date)." }
-CountySpecificText.StLouis := { OverIncomeContactInfo: "" }
+CountySpecificText := { StLouis: { OverIncomeContactInfo: "" }
+, Dakota: { OverIncomeContactInfo: " contact 651-554-6696 and", CustomHotkeys: "
+(
+    Custom hotkeys for your county exist for the following windows (A ToolTip reminder appears by pressing F1):
+    ● OnBase (Alt+4: 'Verifs Due Back' detail),
+    ● OnBase (Ctrl+F6-12: Enters keywords on the Perform Import screen)
+    ● OnBase (Ctrl+B: Inserts date and case number for mail)
+    ● Automated Mailing (Ctrl+B: Inserts date and case number for mail)
+    ● Browser (Types an Approved (Alt+F1) or Denied (Alt+F2) app case note. Ctrl+F12 or Alt+F12: worker signature)
+    ● Word (Alt+4: Types in first name, case number, and app received date).
+    ● MAXIS (Alt+M: Changes the title of the MAXIS window to ""MAXIS"" to enable screen-scraping.)
+)" } }
 
 ; Date variables
 DateObject := { ReceivedMDY: "", ReceivedYMD: "", AutodenyYMD: "", ReinstateDate: "" }
@@ -364,6 +373,11 @@ MaxisNoteButton:
     GoSub, MakeCaseNote
 return
 
+JSONstring(inputString) {
+    inputString := StrReplace(inputString, "`n", "\n",,-1)
+    return inputString
+}
+
 MakeCaseNote:
 	Gui, Submit, NoHide
     GoSub CalcDates
@@ -435,8 +449,8 @@ MakeCaseNote:
 		Sleep 500
         MEC2DocType := CaseDetails.DocType = "Redet" ? "Redetermination" : CaseDetails.DocType
         If (UseMec2FunctionsRead = 1) {
-            concatCaseNote := "CaseNoteFromAHKSPLIT" MEC2DocType "SPLIT" MEC2NoteTitle "SPLIT" MEC2CaseNote
-            Clipboard := concatCaseNote
+            jsonCaseNote := JSONstring("CaseNoteFromAHKJSON{""noteDocType"":""" MEC2DocType """,""noteTitle"":""" MEC2NoteTitle """,""noteText"":""" MEC2CaseNote """,""noteElig"":""" CaseDetails.Eligibility """ }")
+            Clipboard := jsonCaseNote
             Send, ^v
         } Else If (UseMec2FunctionsRead = 0) {
             WinActivate % WorkerBrowserRead
@@ -1133,7 +1147,7 @@ MissingButtonDoneButton:
     }
     If SeasonalOffSeasonMissing {
         ;SeasonalOffSeasonMissing := StrLen(SeasonalOffSeasonMissing) > 0 ? " at " SeasonalOffSeasonMissing : ""
-        SeasonalOffSeasonMissing := SeasonalOffSeasonMissing != "" ? " at " SeasonalOffSeasonMissing : ""
+        SeasonalOffSeasonMissing := SeasonalOffSeasonMissingInput != "" ? " at " SeasonalOffSeasonMissingInput : ""
         SeasonalOffSeasonMissingText := "Verification of either seasonal employment " SeasonalOffSeasonMissing ", including expected season length and typical wages, or a signed statement that you are no longer an employee at this job.`n Upon returning to work, verification of work schedule will`n be needed, showing days of the week and start/end times;`n"
 		MissingVerifications[ListItem ". " SeasonalOffSeasonMissingText] := 6
         EmailTextString .= EmailListItem ". " SeasonalOffSeasonMissingText
@@ -1498,6 +1512,7 @@ MissingButtonDoneButton:
     FaxAndEmailWrapped := getRowCount(FaxAndEmailWrapped, 60, " ")
     AutoDeny := getRowCount(AutoDenyObject.AutoDenyExtensionSpecLetter, 60, "")
     ClarifiedVerifications[ "NewLineAutoreplace" FaxAndEmailWrapped[1] "`nNewLineAutoreplace" AutoDeny[1] ] := FaxAndEmailWrapped[2]+AutoDeny[2]
+    EmailTextString .= AutoDeny[1]
 
     MecCheckboxIds.other := 1
     IdList := ""
@@ -1642,8 +1657,8 @@ Letter:
 	LetterGUINumber := "LetterText" . SubStr(A_GuiControl, 0)
     If (UseMEC2FunctionsRead = 1) {
         CaseStatus := InStr(CaseDetails.DocType, "?") ? "" : (CaseDetails.DocType = "Redet") ? "Redetermination" : (Homeless = 1) ? "Homeless App" : CaseDetails.DocType
-        concatLetterText := "LetterTextFromAHKSPLIT" %LetterGUINumber% "SPLIT" CaseStatus "SPLIT" IdList
-        Clipboard := concatLetterText
+        jsonLetterText := JSONstring("LetterTextFromAHKJSON{""LetterText"":""" %LetterGUINumber% """,""CaseStatus"":""" CaseStatus """,""IdList"":""" IdList """ }")
+        Clipboard := jsonLetterText
         Send, ^v
     } Else {
         Clipboard := %LetterGUINumber%
@@ -1977,6 +1992,8 @@ getRowCount(Text, columns, indentString) {
 ;================================================================================================================================================================
 ;BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION BORROWED FUNCTIONS SECTION 
 st_wordWrap(string, column, indentChar) { ; String Things - Common String & Array Functions
+    If (StrLen(string) < 1)
+        Return
     indentLength := StrLen(indentChar)
     Loop, Parse, string, `n, `r
     {
@@ -2000,7 +2017,7 @@ st_wordWrap(string, column, indentChar) { ; String Things - Common String & Arra
             }
         }
     }
-    Return SubStr(out, 1, -1)
+    Return SubStr(RegExReplace(out, " ", "", , 1, -1), 1, -1)
 }
 
 Class OrderedAssociativeArray { ; Capt Odin https://www.autohotkey.com/boards/viewtopic.php?t=37083
@@ -2111,20 +2128,20 @@ return
 Return
 
 #IfWinActive, ahk_class AutoHotkeyGUI
-    ^PgDn::
-        ControlFocus,,\d ahk_exe obunity.exe
-        ControlSend,,^{PgDn}, \d ahk_exe obunity.exe
-        If (!WinActive(ahk_class AutoHotkeyGUI)) {
-            WinActivate ahk_class AutoHotkeyGUI
-        }
-    Return
-    ^PgUp::
-        ControlFocus,,\d ahk_exe obunity.exe
-        ControlSend,,^{PgUp}, \d ahk_exe obunity.exe
-        If (!WinActive(ahk_class AutoHotkeyGUI)) {
-            WinActivate ahk_class AutoHotkeyGUI
-        }
-    Return
+    ;^PgDn::
+        ;ControlFocus,,\d ahk_exe obunity.exe
+        ;ControlSend,,^{PgDn}, \d ahk_exe obunity.exe
+        ;If (!WinActive(ahk_class AutoHotkeyGUI)) {
+            ;WinActivate ahk_class AutoHotkeyGUI
+        ;}
+    ;Return
+    ;^PgUp::
+        ;ControlFocus,,\d ahk_exe obunity.exe
+        ;ControlSend,,^{PgUp}, \d ahk_exe obunity.exe
+        ;If (!WinActive(ahk_class AutoHotkeyGUI)) {
+            ;WinActivate ahk_class AutoHotkeyGUI
+        ;}
+    ;Return
 
     #Left::
     #Right::
