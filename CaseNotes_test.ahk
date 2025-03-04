@@ -28,7 +28,8 @@
 ;version 0.3.6, The 'Added some parens and fixed some copy/paste errors in the MissingGuiGUIClose subroutine' version
 ;version 0.3.7, The 'Redid how coordinates were done. Next is EmployeeInfo/CaseNoteCountyInfo INI' version
 ;version 0.4.0, The 'I rewrote how settings were done. Fewer read/writes to harddrive. Hurray! Also added Waitlist functionality.' version
-Version := "v0.4.1"
+;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
+Version := "v0.4.2"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
