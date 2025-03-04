@@ -115,7 +115,8 @@ Gui MainGui: Color, a9a9a9, bebebe
 
 Gui, MainGui: Add, Radio, Group Section h17 x12 w75 y+5 gApplicationRadio, Application
 Gui, MainGui: Add, Radio, xp y+2 wp h17 gRedeterminationRadio, Redeterm.
-Gui, MainGui: Add, Checkbox, xp y+2 wp h17 vHomeless gHomeless, Homeless
+;Gui, MainGui: Add, Checkbox, xp y+2 wp h17 vHomeless gHomeless, Homeless
+Gui, MainGui: Add, Checkbox, xp y+2 wp h17 vHomeless, Homeless
 
 Gui, MainGui: Add, Radio, Group x+10 ys h17 w78 gMNBenefits vMNBenefitsRadio, MNBenefits
 Gui, MainGui: Add, Radio, xp y+2 h17 wp gApp vAppRadio, 3550 App
@@ -273,11 +274,12 @@ HelpButton:
     )"
     Paragraph3 := "
     (
-    Main window functions:
+    Main window :
     ● [MEC2 Note] - Formats the entire case note and sends the data to MEC2.
         If you are not using mec2functions, it will simulate keypresses to navigate the page. 
         In MEC2: Click 'New' in MEC2 on the CaseNotes webpage. In CaseNotes, click [MEC2 Note].
-    ● [Maxis Note] - Formats the app date, case status, and verifications list and sends it to Maxis.
+    ● [Maxis Note] - Visible only if ""Case Note in MAXIS"" is checked in Settings.
+        Formats the app date, case status, and verifications list and sends it to Maxis.
         It will activate BlueZone and paste the case note in.
         In BlueZone (Maxis): PF9 to start a new note. In CaseNotes, click [Maxis Note].
     ● [Desktop Backup] - Saves case notes for MEC2, Maxis, the Special Letters, and Email to your desktop.
@@ -287,33 +289,37 @@ HelpButton:
     ● Child Support Cooperation - Click the [Child Support Cooperation] label to copy from Custody.
         The Child Support Cooperation text field must be blank when clicking the button.
     ● Missing Verifications - Click either the [Missing] label or [Missing] button to open the verification window.
-      
-      Missing Verifications:
-    ● Checkboxes cover almost all documents needed, with 3 [Other] selections for free-form requests.
+    )"
+    Paragraph4 := "
+    (
+      Missing Verifications window:
+    ● Checkboxes which cover almost all documents needed, with 3 ""Other"" selections for free-form requests.
     ● Verification types are clustered by categories.
     ● If a checkbox label has (Input) it will open a popup requesting clarifying information.
-    ● [Over-income] will modify the beginning of the Special Letter text, adding income limit information.
+    ● ""Over-income"" will modify the beginning of the Special Letter text, adding income limit information.
     
     ● [Done] - After selecting the verifications that are missing, [Done] will generate a list and letter/email buttons.
           If the Special Letter text exceeds 30 lines, a second (/third/fourth) letter will be generated.
     ● [Letter 1/2/3/4] - Clicking these will place text on the clipboard to be pasted into the Worker Comments field.
-        If mec2functions is enabled, [Letter 1] will auto-check and auto-fill fields in MEC2's Special Letter page.
+        If ""Use mec2functions"" is checked, [Letter 1] will auto-check and auto-fill fields in MEC2's Special Letter page.
     ● [Email] - Text is send to the clipboard, which can then be pasted into an email. It will include the document type
         that was selected (application/redetermination). For homeless cases, alternate text is generated based on if
         the case is Eligible or Pending.
     )"
-    Paragraph4 := "
-    (
-    Hotkeys:
-    ● [Alt+3]: Copies the case number to the clipboard. Usable from anywhere when CaseNotes is open.
-    ● [Win+left arrow] or [Win+right arrow]: Resets CaseNotes location, in the event it is off-screen.
-    ● [Ctrl+F12] or [Alt+12]: In MEC2, types in the worker's name with a separation line (case note signature)
-    ● [Ctrl+Alt+a]: When in MEC2, select and copy text (such as from a case note). Hotkey popups copied text in a separate window.
-    )"
     Paragraph5 := "
     (
+    Hotkeys:
+    ● (Alt+3): Copies the case number to the clipboard. Usable from anywhere when CaseNotes is open.
+    ● (Win+m): Inserts Missing Verification text when your browser or an email is the active window.
+      Similar to the [Email] or [Letter 1] buttons, but without needing to switch windows.
+    ● (Win+left arrow) or (Win+right arrow): Resets CaseNotes location, in the event it is off-screen.
+    ● (Ctrl+F12) or (Alt+12): In your browser, types in the worker's name with a separation line (case note signature)
+    ● (Ctrl+Alt+a): Shows clipboard text in a popup window. Select and copy text first (such as from a case note).
+    )"
+    Paragraph6 := "
+    (
     Special notes:
-    ● CaseNotes will open in the same location it was closed, even if that monitor is no longer connected. See Hotkeys.
+    ● CaseNotes will open in the same location it was closed, even if that monitor is no longer connected. See Hotkeys for reset instructions.
     ● All settings for CaseNotes are saved in the My Documents folder, under AHK.ini. Deleting this file will reset all
         saved settings.
     ● Please send any bug reports or feature requests to MECH2.at.github@gmail.com
@@ -322,15 +328,17 @@ HelpButton:
     Gui, HelpGui: New, ToolWindow, CaseNotes Help
     Gui, HelpGui: Margin, 12 12
     Gui, Font, s10, Segoe UI
-    Gui, HelpGui: Add, Tab3,, Features | Main| Hotkeys and Notes 
+    Gui, HelpGui: Add, Tab3,, Features | CaseNotes | Missing Verifications | Hotkeys and Notes 
     Gui, Tab, 1
-    Gui, HelpGui: Add, Text, xm y+5, % Paragraph1
+    Gui, HelpGui: Add, Text, xm y+15, % Paragraph1
     Gui, HelpGui: Add, Text, xm y+15, % Paragraph2
     Gui, Tab, 2
     Gui, HelpGui: Add, Text, xm y+15, % Paragraph3
     Gui, Tab, 3
     Gui, HelpGui: Add, Text, xm y+15, % Paragraph4
+    Gui, Tab, 4
     Gui, HelpGui: Add, Text, xm y+15, % Paragraph5
+    Gui, HelpGui: Add, Text, xm y+15, % Paragraph6
     Gui, HelpGui: Add, Text, xm y+15, % CountySpecificText[Ini.EmployeeInfo.EmployeeCounty].CustomHotkeys
     Gui, Tab
     Gui, HelpGui: Add, Button, gHelpGuiClose w70 h25 x375, Close
@@ -343,8 +351,7 @@ HelpGuiClose:
 Return
 
 ExamplesButton:
-    Gui, Submit, NoHide
-    
+    Gui, MainGui: Submit, NoHide
     GuiControlGet, ExamplesButtonText,, ExamplesButton
     If (ExamplesButtonText = "Examples") {
         For Index, ExampleLabel in ExampleLabels {
@@ -382,7 +389,8 @@ JSONstring(inputString) {
 }
 
 MakeCaseNote:
-	Gui, Submit, NoHide
+    Gui, MainGui: Submit, NoHide
+    Gui, MissingGui: Submit, NoHide
     GoSub CalcDates
     EditControlsTest := ["HouseholdComp", "SharedCustody", "AddressVerification", "SchoolInformation", "Income", "ChildSupportIncome", "ChildSupportCooperation", "Expenses", "Provider", "ActivityandSchedule", "ServiceAuthorization", "Notes", "Missing"]
     For each, EditField in EditControlsTest {
@@ -575,7 +583,7 @@ FormatMDY(DateYMD) {
 }
 
 CalcDates:
-    Gui, Submit, NoHide
+    Gui, MainGui: Submit, NoHide
     DateObject.ReceivedYMD := Received
     DateObject.ReceivedMDY := FormatMDY(DateObject.ReceivedYMD)
     DateObject.AutoDenyYMD := AddDays(DateObject.ReceivedYMD, 29)
@@ -670,9 +678,9 @@ App:
 	GuiControl, MainGui: Show, SignDate
 return
 
-Homeless:
-    Gui, Submit, NoHide
-Return
+;Homeless:
+    ;Gui, MainGui: Submit, NoHide
+;Return
 
 MNBenefits:
 	CaseDetails.AppType := "MNB"
@@ -765,7 +773,7 @@ CaseType:
 Return
 
 ChildSupportCooperation:
-    Gui, Submit, NoHide
+    Gui, MainGui: Submit, NoHide
     If (StrLen(ChildSupportCooperation) = 0) {
         GuiControl, MainGui: Text, ChildSupportCooperation, %SharedCustody%
     }
@@ -782,7 +790,8 @@ Return
 MissingButton:
     Gui, MissingGui: Restore
     Gui, MissingGui: Show, AutoSize
-    Gui, Submit, NoHide
+    Gui, MainGui: Submit, NoHide
+    Gui, MissingGui: Submit, NoHide
 Return
 
 MissingGui:
@@ -909,7 +918,8 @@ MissingGui:
 Return
 
 MissingButtonDoneButton:
-	Gui, Submit, NoHide
+	Gui, MainGui: Submit, NoHide
+	Gui, MissingGui: Submit, NoHide
     GoSub CalcDates
 	MissingVerifications := {}, ClarifiedVerifications := {}, LineCount := 0, EmailText := {}
     EmailTextString := "", LetterText1 := "", LetterText2 := "", LetterText3 := "", LetterText4 := ""
@@ -1672,7 +1682,8 @@ Email:
 Return
 
 SetEmailText:
-    Gui, Submit, NoHide
+	Gui, MainGui: Submit, NoHide
+	Gui, MissingGui: Submit, NoHide
     EmailTextString := StrReplace(EmailTextString, "`n ", " ")
     EmailTextString := StrReplace(EmailTextString, "    ", " ")
     EmailTextString := StrReplace(EmailTextString, "   ", " ")
@@ -1683,7 +1694,8 @@ SetEmailText:
 Return
 
 Letter:
-    Gui, Submit, NoHide
+	Gui, MainGui: Submit, NoHide
+	Gui, MissingGui: Submit, NoHide
     If (Homeless = 1 && CaseDetails.Eligibility = "pends" && StrLen(MissingHomelessItems) < 1) {
         GoSub MissingButtonDoneButton
     }
@@ -1968,7 +1980,7 @@ SettingsButton:
 Return
 
 WorkerUsingMec2Functions:
-    Gui, Submit, NoHide
+    Gui, CSG: Submit, NoHide
     GuiControlGet, WorkerBrowser,,EmployeeUseMec2FunctionsWrite
     If (WorkerBrowser = 0) {
         GuiControl, CSG: Hide, EmployeeBrowserWrite
@@ -1978,7 +1990,7 @@ WorkerUsingMec2Functions:
 Return
 
 CountyNoteInMaxis:
-    Gui, Submit, NoHide
+    Gui, CSG: Submit, NoHide
     GuiControlGet, MaxisChecked,,CountyNoteInMaxisWrite
     If (MaxisChecked = 0) {
         GuiControl, CSG: Hide, EmployeeMaxisWrite
@@ -1988,7 +2000,7 @@ CountyNoteInMaxis:
 Return
 
 UpdateIniFile:
-    Gui, Submit, NoHide
+    Gui, CSG: Submit, NoHide
     ;If (CountyNoteInMaxisWrite && EmployeeMaxisWrite == "MAXIS-WINDOW-TITLE") {
         ;change border of EmployeeMaxisWrite, blink, dance, return?
     ;}
@@ -2017,7 +2029,7 @@ CheckGroupAdd() {
 }
 
 CountySelection:
-    Gui, Submit, NoHide
+    Gui, CSG: Submit, NoHide
     Ini.EmployeeInfo.EmployeeCounty := EmployeeCountyWrite
     GuiControl, CSG: Text, CountyFaxWrite, % CountyContact[Ini.EmployeeInfo.EmployeeCounty].Fax
     GuiControl, CSG: Text, CountyProviderWorkerPhoneWrite, % CountyContact[Ini.EmployeeInfo.EmployeeCounty].ProviderWorker
@@ -2130,7 +2142,7 @@ Class OrderedAssociativeArray { ; Capt Odin https://www.autohotkey.com/boards/vi
 Return
 
 !3::
-    Gui, Submit, NoHide
+	Gui, MainGui: Submit, NoHide
     Clipboard := CaseNumber
 Return
 
@@ -2140,7 +2152,8 @@ Return
         Clipboard := EmailText.Output
         Send, ^v
     } Else If WinActive(Ini.EmployeeInfo.EmployeeBrowser) {
-        Gui, Submit, NoHide
+        Gui, MainGui: Submit, NoHide
+        Gui, MissingGui: Submit, NoHide
         Sleep 500
         If (Ini.EmployeeInfo.EmployeeUseMec2Functions = 1) {
             CaseStatus := InStr(CaseDetails.DocType, "?") ? "" : (Homeless = 1) ? "Homeless App" : (CaseDetails.DocType = "Redet") ? "Redetermination" : CaseDetails.DocType
@@ -2225,7 +2238,7 @@ If (Ini.EmployeeInfo.EmployeeCounty = "Dakota") {
             SetTimer, RemoveToolTip, -5000
         Return
         !4::
-            Gui, Submit, NoHide
+            Gui, MainGui: Submit, NoHide
             ReceivedDate := FormatMDY(Received)
             RegExMatch(HouseholdComp, "^\w+\b", NameMatch)
             SendInput, {Down 2}
@@ -2273,31 +2286,31 @@ If (Ini.EmployeeInfo.EmployeeCounty = "Dakota") {
             SetTimer, RemoveToolTip, -8000
         Return
         ^F6::
-            Gui, Submit, NoHide
+            Gui, MainGui: Submit, NoHide
             OnBaseImportKeys(CaseNumber, "3003 ssi", "{Text}RSDI ", 3, "Member#, Member Name")
         Return
         ^F7::
-            Gui, Submit, NoHide
+            Gui, MainGui: Submit, NoHide
             OnBaseImportKeys(CaseNumber, "3001 other id", "{Text}SMI ", 3, "Member#, Member Name")
         Return
         ^F8::
-            Gui, Submit, NoHide
+            Gui, MainGui: Submit, NoHide
             OnBaseImportKeys(CaseNumber, "3003 child support", "{Text}GCSC ", 1, "Y/N, Child(ren) Member#")
         Return
         ^F9::
-            Gui, Submit, NoHide
+            Gui, MainGui: Submit, NoHide
             OnBaseImportKeys(CaseNumber, "3003 wo", "{Text}CCAP CS INCOME CALC")
         Return
         ^F10::
-            Gui, Submit, NoHide
+            Gui, MainGui: Submit, NoHide
             OnBaseImportKeys(CaseNumber, "3003 wo", "{Text}CCAP INCOME CALC")
         Return
         ^F11::
-            Gui, Submit, NoHide
+            Gui, MainGui: Submit, NoHide
             OnBaseImportKeys(CaseNumber, "3003 other - in", "{Text}W# ", 3, "Member#, Employer")
         Return
         ^F12::
-            Gui, Submit, NoHide
+            Gui, MainGui: Submit, NoHide
             OnBaseImportKeys(CaseNumber, "3003 edak 3813", "{Text}OUTBOUND")
         Return
     #If
@@ -2318,7 +2331,7 @@ If (Ini.EmployeeInfo.EmployeeCounty = "Dakota") {
             SetTimer, RemoveToolTip, -8000
         Return
         ^b::
-            Gui, Submit, NoHide
+            Gui, MainGui: Submit, NoHide
             SendInput, % ShortDate " " CaseNumber
             Sleep 500
             If ( WinActive("ahk_exe obunity.exe") ) {
