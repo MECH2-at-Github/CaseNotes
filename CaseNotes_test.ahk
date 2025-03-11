@@ -2159,7 +2159,7 @@ Return
         Sleep 500
         If (Ini.EmployeeInfo.EmployeeUseMec2Functions = 1) {
             CaseStatus := InStr(CaseDetails.DocType, "?") ? "" : (Homeless = 1) ? "Homeless App" : (CaseDetails.DocType = "Redet") ? "Redetermination" : CaseDetails.DocType
-            jsonLetterText := JSONstring("LetterTextFromAHKJSON{""LetterText"":""" LetterText1 """,""CaseStatus"":""" CaseStatus """,""IdList"":""" IdList """ }")
+            jsonLetterText := JSONstring("LetterTextFromAHKJSON{""LetterText"":""" LetterText1 """,""CaseStatus"":""" CaseStatus """,""IdList"":""" IdList """ }"
             Clipboard := jsonLetterText
             Send, ^v
         } Else {
