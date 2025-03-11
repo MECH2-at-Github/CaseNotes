@@ -29,7 +29,7 @@
 ;version 0.3.7, The 'Redid how coordinates were done. Next is EmployeeInfo/CaseNoteCountyInfo INI' version
 ;version 0.4.0, The 'I rewrote how settings were done. Fewer read/writes to harddrive. Hurray! Also added Waitlist functionality.' version
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
-Version := "v0.4.3"
+Version := "v0.4.4"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -2159,7 +2159,7 @@ Return
         Sleep 500
         If (Ini.EmployeeInfo.EmployeeUseMec2Functions = 1) {
             CaseStatus := InStr(CaseDetails.DocType, "?") ? "" : (Homeless = 1) ? "Homeless App" : (CaseDetails.DocType = "Redet") ? "Redetermination" : CaseDetails.DocType
-            jsonLetterText := JSONstring("LetterTextFromAHKJSON{""LetterText"":""" LetterText1 """,""CaseStatus"":""" CaseStatus """,""IdList"":""" IdList """ }"
+            jsonLetterText := "LetterTextFromAHKJSON{""LetterText"":""" JSONstring(LetterText1) """,""CaseStatus"":""" CaseStatus """,""IdList"":""" IdList """ }"
             Clipboard := jsonLetterText
             Send, ^v
         } Else {
