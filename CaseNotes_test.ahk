@@ -386,6 +386,7 @@ return
 
 JSONstring(inputString) {
     inputString := StrReplace(inputString, "`n", "\n",,-1)
+    inputString := StrReplace(inputString, """", "`\""",,-1)
     return inputString
 }
 
@@ -464,7 +465,7 @@ MakeCaseNote:
 		Sleep 500
         MEC2DocType := CaseDetails.DocType = "Redet" ? "Redetermination" : CaseDetails.DocType
         If (Ini.EmployeeInfo.EmployeeUseMec2Functions = 1) {
-            jsonCaseNote := JSONstring("CaseNoteFromAHKJSON{""noteDocType"":""" MEC2DocType """,""noteTitle"":""" MEC2NoteTitle """,""noteText"":""" MEC2CaseNote """,""noteElig"":""" CaseDetails.Eligibility """ }")
+            jsonCaseNote := "CaseNoteFromAHKJSON{""noteDocType"":""" MEC2DocType """,""noteTitle"":""" JSONstring(MEC2NoteTitle) """,""noteText"":""" JSONstring(MEC2CaseNote) """,""noteElig"":""" CaseDetails.Eligibility """ }"
             Clipboard := jsonCaseNote
             Send, ^v
         } Else If (Ini.EmployeeInfo.EmployeeUseMec2Functions = 0) {
@@ -616,12 +617,12 @@ CalcDates:
         If (CaseDetails.Eligibility = "pends") {
             If (NeedsNoExtension > -1) {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.AutoDenyMDY
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications"
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "*You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
                 GuiControl, MainGui: Text, AutoDenyStatus, Has 15+ days before auto-deny
             } Else If (NeedsExtension > -1) {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
                 AutoDenyObject.AutoDenyExtensionMECnote := "Auto-deny extended to " AutoDenyObject.AutoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications"
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "*You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
                 GuiControl, MainGui: Text, AutoDenyStatus, % "Extend auto-deny to " AutoDenyObject.AutoDenyExtensionDate
             } Else {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
@@ -1705,7 +1706,7 @@ Letter:
 	LetterGUINumber := "LetterText" SubStr(A_GuiControl, 0)
     If (Ini.EmployeeInfo.EmployeeUseMec2Functions = 1) {
         CaseStatus := InStr(CaseDetails.DocType, "?") ? "" : (CaseDetails.DocType = "Redet") ? "Redetermination" : (Homeless = 1) ? "Homeless App" : CaseDetails.DocType
-        jsonLetterText := JSONstring("LetterTextFromAHKJSON{""LetterText"":""" %LetterGUINumber% """,""CaseStatus"":""" CaseStatus """,""IdList"":""" IdList """ }")
+        jsonLetterText := "LetterTextFromAHKJSON{""LetterText"":""" JSONstring(%LetterGUINumber%) """,""CaseStatus"":""" CaseStatus """,""IdList"":""" IdList """ }"
         Clipboard := jsonLetterText
         Send, ^v
     } Else {
