@@ -29,7 +29,7 @@
 ;version 0.3.7, The 'Redid how coordinates were done. Next is EmployeeInfo/CaseNoteCountyInfo INI' version
 ;version 0.4.0, The 'I rewrote how settings were done. Fewer read/writes to harddrive. Hurray! Also added Waitlist functionality.' version
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
-Version := "v0.4.2"
+Version := "v0.4.3"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
