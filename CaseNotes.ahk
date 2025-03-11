@@ -28,7 +28,7 @@
 ;version 0.3.6, The 'Added some parens and fixed some copy/paste errors in the MissingGuiGUIClose subroutine' version
 ;version 0.3.7, The 'Redid how coordinates were done. Next is EmployeeInfo/CaseNoteCountyInfo INI' version
 
-Version := "v0.3.86"
+Version := "v0.3.87"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -375,6 +375,7 @@ return
 
 JSONstring(inputString) {
     inputString := StrReplace(inputString, "`n", "\n",,-1)
+    inputString := StrReplace(inputString, """", "`\""",,-1)
     return inputString
 }
 
@@ -434,7 +435,7 @@ MakeCaseNote:
     MaxisNote .= WorkerNameRead
 
     If (StrLen(MEC2NoteTitle) = 0 || InStr(MEC2NoteTitle, "?")) {
-        MsgBox, ,Case Note Error,Select options in the top left before case noting`n     (Document type, Program, Eligibility)
+        MsgBox, , % "Case Note Error", % "Select options in the top left before case noting`n     (Document type, Program, Eligibility)"
         Return
     }
 
@@ -449,7 +450,7 @@ MakeCaseNote:
 		Sleep 500
         MEC2DocType := CaseDetails.DocType = "Redet" ? "Redetermination" : CaseDetails.DocType
         If (UseMec2FunctionsRead = 1) {
-            jsonCaseNote := JSONstring("CaseNoteFromAHKJSON{""noteDocType"":""" MEC2DocType """,""noteTitle"":""" MEC2NoteTitle """,""noteText"":""" MEC2CaseNote """,""noteElig"":""" CaseDetails.Eligibility """ }")
+            jsonCaseNote := "CaseNoteFromAHKJSON{""noteDocType"":""" MEC2DocType """,""noteTitle"":""" JSONstring(MEC2NoteTitle) """,""noteText"":""" JSONstring(MEC2CaseNote) """,""noteElig"":""" CaseDetails.Eligibility """ }"
             Clipboard := jsonCaseNote
             Send, ^v
         } Else If (UseMec2FunctionsRead = 0) {
@@ -602,12 +603,12 @@ CalcDates:
         If (CaseDetails.Eligibility = "pends") {
             If (NeedsNoExtension > -1) {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.AutoDenyMDY
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications"
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "*You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
                 GuiControl, MainGui: Text, AutoDenyStatus, Has 15+ days before auto-deny
             } Else If (NeedsExtension > -1) {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
                 AutoDenyObject.AutoDenyExtensionMECnote := "Auto-deny extended to " AutoDenyObject.AutoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
-                AutoDenyObject.AutoDenyExtensionSpecLetter := "**You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications"
+                AutoDenyObject.AutoDenyExtensionSpecLetter := "*You have through " AutoDenyObject.AutoDenyExtensionDate " to submit required verifications."
                 GuiControl, MainGui: Text, AutoDenyStatus, % "Extend auto-deny to " AutoDenyObject.AutoDenyExtensionDate
             } Else {
                 AutoDenyObject.AutoDenyExtensionDate := DateObject.TodayPlusFifteenishMDY
@@ -922,7 +923,7 @@ MissingButtonDoneButton:
         CaseNoteMissing .= "Household is calculated to be over-income by $" OverIncomeObj.overIncomeDifference " ($" OverIncomeObj.overIncomeReceived " - $" OverIncomeObj.overIncomeLimit ");`n"
     }
     If (Homeless = 1 && CaseDetails.Eligibility = "pends" && CaseDetails.DocType = "Application") {
-        InputBox, MissingHomelessItems, Homeless Info Missing, What information is needed from the client to approve expedited eligibility?`n`nUse a double space "  " without quotation marks to start a new line.,,,,,,,, % StrReplace(MissingHomelessItems, "`n", "  ")
+        InputBox, MissingHomelessItems, % "Homeless Info Missing", % "What information is needed from the client to approve expedited eligibility?`n`nUse a double space ""  "" without quotation marks to start a new line.",,,,,,,, % StrReplace(MissingHomelessItems, "`n", "  ")
         If (ErrorLevel = 0) {
             MissingHomelessItems := StrReplace(MissingHomelessItems, "  ", "`n")
             PendingHomelessMissing := getRowCount("  " MissingHomelessItems, 58, "  ")
@@ -934,9 +935,9 @@ MissingButtonDoneButton:
 
 	EmailText := {}
 	If (!InStr(Missing, "over-income")) {
-        EmailText.StartHL := (CaseDetails.Eligibility = "elig") ? "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility." : PendingHomelessPreText MissingHomelessItems
+        EmailText.StartHL := (CaseDetails.Eligibility = "elig" && Homeless = 1) ? "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. These verifications are still required, and must be received within 90 days of your application date for continued eligibility." : PendingHomelessPreText MissingHomelessItems
 
-        EmailText.EndHL := (CaseDetails.Eligibility = "elig") ? "`nThe initial approval of child care assistance is 30 hours per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.`nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children.`nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay." : ""
+        EmailText.EndHL := (CaseDetails.Eligibility = "elig" && Homeless = 1) ? "`nThe initial approval of child care assistance is 30 hours per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.`nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children.`nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay." : ""
 
         EmailText.AreOrWillBe := (Homeless = 1) ? "will be" : "are"
 
@@ -1657,7 +1658,7 @@ Letter:
 	LetterGUINumber := "LetterText" . SubStr(A_GuiControl, 0)
     If (UseMEC2FunctionsRead = 1) {
         CaseStatus := InStr(CaseDetails.DocType, "?") ? "" : (CaseDetails.DocType = "Redet") ? "Redetermination" : (Homeless = 1) ? "Homeless App" : CaseDetails.DocType
-        jsonLetterText := JSONstring("LetterTextFromAHKJSON{""LetterText"":""" %LetterGUINumber% """,""CaseStatus"":""" CaseStatus """,""IdList"":""" IdList """ }")
+        jsonLetterText := "LetterTextFromAHKJSON{""LetterText"":""" JSONstring(%LetterGUINumber%) """,""CaseStatus"":""" CaseStatus """,""IdList"":""" IdList """ }"
         Clipboard := jsonLetterText
         Send, ^v
     } Else {
