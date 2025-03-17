@@ -483,7 +483,7 @@ makeCaseNote() {
     local finishedCaseNote := {}, originalMissingEdit := MissingEdit
     local caseDetailsModified := { caseType: caseDetails.caseType, appType: caseDetails.appType, docType: caseDetails.docType, eligibility: caseDetails.eligibility, saEntered: caseDetails.saEntered }
     For i, editField in editControls {
-        %editField% := stWordWrap(%editField%, 87, "             ", 0)
+        %editField% := stWordWrap(%editField%, 87, "             ", 1)
         ;%editField% := StrReplace(%editField%, "`n", "`n             ")
     }
     finishedCaseNote.eligibility := caseDetails.eligibility
@@ -546,7 +546,7 @@ ACTIVITY:    " ActivityAndScheduleEdit "`n      SA:    " ServiceAuthorizationEdi
     verbose := 1
     If (StrLen(originalMissingEdit) > 0) {
         missingMax := StrReplace(originalMissingEdit, "`n", "`n* ")
-        missingMax := stWordWrap(missingMax, 72, "  ", 0)
+        missingMax := stWordWrap(missingMax, 72, "  ", 1)
         ;missingMax := StrReplace(missingMax, "`n(\w)", "  $1")
         finishedCaseNote.maxisNote .= "Special Letter mailed " dateObject.todayMDY " requesting:`n* " missingMax "`n"
     }
@@ -1994,9 +1994,9 @@ coordStringify(coordObjIn) {
     Return coordString
 }
 ;Missing Verification Functions
-getRowCount(Text, columns, indentString) {
+getRowCount(Text, columns, indentString, indentRow:=4) {
     indentString := StrLen(indentString) > 0 ? indentString : ""
-    Text := stWordWrap(Text, columns, indentString)
+    Text := stWordWrap(Text, columns, indentString, indentRow)
     StrReplace(Text, "`n", "`n", xCount)
     Return [Text, xCount +1]
 }
@@ -2018,37 +2018,34 @@ addToEmail(emailVerifText) {
 ;===========================================================================================================================================================================
 ;BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION 
 ;function has been rewritten to allow for increased indenting options
-stWordWrap(string, maxColumn, indentChar, indentFirst:=1) { ; indentFirst: 1 = all lines, 0 = not first, -1 = only first
-    If (StrLen(string) < 1)
+stWordWrap(string, maxColumn, indentChar, indentRow:=4) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first
+    If (!StrLen(string)) {
         Return
-    indentLength := StrLen(indentChar)
-    string := Trim(string, "`n")
-    If ( !InStr(string, "`n") && (StrLen(string) + indentLength < maxColumn) ) {
-        Return (indentFirst != 0 ? indentChar : "") string
     }
-    Loop, Parse, string, `n, `r
+    indentLength := StrLen(indentChar)
+    string := Trim(string, "`n"), firstLine := 1
+    If ( !InStr(string, "`n") && maxColumn >= (StrLen(string) + (indentRow > 1 ? indentLength : 0)) ) {
+        Return (indentRow > 1 ? indentChar : "") string
+    }
+    Loop, Parse, string, `n, `r ; A_LoopField = sentence;
     {
-        TrimLoopField := Trim(A_LoopField)
-        column := 0, currLine := 1, CombinedLen := 0
-        Loop, Parse, TrimLoopField, %A_Space% ; A_LoopField is the individual word
+        trimmedSentence := Trim(A_LoopField)
+        indentThisSentence := ( indentRow > 2 || (indentRow == 2 && firstLine) )
+        trimmedSentence := indentThisSentence ? indentChar . trimmedSentence : trimmedSentence
+        column := 0
+        Loop, Parse, trimmedSentence, %A_Space% ; A_LoopField = word;
         {
-            loopLength := StrLen(A_LoopField)
-            CombinedLen := column + loopLength
-            If (CombinedLen > maxColumn) {
-                currLine++
+            wordLength := StrLen(A_LoopField)
+            combinedLen := column + wordLength
+            If (combinedLen >= maxColumn) {
+                out .= "`n", column := 0, firstLine := 0
             }
-            If (CombinedLen >= maxColumn && column != 0) {
-                out .= "`n", column := 0, currLine++
-            }
-            indentableLine := column == 0
-            indentThisLine := ( ( indentFirst == 1 ) || ( currLine == 1 && indentFirst == -1 ) || ( currLine != 1 && indentFirst > -1 ) )
-            tempIndentChar := ( indentableLine && indentThisLine ? indentChar : "" )
-            tempIndentLength := ( indentableLine && indentThisLine ? indentLength : 0 )
-
-            out .= ( tempIndentChar A_LoopField (CombinedLen < maxColumn ? " " : "") )
-            column += ( tempIndentLength + loopLength )
+            indentThisLine := ( column == 0 && !firstLine && (indentRow == 4 || indentRow == 1) )
+            out .= ( (indentThisLine ? indentChar : "") . A_LoopField . (combinedLen < maxColumn ? " " : "") )
+            column += ( (indentThisLine ? indentLength : 0) + wordLength + 1 )
         }
-        out := Trim(out, "`n") "`n"
+        firstLine := 0
+        out := Trim(out, "`n") "`n" ; ensures it ends with a new line
     }
     Return Trim(out, "`n")
 }
