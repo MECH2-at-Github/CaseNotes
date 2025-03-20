@@ -672,6 +672,7 @@ outputCaseNoteNotepad(sendingCaseNote) {
     caseNoteEntered.maxisNoteEntered := 1
 }
 JSONstring(inputString) {
+    inputString := StrReplace(inputString, "\", "\\",, -1)
     inputString := StrReplace(inputString, "`n", "\n",, -1)
     inputString := StrReplace(inputString, """", "\""",, -1)
     Return inputString
