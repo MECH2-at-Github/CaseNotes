@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.2"
+Version := "v0.5.4"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -350,7 +350,7 @@ copySharedCustodyEditToCSCoopEdit() {
     If (StrLen(ChildSupportCooperationEdit) == 0) {
         Loop, Parse, SharedCustodyEdit, `n, `r
         {
-            colonLoc := InStr(A_LoopField, ":",, -1, 1)
+            colonLoc := InStr(A_LoopField, ":",, 0, 1)
             outputText .= SubStr(A_LoopField, 1, colonLoc) " `n"
         }
         outputText := Trim(outputText, "`n")
@@ -880,26 +880,44 @@ buildMissingGui() {
 
 
 
+;requestedVerifications := { missing: {}, missingEnum: 0, clarified: {}, clarifiedEnum: 0, asterisk: {} }
+;verificationListObj := {
+    ;IDmissing: {
+        ;verifCat: "missing",
+        ;indentText: "",
+        ;caseNoteMissing: "",
+        ;verificationText: "",
+        ;emailText: this.verificationText,
+    ;}
+;}
 
+;For verifLabel, verifData in verificationListObj {
+    ;If (%verifLabel%) {
+        ;addToVerifList(verifData.verificationText, verifData.indentText, verifData.caseNoteMissing, verifData.verifCat, verifData.emailText)
+    ;}
+;}
 
-
-
-
-
-
-
-; Use this to replace ";`n" at the end of each item, which will also then increment the list number?
-;listItemEnd(ByRef listEnum) {
-    ;listEnum++
+;addToVerifList(verifText, indentText := "", caseNoteMissing := "", missOrClar := "missing", emailVerifText) {
+    ;tempTextAndCount := getRowCount(verifText, 60, indentText)
+    ;%missOrClar%Verifications[%missOrClar%ListEnum ". " tempTextAndCount[1]] listItemEnd(%missOrClar%ListEnum) := tempTextAndCount[2]
+    ;If (caseNoteMissing != "") {
+        ;caseNoteMissingText .= caseNoteMissing
+    ;}
+    ;emailTextString .= emailListEnum ". " emailVerifText listItemEnd(emailListEnum)
+;}
+;addToEmail(emailVerifText) {
+    ;emailTextString .= emailListEnum ". " emailVerifText
+    ;emailListEnum++
+;}
+;listItemEnd(ByRef listToIncrement) {
+    ;listToIncrement++
     ;Return ";`n"
 ;}
-;listItemEnd(clarifiedListEnum)
-;listItemEnd(missingListEnum)
-;listItemEnd(emailListEnum)
-
-
-
-
+;mecCheckboxes(ByRef mecCheckboxIds, listOfIds) { ; mecCheckboxes(mecCheckboxIds, [ "proofOfBirth", "proofOfRelation", "citizenStatus" ])
+    ;For i, boxId in listOfIds {
+        ;mecCheckboxIds[boxId] := 1
+    ;}
+;}
 
 
 
@@ -1660,8 +1678,9 @@ listifyMissing(verifObj) {
     }
 }
 emailButtonClick() {
-    Clipboard := emailTextObject.output
+    Clipboard := getFirstName() emailTextObject.output
     WinActivate, % "Message - "
+    Send, ^v
 }
 setEmailText(emailTextStringIn) {
 	Gui, MainGui: Submit, NoHide
@@ -1768,6 +1787,12 @@ overIncomeSub(overIncomeString) {
     overIncomeObj.overIncomeText := overIncomeObj.overIncomeLimit "; your income is calculated as $" overIncomeObj.overIncomeReceived
     overIncomeObj.overIncomeDifference := overIncomeObj.overIncomeReceived - overIncomeObj.overIncomeLimit
     GuiControl, MissingGui: Text, % A_GuiControl, % "Over-income by $" overIncomeObj.overIncomeDifference
+}
+getFirstName() {
+    Gui, MainGui: Submit, NoHide
+    RegExMatch(HouseholdCompEdit, "[A-Za-z\-]+", firstName)
+    addedName := StrLen(firstName) ? firstName ", `n`n" : ""
+    Return addedName
 }
 ;VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION
 ;=====================================================================================================================================================================================
@@ -2038,18 +2063,6 @@ getRowCount(Text, columns, indentString, indentRow:=4) {
     StrReplace(Text, "`n", "`n", xCount)
     Return [Text, xCount +1]
 }
-addToVerifList(verifText, indentText := "", caseNoteMissing := "", missOrClar := "missing") {
-    tempTextAndCount := getRowCount(verifText, 60, indentText)
-    %missOrClar%Verifications[%missOrClar%ListEnum ". " tempTextAndCount[1]] := tempTextAndCount[2]
-    %missOrClar%ListEnum++
-    If (caseNoteMissing != "") {
-        caseNoteMissingText .= caseNoteMissing
-    }
-}
-addToEmail(emailVerifText) {
-    emailTextString .= emailListEnum ". " emailVerifText
-    emailListEnum++
-}
 ;MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS
 ;=======================================================================================================================================================================
 
@@ -2160,7 +2173,7 @@ Return
 
 #m::
     If WinActive("Message" ahk_exe Outlook.exe) {
-        Clipboard := emailTextObject.output
+        Clipboard := getFirstName() emailTextObject.output
         Send, ^v
     } Else If WinActive(ini.employeeInfo.employeeBrowser) {
         Gui, MainGui: Submit, NoHide
