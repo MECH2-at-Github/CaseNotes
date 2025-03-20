@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.0"
+Version := "v0.5.2"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -667,12 +667,14 @@ outputCaseNoteNotepad(sendingCaseNote) {
     }
     maxisLabel := "`n`n== MAXIS Note ==`n"
     FileAppend, % "====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ======`n" sendingCaseNote.mec2CaseNote "`n`n====== Email ======`n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n== MAXIS Note ==`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n", % A_Desktop "\" notepadFileName ".txt"
-    GuiControl, MainGui:Text, notepadBackup, % "Desktop ✔"
+    GuiControl, MainGui:Text, notepadNoteButton, % "Desktop ✔"
     caseNoteEntered.mec2NoteEntered := 1
     caseNoteEntered.maxisNoteEntered := 1
 }
 JSONstring(inputString) {
-    return StrReplace(StrReplace(inputString, "`n", "\n",, -1), """", "`\""",,-1)
+    inputString := StrReplace(inputString, "`n", "\n",, -1)
+    inputString := StrReplace(inputString, """", "\""",, -1)
+    Return inputString
 }
 ;BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION
 ;=====================================================================================================================================================================================================
@@ -704,8 +706,8 @@ calcDates() {
     dateObject.recdPlusFortyfiveYMD := addDays(dateObject.receivedYMD, 44)
     dateObject.todayPlusFifteenishYMD := addFifteenishDays(dateObject.todayYMD)
     dateObject.recdPlusFifteenishYMD := addFifteenishDays(dateObject.receivedYMD)
-    NeedsNoExtension := subtractDates(dateObject.autoDenyYMD, dateObject.todayPlusFifteenishYMD)
-    NeedsExtension := subtractDates(dateObject.recdPlusFortyfiveYMD, dateObject.todayPlusFifteenishYMD)
+    dateObject.needsNoExtension := subtractDates(dateObject.autoDenyYMD, dateObject.todayPlusFifteenishYMD)
+    dateObject.needsExtension := subtractDates(dateObject.recdPlusFortyfiveYMD, dateObject.todayPlusFifteenishYMD)
     
     dateObject.SignedYMD := SignDate
     dateObject.SignedMDY := formatMDY(SignDate)
@@ -714,11 +716,11 @@ calcDates() {
     autoDenyObject.autoDenyExtensionSpecLetter :=
     If (caseDetails.docType == "Application") {
         If (caseDetails.eligibility == "pends") {
-            If (NeedsNoExtension > -1) {
+            If (dateObject.needsNoExtension > -1) {
                 autoDenyObject.autoDenyExtensionDate := formatMDY(dateObject.autoDenyYMD)
                 autoDenyObject.autoDenyExtensionSpecLetter := "*You have through " autoDenyObject.autoDenyExtensionDate " to submit required verifications."
                 GuiControl, MainGui: Text, autoDenyStatus, % "Has 15+ days before auto-deny"
-            } Else If (NeedsExtension > -1) {
+            } Else If (dateObject.needsExtension > -1) {
                 autoDenyObject.autoDenyExtensionDate := formatMDY(dateObject.todayPlusFifteenishYMD)
                 autoDenyObject.autoDenyExtensionMECnote := "Auto-deny extended to " autoDenyObject.autoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
                 autoDenyObject.autoDenyExtensionSpecLetter := "*You have through " autoDenyObject.autoDenyExtensionDate " to submit required verifications."
@@ -873,6 +875,41 @@ buildMissingGui() {
     Gui, MissingGui: Add, Button, % "x+20 w42 h17 hidden gletterButtonClick vletter4", % "Letter 4"
     Gui, MissingGui: Show, % "Hide x" ini.caseNotePositions.xVerification " y" ini.caseNotePositions.yVerification
 }
+
+
+
+
+
+
+
+
+
+
+
+
+; Use this to replace ";`n" at the end of each item, which will also then increment the list number?
+;listItemEnd(ByRef listEnum) {
+    ;listEnum++
+    ;Return ";`n"
+;}
+;listItemEnd(clarifiedListEnum)
+;listItemEnd(missingListEnum)
+;listItemEnd(emailListEnum)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 missingVerifsDoneButton() {
     Global
 	Gui, MainGui: Submit, NoHide
@@ -882,7 +919,7 @@ missingVerifsDoneButton() {
     emailTextString := "", emailTextObject := {}
     ;LetterText1 := "", LetterText2 := "", LetterText3 := "", LetterText4 := "", 
     mecCheckboxIds := {}
-    letterTextVar := "LetterText1", letterNumber := 1, letterTextNumber := 1, letterText := {}
+    letterNumber := 1, letterTextNumber := 1, letterText := {}
     lineNumber := 1, missingListEnum := 1, clarifiedListEnum := 1, emailListEnum := 1, lineCount := 0
     caseNoteMissingText := ""
 	local missingVerifications := {}, clarifiedVerifications := {}
@@ -894,7 +931,7 @@ missingVerifsDoneButton() {
 	GuiControl, MissingGui: Hide, % "letter4"
     
     If overIncomeMissing {
-        overIncomeMissingText1 := "Using information you provided your case is ineligible as your income is over the limit for a household of " overIncomeObj.overIncomeHHsize ". The gross limit is $" overIncomeObj.overIncomeText ".`n"
+        overIncomeMissingText1 := "Using information you provided, your case is ineligible as your income is over the limit for a household of " overIncomeObj.overIncomeHHsize ". The gross limit is $" overIncomeObj.overIncomeText ".`n"
         overIncomeMissingText2 := "If your gross income does not match this calculation, you must" countySpecificText[ini.employeeInfo.employeeCounty].OverIncomeContactInfo " submit updated income and expense documents along with the following verifications:`n"
         emailTextString := "Your Child Care Assistance " mec2docType " has been processed.`n`n" overIncomeMissingText1 overIncomeMissingText2 "`n"
         missingVerifications[overIncomeMissingText1] := 3
@@ -1026,7 +1063,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
         emailListEnum++
     }
 	If ChildSchoolMissing {
-        ChildSchoolMissingText := "Child's school information (location, grade, start/end times) - does not need to be verification from the school;`n"
+        ChildSchoolMissingText := "Child's school information (location, grade, start/end times) - does not need to be verified by the school;`n"
         emailTextString .= emailListEnum ". " ChildSchoolMissingText
 		caseNoteMissingText .= "Child school information;`n"
         mecCheckboxIds.childSchoolSchedule := 2
@@ -1060,7 +1097,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
     }
 ;======================================================
 	If IncomeMissing {
-        IncomeText := NeedsExtension > -1 ? " your most recent 30 days income" : caseDetails.docType == "Redet" ? " 30 days income prior to " dateObject.SignedMDY : " 30 days income prior to " dateObject.receivedMDY
+        IncomeText := dateObject.needsExtension > -1 ? " your most recent 30 days income" : caseDetails.docType == "Redet" ? " 30 days income prior to " dateObject.SignedMDY : " 30 days income prior to " dateObject.receivedMDY
         ; IncomeText := if doesn't need extension : elseif redetermination : elseif app needs extension
         IncomeMissingText := "Verification of" IncomeText ";`n"
         clarifiedVerifications[clarifiedListEnum ". Proof of Financial Information: " IncomeMissingText] := 2
@@ -1072,7 +1109,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
         ;MEC2 text: Proof of Financial Information- You can provide proof of financial information and income with the last 30 days of check stubs, income tax records, business ledger, award letter, or a letter from your employer with pay rate, number of hours worked per week and how often you are paid.
     }
 	If IncomePlusNameMissing {
-        IncomeText := NeedsExtension > -1 ? missingInput.IncomePlusNameMissing "'s most recent 30 days income" : caseDetails.docType == "Redet" ? missingInput.IncomePlusNameMissing "'s 30 days income prior to " dateObject.SignedMDY : missingInput.IncomePlusNameMissing "'s 30 days income prior to " dateObject.receivedMDY
+        IncomeText := dateObject.needsExtension > -1 ? missingInput.IncomePlusNameMissing "'s most recent 30 days income" : caseDetails.docType == "Redet" ? missingInput.IncomePlusNameMissing "'s 30 days income prior to " dateObject.SignedMDY : missingInput.IncomePlusNameMissing "'s 30 days income prior to " dateObject.receivedMDY
         IncomeMissingText := "Verification of " IncomeText ";`n"
         clarifiedVerifications[clarifiedListEnum ". Proof of Financial Information: " IncomeMissingText] := 2
         emailTextString .= emailListEnum ". " IncomeMissingText
@@ -1082,7 +1119,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
         mecCheckboxIds.proofOfFInfo := 1
     }
 	If WorkScheduleMissing {
-        WorkScheduleText := NeedsExtension > -1 ? " your work schedule" : caseDetails.docType == "Redet" ? " work schedule from " dateObject.SignedMDY : " work schedule from " dateObject.receivedMDY
+        WorkScheduleText := dateObject.needsExtension > -1 ? " your work schedule" : caseDetails.docType == "Redet" ? " work schedule from " dateObject.SignedMDY : " work schedule from " dateObject.receivedMDY
         WorkScheduleMissingText := "Verification of" WorkScheduleText " showing days of the week and start/end times;`n"
         clarifiedVerifications[clarifiedListEnum ". Proof of Activity Schedule: " WorkScheduleMissingText] := 2
         emailTextString .= emailListEnum ". " WorkScheduleMissingText
@@ -1093,7 +1130,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
         ;MEC2 text: Proof of Activity Schedule- You can provide proof of adult activity schedules with work schedules, school schedules, time cards, or letter from the employer or school with the days and times working or in school. If you have a flexible work schedule, include a statement with typical or possible times worked.
     }
 	If WorkSchedulePlusNameMissing {
-        WorkScheduleText := NeedsExtension > -1 ? missingInput.WorkSchedulePlusNameMissing "'s work schedule" : caseDetails.docType == "Redet" ? missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.SignedMDY : missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.receivedMDY
+        WorkScheduleText := dateObject.needsExtension > -1 ? missingInput.WorkSchedulePlusNameMissing "'s work schedule" : caseDetails.docType == "Redet" ? missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.SignedMDY : missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.receivedMDY
         WorkScheduleMissingText := "Verification of " WorkScheduleText " showing days of the week and start/end times;`n"
         clarifiedVerifications[clarifiedListEnum ". Proof of Activity Schedule: " WorkScheduleMissingText] := 2
         emailTextString .= emailListEnum ". " WorkScheduleMissingText
@@ -1398,7 +1435,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
 			caseNoteMissingText .= otherText ";`n"
             otherTextTemp := getRowCount(missingListEnum ". " otherText, 60, "")
 			missingVerifications[otherTextTemp[1]] := otherTextTemp[2]
-            emailTextString .= emailListEnum ". " otherText
+            emailTextString .= emailListEnum ". " otherTextTemp[1]
 			missingListEnum++
             emailListEnum++
         ;}
@@ -1475,7 +1512,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
 		caseNoteMissingText .= "Eligible activity after the 3-month homeless period;`n"
     }
 	If NoProviderMissing {
-        NoProviderMissingText := "* Once you have a daycare provider, please notify me with the provider’s name, location, and the start date.`n`n   If you need help locating a daycare provider, contact Parent Aware at 888-291-9811 or www.parentaware.org/search`n"
+        NoProviderMissingText := "`n* Once you have a daycare provider, please notify me with the provider’s name, location, and the start date.`n   If you need help locating a daycare provider, contact Parent Aware at 888-291-9811 or www.parentaware.org/search`n"
         emailTextString .= NoProviderMissingText
 		caseNoteMissingText .= "Provider;`n"
         mecCheckboxIds.providerInformation := 1
@@ -1727,9 +1764,9 @@ overIncomeSub(overIncomeString) {
     }
     overIncomeObj.overIncomeReceived := Round(StrReplace(overIncomeEntriesArray[1], ","))
     overIncomeObj.overIncomeLimit := StrReplace(overIncomeEntriesArray[2], ",")
-    overIncomeObj.overIncomeText := overIncomeObj.overIncomeLimit ", your income is calculated as $" overIncomeObj.overIncomeReceived
+    overIncomeObj.overIncomeText := overIncomeObj.overIncomeLimit "; your income is calculated as $" overIncomeObj.overIncomeReceived
     overIncomeObj.overIncomeDifference := overIncomeObj.overIncomeReceived - overIncomeObj.overIncomeLimit
-    GuiControl,, % A_GuiControl, % "Over-income by $" overIncomeObj.overIncomeDifference
+    GuiControl, MissingGui: Text, % A_GuiControl, % "Over-income by $" overIncomeObj.overIncomeDifference
 }
 ;VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION
 ;=====================================================================================================================================================================================
@@ -2018,12 +2055,12 @@ addToEmail(emailVerifText) {
 ;===========================================================================================================================================================================
 ;BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION 
 ;function has been rewritten to allow for increased indenting options
-stWordWrap(string, maxColumn, indentChar, indentRow:=4) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first
+stWordWrap(string, maxColumn, indentChar, indentRow:=4) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
     If (!StrLen(string)) {
         Return
     }
-    indentLength := StrLen(indentChar)
-    string := Trim(string, "`n"), firstLine := 1
+    indentLength := StrLen(indentChar), indentRow = indentLength > 0 ? indentRow : 0
+    string := RTrim(string, "`n"), firstLine := 1
     If ( !InStr(string, "`n") && maxColumn >= (StrLen(string) + (indentRow > 1 ? indentLength : 0)) ) {
         Return (indentRow > 1 ? indentChar : "") string
     }
@@ -2036,18 +2073,18 @@ stWordWrap(string, maxColumn, indentChar, indentRow:=4) { ; indentRow: 4 = all l
         Loop, Parse, trimmedSentence, %A_Space% ; A_LoopField = word;
         {
             wordLength := StrLen(A_LoopField)
-            combinedLen := column + wordLength
-            If (combinedLen >= maxColumn) {
+            lineLength := column + wordLength
+            If (lineLength >= maxColumn) {
                 out .= "`n", column := 0, firstLine := 0
             }
             indentThisLine := ( column == 0 && !firstLine && (indentRow == 4 || indentRow == 1) )
-            out .= ( (indentThisLine ? indentChar : "") . A_LoopField . (combinedLen < maxColumn ? " " : "") )
+            out .= ( (indentThisLine ? indentChar : "") . A_LoopField . (lineLength < maxColumn ? " " : "") )
             column += ( (indentThisLine ? indentLength : 0) + wordLength + 1 )
         }
         firstLine := 0
-        out := Trim(out, "`n") "`n" ; ensures it ends with a new line
+        out := RTrim(out, "`n") "`n" ; ensures it ends with a new line
     }
-    Return Trim(out, "`n")
+    Return RTrim(out, "`n")
 }
 Class orderedAssociativeArray { ; Capt Odin https://www.autohotkey.com/boards/viewtopic.php?t=37083
 	__New() {
@@ -2122,20 +2159,20 @@ Return
 
 #m::
     If WinActive("Message" ahk_exe Outlook.exe) {
-        Clipboard := finishedCaseNote.email
+        Clipboard := emailTextObject.output
         Send, ^v
     } Else If WinActive(ini.employeeInfo.employeeBrowser) {
         Gui, MainGui: Submit, NoHide
         Gui, MissingGui: Submit, NoHide
         Sleep 200
         If (ini.employeeInfo.employeeUseMec2Functions == 1) {
-            CaseStatus := InStr(caseDetails.docType, "?") ? "" : (Homeless == 1) ? "Homeless App" : (caseDetails.docType == "Redet") ? "Redetermination" : caseDetails.docType
-            jsonLetterText := "LetterTextFromAHKJSON{""letterText"":""" JSONstring(LetterText1) """,""CaseStatus"":""" CaseStatus """,""idList"":""" idList """ }"
+            caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (Homeless == 1) ? "Homeless App" : caseDetails.docType
+            jsonLetterText := "LetterTextFromAHKJSON{""LetterText"":""" JSONstring(letterText[1]) """,""CaseStatus"":""" caseStatus """,""IdList"":""" idList """ }"
             Clipboard := jsonLetterText
             Sleep 200
             Send, ^v
         } Else {
-            Clipboard := LetterText1
+            Clipboard := LetterText[1]
             Sleep 200
             Send, ^v
         }
@@ -2347,7 +2384,7 @@ If (ini.employeeInfo.employeeCounty == "Dakota") {
             reviewString := "Reviewed case for verifications that are required at application. Verifications were received.`n-`nApproved eligible results effective " approvedDate ".`n-`nService Authorization " saApprovalInfo ".`n=====`n" ini.employeeInfo.employeeName
             noteTitle := "Reviewed application requirements - approved elig"
             If (ini.employeeInfo.employeeUseMec2Functions == 1) {
-                jsonCaseNote := "CaseNoteFromAHKJSON{""notedocType"":""Application Approved"",""noteTitle"":""" noteTitle """,""noteText"":""" JSONstring(reviewString) """,""noteElig"":""" elig """ }"
+                jsonCaseNote := "CaseNoteFromAHKJSON{""notedocType"":""Application Approved"",""noteTitle"":""" noteTitle """,""noteText"":""" JSONstring(reviewString) """,""noteElig"":""elig"" }"
                 Clipboard := jsonCaseNote
                 Send, ^v
             } Else {
@@ -2371,7 +2408,7 @@ If (ini.employeeInfo.employeeCounty == "Dakota") {
             reviewString := "Reviewed case for documents that are required at application. Documents were not received.`n-`nApplication was denied by MEC2 and remains denied.`n=====`n" ini.employeeInfo.employeeName
             noteTitle := "Reviewed application requirements - app denied"
             If (ini.employeeInfo.employeeUseMec2Functions == 1) {
-                jsonCaseNote := "CaseNoteFromAHKJSON{""notedocType"":""Application Approved"",""noteTitle"":""" noteTitle """,""noteText"":""" JSONstring(reviewString) """,""noteElig"":""" ineligible """ }"
+                jsonCaseNote := "CaseNoteFromAHKJSON{""notedocType"":""Application Approved"",""noteTitle"":""" noteTitle """,""noteText"":""" JSONstring(reviewString) """,""noteElig"":""ineligible"" }"
                 Clipboard := jsonCaseNote
                 Send, ^v
             } Else {
