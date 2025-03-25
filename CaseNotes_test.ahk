@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.5"
+Version := "v0.5.6"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -483,7 +483,7 @@ makeCaseNote() {
     local finishedCaseNote := {}, originalMissingEdit := MissingEdit
     local caseDetailsModified := { caseType: caseDetails.caseType, appType: caseDetails.appType, docType: caseDetails.docType, eligibility: caseDetails.eligibility, saEntered: caseDetails.saEntered }
     For i, editField in editControls {
-        %editField% := stWordWrap(%editField%, 100, "             ", 1)
+        %editField% := stWordWrap(%editField%, 100, "             ", 1, 1)
         ;%editField% := StrReplace(%editField%, "`n", "`n             ")
     }
     finishedCaseNote.eligibility := caseDetails.eligibility
@@ -2063,13 +2063,16 @@ getRowCount(textString, maxColumns, indentString:="", indentRow:=4) {
     Return [textString, xCount +1]
 }
 ;function has been rewritten to allow for increased indenting options
-stWordWrap(completeString, maxColumns, indentString:="", indentRow:=4) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
+stWordWrap(completeString, maxColumns, indentString:="", indentRow:=4, reduceRowOneByIndent:=0) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
     If (!StrLen(completeString)) {
         Return
     }
     indentLength := StrLen(indentString), indentRow = indentLength > 0 ? indentRow : 0
     completeString := RTrim(completeString, "`n"), firstLine := 1
-    If ( !InStr(completeString, "`n") && maxColumns >= (StrLen(completeString) + (indentRow > 1 ? indentLength : 0)) ) {
+    If (
+        !InStr(completeString, "`n")
+        && (reduceRowOneByIndent ? maxColumns - indentLength : maxColumns)
+        >= ( StrLen(completeString) + (indentRow > 1 ? indentLength : 0) ) ) {
         Return (indentRow > 1 ? indentString : "") completeString
     }
     Loop, Parse, completeString, `n, `r ; A_LoopField == sentence;
@@ -2082,7 +2085,7 @@ stWordWrap(completeString, maxColumns, indentString:="", indentRow:=4) { ; inden
         {
             wordLength := StrLen(A_LoopField)
             lineLength := column + wordLength
-            If (lineLength > maxColumns) {
+            If (lineLength > ( (firstLine && reduceRowOneByIndent) ? maxColumns - indentLength : maxColumns ) ) {
                 out .= "`n", column := 0, firstLine := 0
             }
             indentThisLine := ( column == 0 && !firstLine && (indentRow == 4 || indentRow == 1) )
