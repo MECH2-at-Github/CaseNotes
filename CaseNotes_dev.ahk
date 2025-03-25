@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.4"
+Version := "v0.5.5"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -483,7 +483,7 @@ makeCaseNote() {
     local finishedCaseNote := {}, originalMissingEdit := MissingEdit
     local caseDetailsModified := { caseType: caseDetails.caseType, appType: caseDetails.appType, docType: caseDetails.docType, eligibility: caseDetails.eligibility, saEntered: caseDetails.saEntered }
     For i, editField in editControls {
-        %editField% := stWordWrap(%editField%, 87, "             ", 1)
+        %editField% := stWordWrap(%editField%, 100, "             ", 1)
         ;%editField% := StrReplace(%editField%, "`n", "`n             ")
     }
     finishedCaseNote.eligibility := caseDetails.eligibility
@@ -546,7 +546,7 @@ ACTIVITY:    " ActivityAndScheduleEdit "`n      SA:    " ServiceAuthorizationEdi
     verbose := 1
     If (StrLen(originalMissingEdit) > 0) {
         missingMax := StrReplace(originalMissingEdit, "`n", "`n* ")
-        missingMax := stWordWrap(missingMax, 72, "  ", 1)
+        missingMax := stWordWrap(missingMax, 74, "  ", 1)
         ;missingMax := StrReplace(missingMax, "`n(\w)", "  $1")
         finishedCaseNote.maxisNote .= "Special Letter mailed " dateObject.todayMDY " requesting:`n* " missingMax "`n"
     }
@@ -880,7 +880,7 @@ buildMissingGui() {
 
 
 
-;requestedVerifications := { missing: {}, missingEnum: 0, clarified: {}, clarifiedEnum: 0, asterisk: {} }
+;reqVerifs := { missing: {}, missingEnum: 0, clarified: {}, clarifiedEnum: 0, asterisk: {} }
 ;verificationListObj := {
     ;IDmissing: {
         ;verifCat: "missing",
@@ -893,11 +893,11 @@ buildMissingGui() {
 
 ;For verifLabel, verifData in verificationListObj {
     ;If (%verifLabel%) {
-        ;addToVerifList(verifData.verificationText, verifData.indentText, verifData.caseNoteMissing, verifData.verifCat, verifData.emailText)
+        ;addToVerifList(verifData)
     ;}
 ;}
 
-;addToVerifList(verifText, indentText := "", caseNoteMissing := "", missOrClar := "missing", emailVerifText) {
+;addToVerifList(verifData) { ; verifCat; indentText; 
     ;tempTextAndCount := getRowCount(verifText, 60, indentText)
     ;%missOrClar%Verifications[%missOrClar%ListEnum ". " tempTextAndCount[1]] listItemEnd(%missOrClar%ListEnum) := tempTextAndCount[2]
     ;If (caseNoteMissing != "") {
@@ -967,8 +967,8 @@ Before we can approve expedited eligibility, we need information that was not on
         InputBox, missingHomelessItems, % "Homeless Info Missing", % "What information is needed from the client to approve expedited eligibility?`n`nUse a double space ""  "" without quotation marks to start a new line.",,,,,,,, % StrReplace(missingHomelessItems, "`n", "  ")
         If (ErrorLevel == 0) {
             missingHomelessItems := StrReplace(missingHomelessItems, "  ", "`n")
-            pendingHomelessMissing := getRowCount("  " missingHomelessItems, 58, "  ")
-            missingVerifications[stWordWrap(PendingHomelessPreText, 59, " ") "`n"] := 8
+            pendingHomelessMissing := getRowCount("  " missingHomelessItems, 60, "  ")
+            missingVerifications[stWordWrap(PendingHomelessPreText, 60, " ") "`n"] := 8
             missingVerifications[pendingHomelessMissing[1] "`n"] := pendingHomelessMissing[2]
             caseNoteMissingText .= "Missing for expedited approval:`n" StrReplace(missingHomelessItems, "`n", "`n  ") ";`n"
         }
@@ -1230,7 +1230,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
     }
 ;----------------------------
 	If ExpensesMissing {
-        ExpensesMissingText := "Proof of Deductions: Healthcare Insurance premiums, child support, and spousal support - if not listed on submitted paystubs;`n"
+        ExpensesMissingText := "Proof of Expenses: Healthcare Insurance premiums, child support, and spousal support - if not listed on submitted paystubs;`n"
         emailTextString .= emailListEnum ". " ExpensesMissingText
 		caseNoteMissingText .= "Expenses;`n"
         emailListEnum++
@@ -1379,7 +1379,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
             ;AnsweredBoth == " or"
         ;}
         ;UnansweredText .= "* Submit verification if you answered" AnsweredYes AnsweredBoth AnsweredMoreThan ". *`n"
-        ;UnansweredText := stWordWrap(UnansweredText, 59, " ")
+        ;UnansweredText := stWordWrap(UnansweredText, 60, " ")
 			;UnansweredTextCount := 0
 			;StrReplace(UnansweredText, "`n", "`n", UnansweredTextCount)
 			;UnansweredTextCount++
@@ -1454,7 +1454,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
 			caseNoteMissingText .= otherText ";`n"
             otherTextTemp := getRowCount(missingListEnum ". " otherText, 60, "")
 			missingVerifications[otherTextTemp[1]] := otherTextTemp[2]
-            emailTextString .= emailListEnum ". " otherTextTemp[1]
+            emailTextString .= emailListEnum ". " otherText
 			missingListEnum++
             emailListEnum++
         ;}
@@ -1552,23 +1552,21 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
 ; End of verif revamp section ============================================
     caseDetails.haveWaitlist := (caseDetails.caseType == "BSF" && caseDetails.eligibility == "ineligible" && ini.caseNoteCountyInfo.Waitlist > 1)
     If (!caseDetails.haveWaitlist) {
-        FaxAndEmailWrapped := faxAndEmailText()
-        FaxAndEmailWrapped := getRowCount(FaxAndEmailWrapped, 60, " ")
-        AutoDeny := getRowCount(autoDenyObject.autoDenyExtensionSpecLetter, 60, "")
-        clarifiedVerifications[ "NewLineAutoreplace" FaxAndEmailWrapped[1] "`nNewLineAutoreplace" AutoDeny[1] ] := FaxAndEmailWrapped[2]+AutoDeny[2]
-        emailTextString .= AutoDeny[1] 
+        faxAndEmailWrapped := faxAndEmailText()
+        faxAndEmailWrapped := getRowCount(faxAndEmailWrapped, 60, " ")
+        autoDeny := getRowCount(autoDenyObject.autoDenyExtensionSpecLetter, 60, "")
+        clarifiedVerifications[ "NEWLINE" faxAndEmailWrapped[1] "`nNEWLINE" autoDeny[1] ] := faxAndEmailWrapped[2]+autoDeny[2]
+        emailTextString .= autoDeny[1] 
     }
 
-    mecCheckboxIds.other := 1
-    idList := ""
+    idList := "other"
     For checkboxId in mecCheckboxIds {
-        idList .= StrLen(idList) > 1 ? "," checkboxId : checkboxId
+        idList .= "," checkboxId
     }
-    
     insertAtOffset := (caseDetails.eligibility == "pends" && Homeless) ? 2 : 0
     If ( !overIncomeMissing && !caseDetails.haveWaitlist && !manualWaitlistBox && missingVerifications.Length() > (0 + insertAtOffset) ) {
         If (StrLen(idList) > 5 || insertAtOffset == 2) { ; "other" will always add at least 5
-            missingVerifications.InsertAt(1 + insertAtOffset, "__In addition to the above, please submit following items:__`n", 1)
+            missingVerifications.InsertAt(1 + insertAtOffset, "In addition to the above, please submit the following items:`n", 1)
         }
         Else If (StrLen(idList) == 5) {
             missingVerifications.InsertAt(1+ insertAtOffset, "_____________Please submit the following items:_____________`n", 1)
@@ -1598,7 +1596,8 @@ Due to limited funding, new eligibility for CCAP in " countySpecificText[ini.emp
         caseNoteMissingText .= "Approved MFIP/DWP or meet current Waitlist criteria;`n"
     }
     If (clarifiedVerifications.Length() > 1) {
-        clarifiedVerifications.InsertAt(1, "__Clarification of items listed above the Worker Comments:__`n", 1)
+        clarifiedVerifications.InsertAt(1, (missingVerifications.Length() > 1 ? "`n`n" : "") "__Clarification of items listed above the Worker Comments:__`n", 1)
+        ;clarifiedVerifications.InsertAt(1, "__Clarification of items listed above the Worker Comments:__`n", 1)
     }
     emailTextObject.output := setEmailText(emailTextString)
     listifyMissingObject := { 1missing: { arrayLines: 0, verificationList: missingVerifications }, 2clarified: { arrayLines: countLines(clarifiedVerifications), verificationList: clarifiedVerifications } }
@@ -1608,8 +1607,8 @@ Due to limited funding, new eligibility for CCAP in " countySpecificText[ini.emp
 	caseNoteMissingText := Trim(caseNoteMissingText, "`n") ; removes the last new line
     For i, letterTextContents in letterText {
         If (InStr(letterTextContents, "__Clarification",,2)) {
-            StrReplace(stWordWrap(letterTextContents, 60, ""), "`n", "`n", LetterLineCount)
-            If (LetterLineCount < 27) {
+            StrReplace(stWordWrap(letterTextContents, 60, ""), "`n", "`n", letterLineCount)
+            If (letterLineCount < 27) {
                 letterText[i] := StrReplace(letterTextContents, "__Clarification", "`n__Clarification")
             }
         }
@@ -1646,24 +1645,24 @@ listifyMissing(verifObj) {
         lineCount := 1 ; For the continued from line
     }
     For missingText, missingLineCount in verifObj.verificationList {
-        If (InStr(missingText, "NewLineAutoreplace")) { ; last missingText in group
-            LineCountPlusFaxed := lineCount + missingLineCount
-            If (LineCountPlusFaxed == 30) {
-                missingText := StrReplace(missingText, "NewLineAutoreplace", "")
-                missingText := StrReplace(missingText, "NewLineAutoreplace", "")
-            } Else If (LineCountPlusFaxed > 30) {
-                missingText := StrReplace(missingText, "NewLineAutoreplace", "`n")
-                missingText := StrReplace(missingText, "NewLineAutoreplace", "`n")
+        If (InStr(missingText, "NEWLINE")) { ; last missingText in group
+            lineCountPlusFaxed := lineCount + missingLineCount
+            If (lineCountPlusFaxed == 30) {
+                missingText := StrReplace(missingText, "NEWLINE", "")
+                missingText := StrReplace(missingText, "NEWLINE", "")
+            } Else If (lineCountPlusFaxed > 30) {
+                missingText := StrReplace(missingText, "NEWLINE", "`n")
+                missingText := StrReplace(missingText, "NEWLINE", "`n")
                 incrementLetterPage(letterTextNumber)
             } Else {
-                While (InStr(missingText, "NewLineAutoreplace") && LineCountPlusFaxed < 30) {
-                    missingText := StrReplace(missingText, "NewLineAutoreplace", "`n",,1)
-                    LineCountPlusFaxed++
+                While (InStr(missingText, "NEWLINE") && lineCountPlusFaxed < 30) {
+                    missingText := StrReplace(missingText, "NEWLINE", "`n",,1)
+                    lineCountPlusFaxed++
                 }
-                missingText := StrReplace(missingText, "NewLineAutoreplace", "")
+                missingText := StrReplace(missingText, "NEWLINE", "")
             }
             letterText[letterTextNumber] .= missingText
-        } Else { ; does not contain "NewLineAutoreplace"
+        } Else { ; does not contain "NEWLINE"
             If ((lineCount + missingLineCount) > 29) {
             
                 incrementLetterPage(letterTextNumber)
@@ -1789,6 +1788,7 @@ overIncomeSub(overIncomeString) {
     GuiControl, MissingGui: Text, % A_GuiControl, % "Over-income by $" overIncomeObj.overIncomeDifference
 }
 getFirstName() {
+    Global
     Gui, MainGui: Submit, NoHide
     RegExMatch(HouseholdCompEdit, "[A-Za-z\-]+", firstName)
     addedName := StrLen(firstName) ? firstName ", `n`n" : ""
@@ -2056,43 +2056,37 @@ coordStringify(coordObjIn) {
     }
     Return coordString
 }
-;Missing Verification Functions
-getRowCount(Text, columns, indentString, indentRow:=4) {
-    indentString := StrLen(indentString) > 0 ? indentString : ""
-    Text := stWordWrap(Text, columns, indentString, indentRow)
-    StrReplace(Text, "`n", "`n", xCount)
-    Return [Text, xCount +1]
+getRowCount(textString, maxColumns, indentString:="", indentRow:=4) {
+    ;indentString := StrLen(indentString) > 0 ? indentString : ""
+    textString := stWordWrap(textString, maxColumns, indentString, indentRow)
+    StrReplace(textString, "`n", "`n", xCount)
+    Return [textString, xCount +1]
 }
-;MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS
-;=======================================================================================================================================================================
-
-;===========================================================================================================================================================================
-;BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION 
 ;function has been rewritten to allow for increased indenting options
-stWordWrap(string, maxColumn, indentChar, indentRow:=4) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
-    If (!StrLen(string)) {
+stWordWrap(completeString, maxColumns, indentString:="", indentRow:=4) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
+    If (!StrLen(completeString)) {
         Return
     }
-    indentLength := StrLen(indentChar), indentRow = indentLength > 0 ? indentRow : 0
-    string := RTrim(string, "`n"), firstLine := 1
-    If ( !InStr(string, "`n") && maxColumn >= (StrLen(string) + (indentRow > 1 ? indentLength : 0)) ) {
-        Return (indentRow > 1 ? indentChar : "") string
+    indentLength := StrLen(indentString), indentRow = indentLength > 0 ? indentRow : 0
+    completeString := RTrim(completeString, "`n"), firstLine := 1
+    If ( !InStr(completeString, "`n") && maxColumns >= (StrLen(completeString) + (indentRow > 1 ? indentLength : 0)) ) {
+        Return (indentRow > 1 ? indentString : "") completeString
     }
-    Loop, Parse, string, `n, `r ; A_LoopField = sentence;
+    Loop, Parse, completeString, `n, `r ; A_LoopField == sentence;
     {
         trimmedSentence := Trim(A_LoopField)
         indentThisSentence := ( indentRow > 2 || (indentRow == 2 && firstLine) )
         trimmedSentence := indentThisSentence ? indentChar . trimmedSentence : trimmedSentence
         column := 0
-        Loop, Parse, trimmedSentence, %A_Space% ; A_LoopField = word;
+        Loop, Parse, trimmedSentence, %A_Space% ; A_LoopField == word;
         {
             wordLength := StrLen(A_LoopField)
             lineLength := column + wordLength
-            If (lineLength >= maxColumn) {
+            If (lineLength > maxColumns) {
                 out .= "`n", column := 0, firstLine := 0
             }
             indentThisLine := ( column == 0 && !firstLine && (indentRow == 4 || indentRow == 1) )
-            out .= ( (indentThisLine ? indentChar : "") . A_LoopField . (lineLength < maxColumn ? " " : "") )
+            out .= ( (indentThisLine ? indentString : "") . A_LoopField " " )
             column += ( (indentThisLine ? indentLength : 0) + wordLength + 1 )
         }
         firstLine := 0
@@ -2100,6 +2094,11 @@ stWordWrap(string, maxColumn, indentChar, indentRow:=4) { ; indentRow: 4 = all l
     }
     Return RTrim(out, "`n")
 }
+;MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS
+;=======================================================================================================================================================================
+
+;===========================================================================================================================================================================
+;BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION - BORROWED FUNCTIONS SECTION 
 Class orderedAssociativeArray { ; Capt Odin https://www.autohotkey.com/boards/viewtopic.php?t=37083
 	__New() {
 		ObjRawSet(this, "__Data", {})
