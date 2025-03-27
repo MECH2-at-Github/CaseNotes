@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.6"
+Version := "v0.5.7"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -47,7 +47,7 @@ SetWorkingDir % A_ScriptDir
 #NoTrayIcon
 SetTitleMatchMode, RegEx
 setIcon()
-Global verbose := 0
+Global verbose := 1
 
 ;Settings
 Global ini := { cbtPositions: { xClipboard: 0, yClipboard: 0 }
@@ -543,12 +543,12 @@ ACTIVITY:    " ActivityAndScheduleEdit "`n      SA:    " ServiceAuthorizationEdi
         }
         finishedCaseNote.maxisNote .= "`n"
     }
-    verbose := 1
     If (StrLen(originalMissingEdit) > 0) {
-        missingMax := StrReplace(originalMissingEdit, "`n", "`n* ")
-        missingMax := stWordWrap(missingMax, 74, "  ", 1)
+        ;missingMax := StrReplace(originalMissingEdit, "`n", "`n* ")
+        ;missingMax := stWordWrap(missingMax, 74, "* ", 4)
+        missingMax := stWordWrap(originalMissingEdit, 74, "* ", 4)
         ;missingMax := StrReplace(missingMax, "`n(\w)", "  $1")
-        finishedCaseNote.maxisNote .= "Special Letter mailed " dateObject.todayMDY " requesting:`n* " missingMax "`n"
+        finishedCaseNote.maxisNote .= "Special Letter mailed " dateObject.todayMDY " requesting:`n" missingMax "`n"
     }
     ;finishedCaseNote.maxisNote := StrReplace(finishedCaseNote.maxisNote, "              ", " ")
     finishedCaseNote.maxisNote .= ini.employeeInfo.employeeName
@@ -663,10 +663,9 @@ outputCaseNoteNotepad(sendingCaseNote) {
     }
     local letterNotepad := ""
     For i, letterTextValue in letterText {
-        letterNotepad .= StrLen(LetterText[i]) > 0 ? "`n==== Special Letter " i " ====`n" letterTextValue "`n" : ""
+        letterNotepad .= StrLen(LetterText[i]) > 0 ? "`n====== Special Letter " i " ======`n" letterTextValue "`n" : ""
     }
-    maxisLabel := "`n`n== MAXIS Note ==`n"
-    FileAppend, % "====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ======`n" sendingCaseNote.mec2CaseNote "`n`n====== Email ======`n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n== MAXIS Note ==`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n", % A_Desktop "\" notepadFileName ".txt"
+    FileAppend, % "====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n", % A_Desktop "\" notepadFileName ".txt"
     GuiControl, MainGui:Text, notepadNoteButton, % "Desktop ✔"
     caseNoteEntered.mec2NoteEntered := 1
     caseNoteEntered.maxisNoteEntered := 1
@@ -1596,7 +1595,7 @@ Due to limited funding, new eligibility for CCAP in " countySpecificText[ini.emp
         caseNoteMissingText .= "Approved MFIP/DWP or meet current Waitlist criteria;`n"
     }
     If (clarifiedVerifications.Length() > 1) {
-        clarifiedVerifications.InsertAt(1, (missingVerifications.Length() > 1 ? "`n`n" : "") "__Clarification of items listed above the Worker Comments:__`n", 1)
+        clarifiedVerifications.InsertAt(1, (missingVerifications.Length() > 1 ? "`n" : "") "__Clarification of items listed above the Worker Comments:__`n", 1)
         ;clarifiedVerifications.InsertAt(1, "__Clarification of items listed above the Worker Comments:__`n", 1)
     }
     emailTextObject.output := setEmailText(emailTextString)
@@ -1687,6 +1686,7 @@ setEmailText(emailTextStringIn) {
     emailTextStringOut := StrReplace(emailTextStringIn, "`n ", " ")
     emailTextStringOut := StrReplace(emailTextStringOut, "    ", " ")
     emailTextStringOut := StrReplace(emailTextStringOut, "   ", " ")
+    emailTextStringOut := StrReplace(emailTextStringOut, "  ", "`n  ")
     emailTextStringOut := StrReplace(emailTextStringOut, "`n*", "`n`n*")
     emailTextStringOut := StrReplace(emailTextStringOut, "sent separately", "see attached")
 	return emailTextObject.Combined emailTextStringOut emailTextObject.EndHL
@@ -2063,7 +2063,7 @@ getRowCount(textString, maxColumns, indentString:="", indentRow:=4) {
     Return [textString, xCount +1]
 }
 ;function has been rewritten to allow for increased indenting options
-stWordWrap(completeString, maxColumns, indentString:="", indentRow:=4, reduceRowOneByIndent:=0) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
+stWordWrap(completeString, maxColumns, indentString:="", indentRow:=4, reduceRowButDoNotIndent:=0) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
     If (!StrLen(completeString)) {
         Return
     }
@@ -2071,24 +2071,24 @@ stWordWrap(completeString, maxColumns, indentString:="", indentRow:=4, reduceRow
     completeString := RTrim(completeString, "`n"), firstLine := 1
     If (
         !InStr(completeString, "`n")
-        && (reduceRowOneByIndent ? maxColumns - indentLength : maxColumns)
+        && (reduceRowButDoNotIndent ? maxColumns - indentLength : maxColumns)
         >= ( StrLen(completeString) + (indentRow > 1 ? indentLength : 0) ) ) {
         Return (indentRow > 1 ? indentString : "") completeString
     }
     Loop, Parse, completeString, `n, `r ; A_LoopField == sentence;
     {
         trimmedSentence := Trim(A_LoopField)
-        indentThisSentence := ( indentRow > 2 || (indentRow == 2 && firstLine) )
-        trimmedSentence := indentThisSentence ? indentChar . trimmedSentence : trimmedSentence
+        ;indentThisSentence := ( indentRow > 2 || (indentRow == 2 && firstLine) )
+        ;trimmedSentence := indentThisSentence ? indentChar . trimmedSentence : trimmedSentence
         column := 0
         Loop, Parse, trimmedSentence, %A_Space% ; A_LoopField == word;
         {
             wordLength := StrLen(A_LoopField)
             lineLength := column + wordLength
-            If (lineLength > ( (firstLine && reduceRowOneByIndent) ? maxColumns - indentLength : maxColumns ) ) {
+            If (lineLength > ( (firstLine && reduceRowButDoNotIndent) ? maxColumns - indentLength : maxColumns ) ) {
                 out .= "`n", column := 0, firstLine := 0
             }
-            indentThisLine := ( column == 0 && !firstLine && (indentRow == 4 || indentRow == 1) )
+            indentThisLine := ( column == 0 && (!firstLine || ( indentRow > 2 || (indentRow == 2 && firstLine) )) && (indentRow == 4 || indentRow == 1) )
             out .= ( (indentThisLine ? indentString : "") . A_LoopField " " )
             column += ( (indentThisLine ? indentLength : 0) + wordLength + 1 )
         }
