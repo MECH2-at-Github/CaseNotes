@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.71"
+Version := "v0.5.72"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -46,6 +46,7 @@ SetWorkingDir % A_ScriptDir
 #SingleInstance force
 #NoTrayIcon
 SetTitleMatchMode, RegEx
+
 setIcon()
 Global verbose := 1
 
@@ -611,18 +612,19 @@ outputCaseNoteMec2(sendingCaseNote) {
 }
 outputCaseNoteMaxis(sendingCaseNote) {
     Global
+    Clipboard := sendingCaseNote.maxisNote
     ;StrReplace(sendingCaseNote.maxisNote, "`n", "`n", MaxisNoteCaseNoteLines) ; Counting new lines
     ;ini.employeeInfo.employeeMaxis := ini.employeeInfo.employeeMaxis == "MAXIS-WINDOW-TITLE" ? "MAXIS" : ini.employeeInfo.employeeMaxis
     ;maxisWindow := WinExist(ini.employeeInfo.employeeMaxis " ahk_exe bzmd.exe")
-    maxisWindow := WinExist(ahk_group maxisGroup)
-    If (maxisWindow == "0x0")
-        maxisWindow := WinExist("BlueZone Mainframe ahk_exe bzmd.exe")
-
-    If (WinExist(ahk_id %maxisWindow%)) {
-        WinActivate, % "ahk_id " maxisWindow " ahk_exe bzmd.exe"
-        Clipboard := sendingCaseNote.maxisNote
-        Sleep 500
-        Send, ^v
+    maxisWindow := WinExist("ahk_group maxisGroup")
+    If (maxisWindow == "0x0") {
+        maxisWindow := WinExist("Mainframe ahk_exe bzmd.exe")
+    }
+    If (maxisWindow) {
+        WinActivate, % "ahk_id " maxisWindow ; WinExist returns an ID
+        ;Clipboard := sendingCaseNote.maxisNote
+        ;Sleep 500
+        ;Send, ^v
     }
     ; Test area start
     ; Ideally, after the max lines, it would pop up a Confirm button allowing the user to increment the page. Or pause and send the increment page then send the rest.
@@ -1801,35 +1803,32 @@ getFirstName() {
 ;ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION
 MainGuiGuiClose() {
     closingPromptText := ""
-    clearingForm := A_GuiControl == "ClearFormButton" ? 1 : 0
     If (confirmedClear > 0) {
-        coordSaveAndExitRun(1)
+        coordSaveAndExitApp(1)
     }
     closingPromptText .= caseNoteEntered.mec2NoteEntered == 0 ? " MEC2" : ""
-    If (caseNoteEntered.maxisNoteEntered == 0 && ini.caseNoteCountyInfo.countyNoteInMaxis == 1 && caseDetails.docType == "Application") {
+    If (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 && caseDetails.docType == "Application" && caseNoteEntered.maxisNoteEntered == 0) {
         closingPromptText .= StrLen(closingPromptText) > 0 ? " or MAXIS" : " MAXIS"
     }
-    If (clearingForm) {
+    If (A_GuiControl == "ClearFormButton") {
         If (StrLen(closingPromptText) > 0) {
             MsgBox, 4, % "Case Note Prompt", % "Case note not entered in" closingPromptText ". `nClear form anyway?"
-            IfMsgBox Yes
-                coordSaveAndExitRun(1)
-            Return
+            IfMsgBox No
+                Return 1
+            coordSaveAndExitApp(1)
         }
         GuiControl, MainGui: Text, ClearFormButton, % "Confirm"
         Gui, Font, s9, Segoe UI
         GuiControl, MainGui: Font, ClearFormButton
         confirmedClear++
-    }
-    If (!clearingForm) {
-        If (StrLen(closingPromptText) > 0) {
+    } Else {
+        If (StrLen(closingPromptText) == 0) {
+            coordSaveAndExitApp()
+        } Else {
             MsgBox, 4, % "Case Note Prompt", % "Case note not entered in" closingPromptText ". `nExit anyway?"
-            IfMsgBox Yes
-                coordSaveAndExitRun()
-            Return
-        }
-        Else If (StrLen(closingPromptText) == 0) {
-            coordSaveAndExitRun()
+            IfMsgBox No
+                Return 1
+            coordSaveAndExitApp()
         }
     }
 }
@@ -2023,7 +2022,7 @@ resetPositions() {
     xVerification := 0
     yVerification := 0
 }
-coordSaveAndExitRun(reOpen := 0) {
+coordSaveAndExitApp(reOpen := 0) {
 	WinGetPos, xCaseNotesGet, yCaseNotesGet,,, % "CaseNotes"
 	WinGetPos, xVerificationGet, yVerificationGet,,, % "Missing Verifications"
     If (xVerificationGet == "") {
@@ -2038,7 +2037,7 @@ coordSaveAndExitRun(reOpen := 0) {
         IniWrite, % coordString, % A_MyDocuments "\AHK.ini", % "caseNotePositions"
     }
     If (reOpen == 1) {
-        Run % A_ScriptName
+        Reload
     } Else {
         ExitApp
     }
@@ -2259,7 +2258,6 @@ If (ini.employeeInfo.employeeCounty == "Dakota") {
         Return
         !4::
             Gui, MainGui: Submit, NoHide
-            ;ReceivedDate := formatMDY(ReceivedDate)
             RegExMatch(HouseholdCompEdit, "^\w+\b", NameMatch)
             SendInput, {Down 2}
             Sleep 400
