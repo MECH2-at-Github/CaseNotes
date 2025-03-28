@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.7"
+Version := "v0.5.71"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -652,8 +652,8 @@ outputCaseNoteMaxis(sendingCaseNote) {
 
     caseNoteEntered.maxisNoteEnteredEntered := 1
     GuiControl, MainGui:Text, maxisNoteButton, MAXIS ✔ ; Chr(2714)
-    sleep 500
-    Clipboard := caseNumber
+    ;sleep 500
+    ;Clipboard := caseNumber
 }
 outputCaseNoteNotepad(sendingCaseNote) {
     Global
