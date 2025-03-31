@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.72"
+Version := "v0.5.73"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -107,6 +107,64 @@ buildMainGui()
 buildMissingGui()
 buildSettingsGui(1)
 
+getCaseNotesMonInfo() {
+    winHandle := WinExist("CaseNotes")
+    ;--------------------------------------------------------------------------
+    VarSetCapacity(monitorInfo, 40), NumPut(40, monitorInfo)
+    monitorHandle := DllCall("MonitorFromWindow", "Ptr", winHandle, "UInt", 0x2)
+    DllCall("GetMonitorInfo", "Ptr", monitorHandle, "Ptr", &monitorInfo)
+    ;--------------------------------------------------------------------------
+    workLeft      := NumGet(monitorInfo, 20, "Int") ; Left
+    workTop       := NumGet(monitorInfo, 24, "Int") ; Top
+    workRight     := NumGet(monitorInfo, 28, "Int") ; Right
+    workBottom    := NumGet(monitorInfo, 32, "Int") ; Bottom
+}
+;mec2CaseNoteTest := "
+;(
+;1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+;2___________________________________________________________________________________________________
+;3
+;4
+;5
+;6
+;7
+;8
+;9
+;0
+;1234567890
+;2
+;3
+;4
+;5
+;6
+;7
+;8
+;9
+;0
+;1234567890
+;2
+;3
+;4
+;5
+;6
+;7
+;8
+;9
+;0
+;)"
+
+;zoomInt := A_ScreenDPI/96
+;wCH := 11/zoomInt
+;pad := 4
+;hCH := 18/zoomInt
+;wScrollbar := Ceil(26/zoomInt)
+
+    ;Gui, oversizedNoteGui: New,, % "Oversized Note"
+    ;Gui, Color, Silver, C0C0C0
+    ;Gui, Font, s9, Lucida Console
+    ;Gui, oversizedNoteGui: Add, Edit, % "vmec2CaseNoteEdit w" Ceil((wCH*100))+wScrollbar+pad " h" Ceil((hCH*30))+pad, % mec2CaseNoteTest
+    ;Gui, oversizedNoteGui: Show
+
 Return
 
 ;==============================================================================================================================================================================================
@@ -164,7 +222,7 @@ buildMainGui() {
     Gui, MainGui: Add, Text, % "xm y+45 h0 w0" ; Blank space
     Gui, MainGui: Add, Text, % LabelSettings " vHouseholdCompEditLabel", % "Household Comp"
     Gui, MainGui: Add, Text, % LabelExampleSettings " vHouseholdCompEditLabelExample Hidden", % "Parent (ID), ChildOne (4, BC), ChildName (age, verif)"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " vHouseholdCompEdit",
+    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " vHouseholdCompEdit", ;v2 add LoseFocus gui_event to force spacing.
 
     Gui, MainGui: Add, Text, % LabelSettings " vAddressVerificationEditLabel", % "Address Verification"
     Gui, MainGui: Add, Text, % LabelExampleSettings " vAddressVerificationEditLabelExample Hidden", % "1234 W Minnesota St APT 21, St Paul: ID 5/4/20 (scan date)"
@@ -235,7 +293,7 @@ buildMainGui() {
         Gui MainGui: Font, s9, % "Lucida Console"
         GuiControl, MainGui: Font, % catLabel
     }
-
+    GuiControl, , MainGui: HouseholdCompEdit, , gdoToolTip
 }
 ; v2 convert to switch
 setDocType() {
@@ -572,11 +630,12 @@ outputCaseNote() {
 outputCaseNoteMec2(sendingCaseNote) {
     Global
     StrReplace(sendingCaseNote.mec2CaseNote, "`n", "`n", mec2CaseNoteLines) ; Counting new lines
-    If (mec2CaseNoteLines +1 == 31) { ;31 lines, signature lines combined
-        sendingCaseNote.mec2CaseNote := StrReplace(sendingCaseNote.mec2CaseNote, "`n=====`n", "`n===== ")
-    } Else If (mec2CaseNoteLines +1 > 31) {
-        ; Ideally, instead of a warning, it would pop up a 30 row with scrollbar GUI with the sendingCaseNote.mec2CaseNote string. User could modify note before it is sent to MEC2. Include the category and summary lines. Have "Send" button. 
-        MsgBox,, % "MEC2 Case Note over 30 lines", % "Notice - Your case note is over 30 lines and will fail to save if not shortened."
+    ;If (mec2CaseNoteLines +1 == 31) { ;31 lines, signature lines combined
+        ;sendingCaseNote.mec2CaseNote := StrReplace(sendingCaseNote.mec2CaseNote, "`n=====`n", "`n===== ")
+    ;} Else 
+    If (mec2CaseNoteLines > 29) { ; off by 1
+        ;MsgBox,, % "MEC2 Case Note over 30 lines", % "Notice - Your case note is over 30 lines and will fail to save if not shortened."
+        sendingCaseNote.mec2CaseNote := oversizedNoteGui(sendingCaseNote.mec2CaseNote)
     }
     WinActivate % ini.employeeInfo.employeeBrowser
     Sleep 500
@@ -622,9 +681,9 @@ outputCaseNoteMaxis(sendingCaseNote) {
     }
     If (maxisWindow) {
         WinActivate, % "ahk_id " maxisWindow ; WinExist returns an ID
-        ;Clipboard := sendingCaseNote.maxisNote
-        ;Sleep 500
-        ;Send, ^v
+        Clipboard := sendingCaseNote.maxisNote
+        Sleep 500
+        Send, ^v
     }
     ; Test area start
     ; Ideally, after the max lines, it would pop up a Confirm button allowing the user to increment the page. Or pause and send the increment page then send the rest.
@@ -658,20 +717,32 @@ outputCaseNoteMaxis(sendingCaseNote) {
     ;Clipboard := caseNumber
 }
 outputCaseNoteNotepad(sendingCaseNote) {
-    Global
-    local notepadFileName := caseNumber !== "" ? caseNumber : ""
-    If (notepadFileName == "") {
-        RegExMatch(HouseholdComp, "\w+\W", notepadFileName)
-    }
-    local letterNotepad := ""
-    For i, letterTextValue in letterText {
-        letterNotepad .= StrLen(LetterText[i]) > 0 ? "`n====== Special Letter " i " ======`n" letterTextValue "`n" : ""
-    }
-    FileAppend, % "====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n", % A_Desktop "\" notepadFileName ".txt"
-    GuiControl, MainGui:Text, notepadNoteButton, % "Desktop ✔"
-    caseNoteEntered.mec2NoteEntered := 1
-    caseNoteEntered.maxisNoteEntered := 1
+    ;Global
+    ;local notepadFileName := caseNumber !== "" ? caseNumber : ""
+    ;If (notepadFileName == "") {
+        ;RegExMatch(HouseholdComp, "\w+\W", notepadFileName)
+    ;}
+    ;local letterNotepad := ""
+    ;For i, letterTextValue in letterText {
+        ;letterNotepad .= StrLen(LetterText[i]) > 0 ? "`n====== Special Letter " i " ======`n" letterTextValue "`n" : ""
+    ;}
+    ;FileAppend, % "====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n", % A_Desktop "\" notepadFileName ".txt"
+    ;GuiControl, MainGui:Text, notepadNoteButton, % "Desktop ✔"
+    ;caseNoteEntered.mec2NoteEntered := 1
+    ;caseNoteEntered.maxisNoteEntered := 1
 }
+oversizedNoteGui(mec2CaseNote) {
+    ;Gui: oversizedNoteGui, New,, % "Oversized Note"
+    ;Gui, oversizedNoteGui: Margin, 12 12
+    ;
+    ;
+    ;Gui, Color, Silver, C0C0C0
+    ;Gui, Font, s11, Lucida Console
+    ;Gui, oversizedNoteGui: Add, Edit, % "vmec2CaseNoteEdit w" MonoChar *100, % mec2CaseNote
+    ;GuiControl, oversizedNoteGui: font, % "mec2CaseNoteEdit"
+    ;Gui, oversizedNoteGui: Show
+}
+
 JSONstring(inputString) {
     inputString := StrReplace(inputString, "\", "\\",, -1)
     inputString := StrReplace(inputString, "`n", "\n",, -1)
@@ -764,110 +835,110 @@ showMissingVerifs() {
 }
 buildMissingGui() {
     Global
-    local Column1of1 := "xm w390"
-    local Column1of2 := "xm w158", Column2of2 := "x170 yp+0 w240", 
-    local Column1of3 := "xm w118", Column2of3 := "x130 yp+0 w120", Column3of3 := "x262 yp+0 w138", Column2and3Of3 := "x130 yp+0 w280"
+    local column1of1 := "xm w390"
+    local column1of2 := "xm w158", column2of2 := "x170 yp+0 w240", 
+    local column1of3 := "xm w118", column2of3 := "x130 yp+0 w120", column3of3 := "x262 yp+0 w138", column2and3Of3 := "x130 yp+0 w280"
 
-    local LineColor := "0x5" ; https://gist.github.com/jNizM/019696878590071cf739
-    local TextLine := "x60 y+4 w250 h1 " LineColor
+    local lineColor := "0x5" ; https://gist.github.com/jNizM/019696878590071cf739
+    local textLine := "x60 y+4 w250 h1 " lineColor
     ;-- Alternate method for lines:
-    ;LineColor := "717171"
-    ;ProgressLine := "x50 y+4 w250 h1 Background" LineColor
+    ;lineColor := "717171"
+    ;ProgressLine := "x50 y+4 w250 h1 Background" lineColor
     ;Gui, MissingGui: Add, Progress, % ProgressLine
 
     Gui, MissingGui: New,, % "Missing Verifications"
     Gui, MissingGui: Margin, 12 12
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " vIDmissing ginputBoxAGUIControl", % "ID (input)"
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " vBCmissing ginputBoxAGUIControl", % "BC (input)"
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " vBCNonCitizenMissing ginputBoxAGUIControl", % "BC [non-citizen] (input)"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vAddressMissing", % "Address"
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " vChildSupportFormsMissing ginputBoxAGUIControl", % "Child Support forms (input)"
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " vChildSupportNoncooperationMissing ginputBoxAGUIControl", % "CS Non-cooperation (input)"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vCustodyScheduleMissing", % "Custody (""for each child"")"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vCustodySchedulePlusNamesMissing ginputBoxAGUIControl", % "Custody (input)"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vChildSchoolMissing", % "Child school information"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vChildFTSchoolMissing", % "Child full-time student status"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vMarriageCertificateMissing", % "Marriage certificate"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vLegalNameChangeMissing ginputBoxAGUIControl", % "Name change (input)"
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " vDependentAdultStudentMissing ginputBoxAGUIControl", % "Dependent adult child - FT Student, 50`%+ expenses (input)"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " vIDmissing ginputBoxAGUIControl", % "ID (input)"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " vBCmissing ginputBoxAGUIControl", % "BC (input)"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " vBCNonCitizenMissing ginputBoxAGUIControl", % "BC [non-citizen] (input)"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vAddressMissing", % "Address"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " vChildSupportFormsMissing ginputBoxAGUIControl", % "Child Support forms (input)"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " vChildSupportNoncooperationMissing ginputBoxAGUIControl", % "CS Non-cooperation (input)"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vCustodyScheduleMissing", % "Custody (""for each child"")"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vCustodySchedulePlusNamesMissing ginputBoxAGUIControl", % "Custody (input)"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vChildSchoolMissing", % "Child school information"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vChildFTSchoolMissing", % "Child full-time student status"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vMarriageCertificateMissing", % "Marriage certificate"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vLegalNameChangeMissing ginputBoxAGUIControl", % "Name change (input)"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " vDependentAdultStudentMissing ginputBoxAGUIControl", % "Dependent adult child - FT Student, 50`%+ expenses (input)"
 
     Gui, MissingGui: Font, bold ;-- EARNED INCOME SECTION ==============================================================
-    Gui, MissingGui: Add, Text, % "xm+10 y+22 w110 h1 " LineColor
+    Gui, MissingGui: Add, Text, % "xm+10 y+22 w110 h1 " lineColor
     Gui, MissingGui: Add, Text, % "x+m yp-7", % "Earned Income"
-    Gui, MissingGui: Add, Text, % "x+m yp+7 w115 h1 " LineColor
+    Gui, MissingGui: Add, Text, % "x+m yp+7 w115 h1 " lineColor
     Gui, MissingGui: Font
 
-    Gui, MissingGui: Add, Checkbox, % Column1of3 " vIncomeMissing", % "Income"
-    Gui, MissingGui: Add, Checkbox, % Column2of3 " vWorkScheduleMissing", % "Work Schedule"
-    Gui, MissingGui: Add, Checkbox, % Column3of3 " vContractPeriodMissing", % "Contract Period"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vIncomePlusNameMissing ginputBoxAGUIControl", % "Income (input)"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vWorkSchedulePlusNameMissing ginputBoxAGUIControl", % "Work Schedule (input)"
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " vNewEmploymentMissing", % "New job at app / end of job search (Wage, dates, hours)"
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " vWorkLeaveMissing", % "Leave of absence (Dates, pay status, hours, work schedule)"
-    Gui, MissingGui: Add, Text, % TextLine ;-- -------------------------------------------------------------------------
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " vSeasonalWorkMissing", % "Seasonal employment season length"
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " vSeasonalOffSeasonMissing ginputBoxAGUIControl", % "Seasonal employment info - app in off-season (input)"
-    Gui, MissingGui: Add, Text, % TextLine ;-- -------------------------------------------------------------------------
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vSelfEmploymentMissing", % "Self-Employment Income"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vSelfEmploymentScheduleMissing", % "Self-Employment Schedule"
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " vSelfEmploymentBusinessGrossMissing", % "Self-Employment Business Gross (if state min wage; <$500k = small business)"
-    Gui, MissingGui: Add, Text, % TextLine ;-- -------------------------------------------------------------------------
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vExpensesMissing", % "Expenses"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " voverIncomeMissing ginputBoxAGUIControl", % "Over-income (input)"
+    Gui, MissingGui: Add, Checkbox, % column1of3 " vIncomeMissing", % "Income"
+    Gui, MissingGui: Add, Checkbox, % column2of3 " vWorkScheduleMissing", % "Work Schedule"
+    Gui, MissingGui: Add, Checkbox, % column3of3 " vContractPeriodMissing", % "Contract Period"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vIncomePlusNameMissing ginputBoxAGUIControl", % "Income (input)"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vWorkSchedulePlusNameMissing ginputBoxAGUIControl", % "Work Schedule (input)"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " vNewEmploymentMissing", % "New job at app / end of job search (Wage, dates, hours)"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " vWorkLeaveMissing", % "Leave of absence (Dates, pay status, hours, work schedule)"
+    Gui, MissingGui: Add, Text, % textLine ;-- -------------------------------------------------------------------------
+    Gui, MissingGui: Add, Checkbox, % column1of1 " vSeasonalWorkMissing", % "Seasonal employment season length"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " vSeasonalOffSeasonMissing ginputBoxAGUIControl", % "Seasonal employment info - app in off-season (input)"
+    Gui, MissingGui: Add, Text, % textLine ;-- -------------------------------------------------------------------------
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vSelfEmploymentMissing", % "Self-Employment Income"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vSelfEmploymentScheduleMissing", % "Self-Employment Schedule"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " vSelfEmploymentBusinessGrossMissing", % "Self-Employment Business Gross (if state min wage; <$500k = small business)"
+    Gui, MissingGui: Add, Text, % textLine ;-- -------------------------------------------------------------------------
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vExpensesMissing", % "Expenses"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " voverIncomeMissing ginputBoxAGUIControl", % "Over-income (input)"
 
     Gui, MissingGui: Font, bold ;-- UNEARNED INCOME SECTION ============================================================
-    Gui, MissingGui: Add, Text, % "xm+10 y+22 w105 h1 " LineColor
+    Gui, MissingGui: Add, Text, % "xm+10 y+22 w105 h1 " lineColor
     Gui, MissingGui: Add, Text, % "x+m yp-7", % "Unearned Income"
-    Gui, MissingGui: Add, Text, % "x+m yp+7 w120 h1 " LineColor
+    Gui, MissingGui: Add, Text, % "x+m yp+7 w120 h1 " lineColor
     Gui, MissingGui: Font
 
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vChildSupportIncomeEditMissing", % "Child Support Income"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vSpousalSupportMissing", % "Spousal Support Income"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vRentalMissing", % "Rental"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vDisabilityMissing", % "STD / LTD "
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vAssetsGT1mMissing", % "Assets (>$1m)"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vUnearnedStatementMissing", % "Blank Unearned Yes/No (statement)"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vAssetsBlankMissing", % "Assets (Blank)"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vUnearnedMailedMissing", % "Blank Unearned Yes/No (mailed back)"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vVABenefitsMissing", % "VA Benefits"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vInsuranceBenefitsMissing", % "Insurance Benefits"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vChildSupportIncomeEditMissing", % "Child Support Income"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vSpousalSupportMissing", % "Spousal Support Income"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vRentalMissing", % "Rental"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vDisabilityMissing", % "STD / LTD "
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vAssetsGT1mMissing", % "Assets (>$1m)"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vUnearnedStatementMissing", % "Blank Unearned Yes/No (statement)"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vAssetsBlankMissing", % "Assets (Blank)"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vUnearnedMailedMissing", % "Blank Unearned Yes/No (mailed back)"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vVABenefitsMissing", % "VA Benefits"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vInsuranceBenefitsMissing", % "Insurance Benefits"
 
     Gui, MissingGui: Font, bold ;-- ACTIVITY SECTION ===================================================================
-    Gui, MissingGui: Add, Text, % "xm+10 y+22 w130 h1 " LineColor
+    Gui, MissingGui: Add, Text, % "xm+10 y+22 w130 h1 " lineColor
     Gui, MissingGui: Add, Text, % "x+m yp-7", % "Activity"
-    Gui, MissingGui: Add, Text, % "x+m yp+7 w140 h1 " LineColor
+    Gui, MissingGui: Add, Text, % "x+m yp+7 w140 h1 " lineColor
     Gui, MissingGui: Font
 
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vEdBSFformMissing", % "BSF/TY Education Form"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vEdBSFOneBachelorDegreeMissing", % "BSF/TY Bachelor's limit notice"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vClassScheduleMissing", % "Class schedule"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vTranscriptMissing", % "Transcript"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vEducationEmploymentPlanMissing", % "ES Plan (CCMF Education)"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vStudentStatusOrIncomeMissing", % "Adult student w/ income (age < 20)"
-    Gui, MissingGui: Add, Text, % TextLine ;-- -------------------------------------------------------------------------
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vJobSearchHoursMissing", % "BSF Job search hours"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vSelfEmploymentIneligibleMissing", % "Self-Employment not enough hours"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vEligibleActivityMissing", % "No Eligible Activity Listed"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vEmploymentIneligibleMissing", % "Employment not enough hours"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vESPlanOnlyJSMissing", % "ES Plan-only JS notice"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vActivityAfterHomelessMissing", % "Activity Req. After 3-Mo Homeless Period"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vEdBSFformMissing", % "BSF/TY Education Form"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vEdBSFOneBachelorDegreeMissing", % "BSF/TY Bachelor's limit notice"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vClassScheduleMissing", % "Class schedule"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vTranscriptMissing", % "Transcript"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vEducationEmploymentPlanMissing", % "ES Plan (CCMF Education)"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vStudentStatusOrIncomeMissing", % "Adult student w/ income (age < 20)"
+    Gui, MissingGui: Add, Text, % textLine ;-- -------------------------------------------------------------------------
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vJobSearchHoursMissing", % "BSF Job search hours"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vSelfEmploymentIneligibleMissing", % "Self-Employment not enough hours"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vEligibleActivityMissing", % "No Eligible Activity Listed"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vEmploymentIneligibleMissing", % "Employment not enough hours"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vESPlanOnlyJSMissing", % "ES Plan-only JS notice"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vActivityAfterHomelessMissing", % "Activity Req. After 3-Mo Homeless Period"
 
     Gui, MissingGui: Font, bold ;-- PROVIDER SECTION ===================================================================
-    Gui, MissingGui: Add, Text, % "xm+10 y+22 w125 h1 " LineColor
+    Gui, MissingGui: Add, Text, % "xm+10 y+22 w125 h1 " lineColor
     Gui, MissingGui: Add, Text, % "x+m yp-7", % "Provider"
-    Gui, MissingGui: Add, Text, % "x+m yp+7 w130 h1 " LineColor
+    Gui, MissingGui: Add, Text, % "x+m yp+7 w130 h1 " lineColor
     Gui, MissingGui: Font
 
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vNoProviderMissing", % "No Provider Listed"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vUnregisteredProviderMissing", % "Unregistered Provider"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vInHomeCareMissing", % "In-Home Care form"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vLNLProviderMissing", % "LNL Acknowledgement"
-    Gui, MissingGui: Add, Checkbox, % Column1of2 " vStartDateMissing", % "Provider start date"
-    Gui, MissingGui: Add, Checkbox, % Column2of2 " vProviderForNonImmigrantMissing", % "Non-citizen/immigrant Provider Reqs."
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vNoProviderMissing", % "No Provider Listed"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vUnregisteredProviderMissing", % "Unregistered Provider"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vInHomeCareMissing", % "In-Home Care form"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vLNLProviderMissing", % "LNL Acknowledgement"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vStartDateMissing", % "Provider start date"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vProviderForNonImmigrantMissing", % "Non-citizen/immigrant Provider Reqs."
 
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " h50 votherInput1 gotherGUI", % "Other"
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " h50 votherInput2 gotherGUI", % "Other"
-    Gui, MissingGui: Add, Checkbox, % Column1of1 " h50 votherInput3 gotherGUI", % "Other"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " h50 votherInput1 gotherGUI", % "Other"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " h50 votherInput2 gotherGUI", % "Other"
+    Gui, MissingGui: Add, Checkbox, % column1of1 " h50 votherInput3 gotherGUI", % "Other"
 
     Gui, MissingGui: Add, Button, % "h17 gmissingVerifsDoneButton", % "Done"
     Gui, MissingGui: Add, Button, % "x+20 w40 h17 hidden gemailButtonClick vemailButton", % "Email"
@@ -2010,7 +2081,7 @@ checkGroupAdd() {
 removeToolTip() {
     ToolTip
 }
-showToolTip(string, duration) {
+timedToolTip(string, duration) {
     ToolTip, % string, 0, 0
     SetTimer, removeToolTip, % "-" duration
 }
@@ -2249,12 +2320,8 @@ Return
 If (ini.employeeInfo.employeeCounty == "Dakota") {
     #IfWinActive ahk_exe WINWORD.EXE ; Word file not in use anymore?
         F1::
-            ToolTip,
-            (
-    Alt+4: Starting from the name field, moves to and enters date,
-             case number, and client's first name.
-            ), 0, 0
-            SetTimer, removeToolTip, -5000
+            toolTipText := "Alt+4: Starting from the name field, moves to and enters date,         case number, and client's first name."
+            timedToolTip(toolTipText, 8000)
         Return
         !4::
             Gui, MainGui: Submit, NoHide
@@ -2300,8 +2367,8 @@ If (ini.employeeInfo.employeeCounty == "Dakota") {
     ;Ctrl+: OnBase docs (onBaseImportKeys("Text to get doc type", "Details Text", "Tab presses from Case # to details field")
     #IfWinActive Perform Import
         F1:: 
-            ToolTip, % "CTRL+ `n F6: RSDI `n F7: SMI ID `n F8: PRISM GCSC `n F9: CS $ Calc `nF10: Income Calc `nF11: The Work # `nF12: CCAPP Letter", 0, 0
-            SetTimer, removeToolTip, -8000
+            toolTipText := "CTRL+ `n F6: RSDI `n F7: SMI ID `n F8: PRISM GCSC `n F9: CS $ Calc `nF10: Income Calc `nF11: The Work # `nF12: CCAPP Letter"
+            timedToolTip(toolTipText, 8000)
         Return
         ^F6::
             Gui, MainGui: Submit, NoHide
@@ -2335,18 +2402,17 @@ If (ini.employeeInfo.employeeCounty == "Dakota") {
 
     #IfWinActive ahk_group autoMailGroup ; OnBase, excluding "Perform Import"
         F1::
-            ToolTipText := WinActive("Automated Mailing Home Page")
+            toolTipText := WinActive("Automated Mailing Home Page")
             ? "Ctrl+B: Types in the current date and case number." : "
             (
-    Ctrl+B: (Mail) Types in the current date and case number, clicks Yes. Works best from Custom Query.
-              Step 1: Select documents in the query.
-              Step 2: Right Click -> Send To -> Envelope.
-              Step 3: Click 'Create Envelope'
+Ctrl+B: (Mail) Types in the current date and case number, clicks Yes. Works best from Custom Query.
+          Step 1: Select documents in the query.
+          Step 2: Right Click -> Send To -> Envelope.
+          Step 3: Click 'Create Envelope'
 
-    Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword field must be active.
+Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword field must be active.
             )"
-            ToolTip, % ToolTipText,0,0
-            SetTimer, removeToolTip, -8000
+            timedToolTip(toolTipText, 8000)
         Return
         ^b::
             Gui, MainGui: Submit, NoHide
@@ -2383,7 +2449,7 @@ If (ini.employeeInfo.employeeCounty == "Dakota") {
 
     #IfWinActive ahk_group browserGroup
         F1::
-            showToolTip("
+            timedToolTip("
             (
     Alt+F1: Reviewed/Approved application (Start New case note first)
     Alt+F2: Reviewed/Denied application (Start New case note first)

@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.72"
+Version := "v0.5.73"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -622,9 +622,9 @@ outputCaseNoteMaxis(sendingCaseNote) {
     }
     If (maxisWindow) {
         WinActivate, % "ahk_id " maxisWindow ; WinExist returns an ID
-        ;Clipboard := sendingCaseNote.maxisNote
-        ;Sleep 500
-        ;Send, ^v
+        Clipboard := sendingCaseNote.maxisNote
+        Sleep 500
+        Send, ^v
     }
     ; Test area start
     ; Ideally, after the max lines, it would pop up a Confirm button allowing the user to increment the page. Or pause and send the increment page then send the rest.
