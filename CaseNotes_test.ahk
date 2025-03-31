@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.73"
+Version := "v0.5.74"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -348,7 +348,7 @@ setCaseType() {
 copySharedCustodyEditToCSCoopEdit() {
     Global
     Gui, MainGui: Submit, NoHide
-    If (StrLen(ChildSupportCooperationEdit) == 0) {
+    If (StrLen(SharedCustodyEdit) > 0 && StrLen(ChildSupportCooperationEdit) == 0) {
         Loop, Parse, SharedCustodyEdit, `n, `r
         {
             colonLoc := InStr(A_LoopField, ":",, 0, 1)
@@ -654,8 +654,8 @@ outputCaseNoteMaxis(sendingCaseNote) {
 
     caseNoteEntered.maxisNoteEnteredEntered := 1
     GuiControl, MainGui:Text, maxisNoteButton, MAXIS ✔ ; Chr(2714)
-    ;sleep 500
-    ;Clipboard := caseNumber
+    sleep 500
+    Clipboard := caseNumber
 }
 outputCaseNoteNotepad(sendingCaseNote) {
     Global
@@ -2352,6 +2352,7 @@ If (ini.employeeInfo.employeeCounty == "Dakota") {
             Gui, MainGui: Submit, NoHide
             FormatTime, shortDate, % dateObject.todayYMD, % "M/d/yy"
             SendInput, % shortDate " " caseNumber
+            Clipboard := caseNumber
             Sleep 500
             If ( WinActive("ahk_exe obunity.exe") ) {
                 Sleep 250
@@ -2361,7 +2362,7 @@ If (ini.employeeInfo.employeeCounty == "Dakota") {
                     IfMsgBox Yes
                         If (WinExist("Automated Mailing Home Page") ) {
                             WinActivate, % "Automated Mailing Home Page"
-                                Return
+                            Return
                         } Else {
                             run % "http://webapp4/AutomatedMailingPRD/#step-1"
                         }
