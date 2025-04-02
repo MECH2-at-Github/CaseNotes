@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.74"
+Version := "v0.5.75"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -47,10 +47,10 @@ SetWorkingDir % A_ScriptDir
 #NoTrayIcon
 SetTitleMatchMode, RegEx
 
-setIcon()
-Global verbose := 1
+Global verbose := 1, sq := "²", cm := "✔"
 
 ;Settings
+;MsgBox % wCH cs hCH
 Global ini := { cbtPositions: { xClipboard: 0, yClipboard: 0 }
     , caseNotePositions: { xCaseNotes: 0, yCaseNotes: 0, xVerification: 0, yVerification: 0 }
     , caseNoteCountyInfo: { countyNoteInMaxis: 0, countyFax: A_Space, countyDocsEmail: A_Space, countyProviderWorkerPhone: A_Space, countyEdBSF: A_Space, Waitlist: 1 }
@@ -59,6 +59,10 @@ setFromIni()
 GroupAdd, autoMailGroup, % "Automated Mailing Home Page"
 GroupAdd, autoMailGroup, % "ahk_exe obunity.exe",,, % "Perform Import"
 checkGroupAdd()
+
+Global CH := setTextAndResize("1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890`n2`n3`n4`n5`n6`n7`n8`n9`n0`n1`n2`n3`n4`n5`n6`n7`n8`n9`n0`n1`n2`n3`n4`n5`n6`n7`n8`n9`n0", "s9", "Lucida Console"),
+    wCH := CH[1]/100, hCH := CH[2]/30, zoomPPI := A_ScreenDPI/96
+Global pad := 2, scrollbar := 24, margin := 12, OneRow := "h" hCH*1+pad+2 " Limit87", TwoRows := "h" (hCH*2.7)+pad, ThreeRows := "h" (hCH*3)+pad*3, FourRows := "h" (hCH*4)+pad*3
 
 Global countySpecificText := { StLouis: { OverIncomeContactInfo: "", CountyName: "St. Louis County" }
     , Dakota: { OverIncomeContactInfo: " contact 651-554-6696 and", CountyName: "Dakota County", customHotkeys: "
@@ -74,18 +78,18 @@ Global countySpecificText := { StLouis: { OverIncomeContactInfo: "", CountyName:
 )" } }
 
 ;Base globals
-Global confirmedClear := 0 ;, SignDate := 0, Homeless := 0
+Global cs := ", " ; for MsgBox variable separation
 Global caseDetails := { docType: "_DOC?", eligibility: "_ELIG?", saEntered: "_SA?", caseType: "_PRG?", appType: "_APP?", isHomeless: "", haveWaitlist: false }
-Global caseNoteEntered := { mec2NoteEntered: 0, maxisNoteEntered: 0 }
+Global caseNoteEntered := { mec2NoteEntered: 0, maxisNoteEntered: 0, confirmedClear: 0 }
 Global dateObject := { todayYMD: A_Now, todayMDY: formatMDY(A_Now), receivedMDY: "", receivedYMD: "", autoDenyYMD: "" }
 Global autoDenyObject := { autoDenyExtensionMECnote: "", autoDenyExtensionDate: "", autoDenyExtensionSpecLetter: "" }
-Global editControls := ["HouseholdCompEdit", "SharedCustodyEdit", "AddressVerificationEdit", "SchoolInformationEdit", "IncomeEdit", "ChildSupportIncomeEdit"
-    , "ChildSupportCooperationEdit", "ExpensesEdit", "AssetsEdit", "ProviderEdit", "ActivityAndScheduleEdit", "ServiceAuthorizationEdit", "NotesEdit", "MissingEdit"]
-Global exampleLabels := [ "HouseholdCompEditLabelExample", "AddressVerificationEditLabelExample", "SharedCustodyEditLabelExample", "SchoolInformationEditLabelExample", "IncomeEditLabelExample"
-    , "ChildSupportIncomeEditLabelExample", "ChildSupportCooperationEditLabelExample", "ExpensesEditLabelExample", "AssetsEditLabelExample", "ProviderEditLabelExample", "ActivityAndScheduleEditLabelExample"
-    , "ServiceAuthorizationEditLabelExample", "MissingEditLabelExample" ]
-Global MonoChar := setTextAndResize("1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890", "s9", "Lucida Console")/100 ; 100 characters is 733w at 3840 x 2160
+Global editControls := ["01HouseholdCompEdit", "02SharedCustodyEdit", "03AddressVerificationEdit", "04SchoolInformationEdit", "05IncomeEdit", "06ChildSupportIncomeEdit"
+    , "07ChildSupportCooperationEdit", "08ExpensesEdit", "09AssetsEdit", "10ProviderEdit", "11ActivityAndScheduleEdit", "12ServiceAuthorizationEdit", "13NotesEdit", "14MissingEdit"]
+Global exampleLabels := [ "01HouseholdCompEditLabelExample", "03AddressVerificationEditLabelExample", "02SharedCustodyEditLabelExample", "04SchoolInformationEditLabelExample", "05IncomeEditLabelExample"
+    , "06ChildSupportIncomeEditLabelExample", "07ChildSupportCooperationEditLabelExample", "08ExpensesEditLabelExample", "09AssetsEditLabelExample", "10ProviderEditLabelExample", "11ActivityAndScheduleEditLabelExample"
+    , "12ServiceAuthorizationEditLabelExample", "14MissingEditLabelExample" ]
 
+setIcon()
 ;Missing Verification globals
 Global emailTextObject := {}, missingInput := {}, otherMissing := {}, letterText := {}, letterTextNumber := 1, missingHomelessItems := "", idList := "", lineCount := 0
 Global overIncomeObj := { overIncomeHHsize: "your size" }
@@ -100,25 +104,13 @@ Global missingInputObject := { IDmissing: { baseText: "ID", inputAdject: " for "
     , ChildSupportNoncooperationMissing: { baseText: "CS Non-cooperation", inputAdject: " - CSO phone: ", promptText: "What is the phone number of the Child Support officer?", strRem: 19 }
     , LegalNameChangeMissing: { baseText: "Name change", inputAdject: " for ", promptText: "Who is the name change proof needed for?", strRem: 12 }
     , SeasonalOffSeasonMissing: { baseText: "Seasonal employment info - app in off-season", inputAdject: " for ", promptText: "Who is the employer? (optional)", strRem: 45 }
-    , overIncomeMissing: { baseText: "Over-income", inputAdject: "", promptText: "Without dollar signs, enter the calculated income less expenses, income limit, and household size.`nOnly type numbers separated by spaces - no commas or periods.`n`n(Example: 76392 49605 3)", strRem: 12 } }
+    , overIncomeMissing: { baseText: "Over-income", inputAdject: " by $", promptText: "Without dollar signs, enter the calculated income less expenses, income limit, and household size.`nOnly type numbers separated by spaces - no commas or periods.`n`n(Example: 76392 49605 3)", strRem: 12 } }
 
 
 buildMainGui()
 buildMissingGui()
 buildSettingsGui(1)
-
-getCaseNotesMonInfo() {
-    winHandle := WinExist("CaseNotes")
-    ;--------------------------------------------------------------------------
-    VarSetCapacity(monitorInfo, 40), NumPut(40, monitorInfo)
-    monitorHandle := DllCall("MonitorFromWindow", "Ptr", winHandle, "UInt", 0x2)
-    DllCall("GetMonitorInfo", "Ptr", monitorHandle, "Ptr", &monitorInfo)
-    ;--------------------------------------------------------------------------
-    workLeft      := NumGet(monitorInfo, 20, "Int") ; Left
-    workTop       := NumGet(monitorInfo, 24, "Int") ; Top
-    workRight     := NumGet(monitorInfo, 28, "Int") ; Right
-    workBottom    := NumGet(monitorInfo, 32, "Int") ; Bottom
-}
+Global caseNotesMonCenter := getMonCenter("CaseNotes")
 ;mec2CaseNoteTest := "
 ;(
 ;1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
@@ -152,18 +144,7 @@ getCaseNotesMonInfo() {
 ;9
 ;0
 ;)"
-
-;zoomInt := A_ScreenDPI/96
-;wCH := 11/zoomInt
-;pad := 4
-;hCH := 18/zoomInt
-;wScrollbar := Ceil(26/zoomInt)
-
-    ;Gui, oversizedNoteGui: New,, % "Oversized Note"
-    ;Gui, Color, Silver, C0C0C0
-    ;Gui, Font, s9, Lucida Console
-    ;Gui, oversizedNoteGui: Add, Edit, % "vmec2CaseNoteEdit w" Ceil((wCH*100))+wScrollbar+pad " h" Ceil((hCH*30))+pad, % mec2CaseNoteTest
-    ;Gui, oversizedNoteGui: Show
+;buildOversizedNoteGui(mec2CaseNoteTest)
 
 Return
 
@@ -172,8 +153,14 @@ Return
 buildMainGui() {
     Global
     Gui +OwnDialogs
-    Gui MainGui: Font,, % "Segoe UI"
-    Gui MainGui: Color, % "a9a9a9", % "bebebe"
+    local LabelSettings := "xm+5 y+1 w200"
+    local LabelExampleSettings := "x220 yp+4 h12 w" wCH*60 " "
+    ; 995 is about the right size (* .666 == 663)
+    local TextboxSettings := "xm y+1 w" (wCH*87)+scrollbar+pad
+    ;local OneRow := "h17 Limit87", TwoRows := "h33", ThreeRows := "h43", FourRows := "h55"
+
+    Gui, MainGui: Font,, % "Segoe UI"
+    Gui, MainGui: Color, % "a9a9a9", % "bebebe"
 
     Gui, MainGui: Add, Radio, % "Group Section h17 x12 w75 y+5 gsetDocType vApplicationRadio", % "Application"
     Gui, MainGui: Add, Radio, % "xp y+2 wp h17 gsetDocType vRedeterminationRadio", % "Redeterm."
@@ -201,79 +188,72 @@ buildMainGui() {
     Gui, MainGui: Add, Text, % "xp y+2 w35 h20", % "Rec'd:"
     Gui, MainGui: Add, Text, % "xp y+2 w35 h20 vSignText Hidden", % "Signed:"
 
-    Gui, MainGui: Add, Edit, % "x+0 ys w75 h17 -Background Limit8 vcaseNumber",
-    Gui, MainGui: Add, DateTime, % "xp y+5 w75 h17 vReceivedDate", % "M/d/yy"
-    Gui, MainGui: Add, DateTime, % "xp y+5 w75 h17 vSignDate Hidden", % "M/d/yy"
+    Gui, MainGui: Add, Edit, % "x+0 ys w70 h17 -Background Limit8 vcaseNumber",
+    Gui, MainGui: Add, DateTime, % "xp y+5 w70 h17 vReceivedDate", % "M/d/yy"
+    Gui, MainGui: Add, DateTime, % "xp y+5 w70 h17 vSignDate Hidden", % "M/d/yy"
 
-    Gui, MainGui: Add, Button, % "Section x540 ys+0 h17 w65 -TabStop vmec2NoteButton goutputCaseNote", % "MEC2 Note"
-    Gui, MainGui: Add, Button, % "xs y+5 h17 w65 -TabStop Hidden vmaxisNoteButton goutputCaseNote", % "MAXIS Note"
-    Gui, MainGui: Add, Button, % "xs y+5 h17 w65 -TabStop vnotepadNoteButton goutputCaseNote", % "To Desktop"
-
+    Gui, MainGui: Add, Button, % "Section x535 ys+0 h17 w70 -TabStop vmec2NoteButton goutputCaseNote", % "MEC" sq " Note"
+    Gui, MainGui: Add, Button, % "xs y+5 h17 w70 -TabStop Hidden vmaxisNoteButton goutputCaseNote", % "MAXIS Note"
+    Gui, MainGui: Add, Button, % "xs y+5 h17 w70 -TabStop vnotepadNoteButton goutputCaseNote", % "To Desktop"
     Gui, MainGui: Add, Button, % "Section x615 ys+0 h17 w50 -TabStop vClearFormButton gMainGuiGuiClose", % "Clear"
 
-    local LabelSettings := "xm+5 y+1 w200"
-    local LabelExampleSettings := "x220 yp+4 h12 w" MonoChar*60 " "
-    ; 995 is about the right size (* .666 == 663)
-    local TextboxSettings := "xm y+1 w" (MonoChar*87)+27 ; At w650, WinSpy shows 945 for box with scrollbar, 971 without, and 975 total. (spy * .666 == AHK #s). Which gets 20 for the (~17.4) scrollbar and (~2.6) border
-    local OneRow := "h17 Limit87", TwoRows := "h33", ThreeRows := "h43", FourRows := "h55"
-
-    Gui MainGui: Font, s9, % "Segoe UI"
-    Gui, MainGui: Margin, 12 12
+    Gui, MainGui: Font, s9, % "Segoe UI"
+    Gui, MainGui: Margin, % marginW
     Gui, MainGui: Add, Text, % "xm y+45 h0 w0" ; Blank space
-    Gui, MainGui: Add, Text, % LabelSettings " vHouseholdCompEditLabel", % "Household Comp"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vHouseholdCompEditLabelExample Hidden", % "Parent (ID), ChildOne (4, BC), ChildName (age, verif)"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " vHouseholdCompEdit", ;v2 add LoseFocus gui_event to force spacing.
+    Gui, MainGui: Add, Text, % LabelSettings " v01HouseholdCompEditLabel", % "Household Comp"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v01HouseholdCompEditLabelExample Hidden", % "Parent (ID), ChildOne (4, BC), ChildName (age, verif)"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " v01HouseholdCompEdit", ;v2 add LoseFocus gui_event to force spacing.
 
-    Gui, MainGui: Add, Text, % LabelSettings " vAddressVerificationEditLabel", % "Address Verification"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vAddressVerificationEditLabelExample Hidden", % "1234 W Minnesota St APT 21, St Paul: ID 5/4/20 (scan date)"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " ThreeRows " vAddressVerificationEdit",
+    Gui, MainGui: Add, Text, % LabelSettings " v03AddressVerificationEditLabel", % "Address Verification"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v03AddressVerificationEditLabelExample Hidden", % "1234 W Minnesota St APT 21, St Paul: ID 5/4/20 (scan date)"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " ThreeRows " v03AddressVerificationEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " vSharedCustodyEditLabel", % "Shared Custody"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vSharedCustodyEditLabelExample Hidden", % "Absent Parent / Child: Thursday 6pm - Monday 7am"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " vSharedCustodyEdit",
+    Gui, MainGui: Add, Text, % LabelSettings " v02SharedCustodyEditLabel", % "Shared Custody"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v02SharedCustodyEditLabelExample Hidden", % "Absent Parent / Child: Thursday 6pm - Monday 7am"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " v02SharedCustodyEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " vSchoolInformationEditLabel", % "School information"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vSchoolInformationEditLabelExample Hidden", % "ChildOne, ChildTwo: Wildcat Elementary, M-F 730am - 2pm"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " ThreeRows " vSchoolInformationEdit",
+    Gui, MainGui: Add, Text, % LabelSettings " v04SchoolInformationEditLabel", % "School information"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v04SchoolInformationEditLabelExample Hidden", % "ChildOne, ChildTwo: Wildcat Elementary, M-F 730am - 2pm"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " ThreeRows " v04SchoolInformationEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " vIncomeEditLabel", % "Income"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vIncomeEditLabelExample Hidden Border", % "Parent - Job: BW avg $1234.56, 43.2hr/wk; annual @ 32098.56"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " vIncomeEdit",
+    Gui, MainGui: Add, Text, % LabelSettings " v05IncomeEditLabel", % "Income"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v05IncomeEditLabelExample Hidden Border", % "Parent - Job: BW avg $1234.56, 43.2hr/wk; annual @ 32098.56"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " v05IncomeEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " vChildSupportIncomeEditLabel", % "Child Support Income"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vChildSupportIncomeEditLabelExample Hidden", % "6 month total $2345.67; annual @ 4691.34"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " vChildSupportIncomeEdit",
+    Gui, MainGui: Add, Text, % LabelSettings " v06ChildSupportIncomeEditLabel", % "Child Support Income"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v06ChildSupportIncomeEditLabelExample Hidden", % "6 month total $2345.67; annual @ 4691.34"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " v06ChildSupportIncomeEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " vChildSupportCooperationEditLabel Border gcopySharedCustodyEditToCSCoopEdit", % "Child Support Cooperation"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vChildSupportCooperationEditLabelExample Hidden", % "Absent Parent / Child: Open, cooperating"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " vChildSupportCooperationEdit",
+    Gui, MainGui: Add, Text, % LabelSettings " v07ChildSupportCooperationEditLabel Border gcopy02SharedCustodyEditToCSCoopEdit", % "Child Support Cooperation"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v07ChildSupportCooperationEditLabelExample Hidden", % "Absent Parent / Child: Open, cooperating"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " v07ChildSupportCooperationEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " vExpensesEditLabel", % "Expenses"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vExpensesEditLabelExample Hidden", % "BW Medical $121.23, BW Dental $12.23, BW Vision $2.23"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " vExpensesEdit",
+    Gui, MainGui: Add, Text, % LabelSettings " v08ExpensesEditLabel", % "Expenses"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v08ExpensesEditLabelExample Hidden", % "BW Medical $121.23, BW Dental $12.23, BW Vision $2.23"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " v08ExpensesEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " vAssetsEditLabel", % "Assets"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vAssetsEditLabelExample Hidden", % "< $1m   or   (blank)"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " OneRow " Limit87 vAssetsEdit",
+    Gui, MainGui: Add, Text, % LabelSettings " v09AssetsEditLabel", % "Assets"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v09AssetsEditLabelExample Hidden", % "< $1m   or   (blank)"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " OneRow " Limit87 v09AssetsEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " vProviderEditLabel", % "Provider"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vProviderEditLabelExample Hidden", % "Kid Kare (PID#, HQ): ChildOne, ChildTwo - Start date 5/4/20"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " vProviderEdit",
+    Gui, MainGui: Add, Text, % LabelSettings " v10ProviderEditLabel", % "Provider"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v10ProviderEditLabelExample Hidden", % "Kid Kare (PID#, HQ): ChildOne, ChildTwo - Start date 5/4/20"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " v10ProviderEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " vActivityAndScheduleEditLabel", % "Activity and Schedule"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vActivityAndScheduleEditLabelExample Hidden", % "ParentOne - Employment: M-F 9a - 5p (8h x 5d)"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " vActivityAndScheduleEdit", 
+    Gui, MainGui: Add, Text, % LabelSettings " v11ActivityAndScheduleEditLabel", % "Activity and Schedule"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v11ActivityAndScheduleEditLabelExample Hidden", % "ParentOne - Employment: M-F 9a - 5p (8h x 5d)"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " v11ActivityAndScheduleEdit", 
 
-    Gui, MainGui: Add, Text, % LabelSettings " vServiceAuthorizationEditLabel", % "Service Authorization"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vServiceAuthorizationEditLabelExample Hidden", % "8h work + 1h travel = 9h/day, 90h/period"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " ThreeRows " vServiceAuthorizationEdit", 
+    Gui, MainGui: Add, Text, % LabelSettings " v12ServiceAuthorizationEditLabel", % "Service Authorization"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v12ServiceAuthorizationEditLabelExample Hidden", % "8h work + 1h travel = 9h/day, 90h/period"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " ThreeRows " v12ServiceAuthorizationEdit", 
 
-    Gui, MainGui: Add, Text, % LabelSettings " vNotesEditLabel", % "Notes"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " vNotesEdit",
+    Gui, MainGui: Add, Text, % LabelSettings " v13NotesEditLabel", % "Notes"
+    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " v13NotesEdit",
 
-    Gui, MainGui: Add, Text, % "xm+5 y+1 gshowMissingVerifs vMissingEditLabel Border", % "Missing"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " vMissingEditLabelExample Hidden", % "(Click ""Missing"" to bring up the missing verification list)"
-    Gui, MainGui: Add, Edit, % TextboxSettings " h115 vMissingEdit",
+    Gui, MainGui: Add, Text, % "xm+5 y+1 gshowMissingVerifs v14MissingEditLabel Border", % "Missing"
+    Gui, MainGui: Add, Text, % LabelExampleSettings " v14MissingEditLabelExample Hidden", % "(Click ""Missing"" to bring up the missing verification list)"
+    Gui, MainGui: Add, Edit, % TextboxSettings " h" hCH*10+pad " v14MissingEdit",
 
     Gui, MainGui: Add, Text, % "x15 y+4", % Version
     Gui, MainGui: Add, Button, % "x+20 yp w65 h19 -TabStop gbuildSettingsGui", % "Settings"
@@ -283,17 +263,17 @@ buildMainGui() {
 
     Gui, MainGui: Show, % "x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes, CaseNotes
     Gui, MainGui: Show, AutoSize
-    GuiControl, Focus, HouseholdCompEdit
+    GuiControl, Focus, 01HouseholdCompEdit
 
     For i, editField in editControls {
-        Gui MainGui: Font, s9, % "Lucida Console" ; monospace font
+        Gui, MainGui: Font, s9, % "Lucida Console" ; monospace font
         GuiControl, MainGui: Font, % editField
     }    
     For i, catLabel in exampleLabels {
-        Gui MainGui: Font, s9, % "Lucida Console"
+        Gui, MainGui: Font, s9, % "Lucida Console"
         GuiControl, MainGui: Font, % catLabel
     }
-    GuiControl, , MainGui: HouseholdCompEdit, , gdoToolTip
+    GuiControl, , MainGui: 01HouseholdCompEdit, , gdoToolTip
 }
 ; v2 convert to switch
 setDocType() {
@@ -337,16 +317,16 @@ setAppType() {
         GuiControl, MainGui: Show, SignDate
     } Else If (A_GuiControl == "MNBenefitsRadio") {
         caseDetails.appType := "MNB"
-        GuiControl, MainGui: Text, HouseholdCompEditLabel, % "Household Comp (pages 1, 3-5)"
-        GuiControl, MainGui: Text, AddressVerificationEditLabel, % "Address Verification (page 3)"
-        GuiControl, MainGui: Text, SharedCustodyEditLabel, % "Absent Parent / Child (page 6)"
-        GuiControl, MainGui: Text, SchoolInformationEditLabel, % "School Information (page 7)"
-        GuiControl, MainGui: Text, IncomeEditLabel, % "Income (pages 2, 8-9)"
-        GuiControl, MainGui: Text, ChildSupportIncomeEditLabel, % "Child Support Income (page 9)"
-        GuiControl, MainGui: Text, ExpensesEditLabel, % "Expenses (page 10)"
-        GuiControl, MainGui: Text, AssetsEditLabel, % "Assets (page 10)"
-        GuiControl, MainGui: Text, ActivityAndScheduleEditLabel, % "Activity and Schedule (pages 10-11)"
-        GuiControl, MainGui: Text, ProviderEditLabel, % "Provider (pages 12-15)"
+        GuiControl, MainGui: Text, 01HouseholdCompEditLabel, % "Household Comp (pages 1, 3-5)"
+        GuiControl, MainGui: Text, 03AddressVerificationEditLabel, % "Address Verification (page 3)"
+        GuiControl, MainGui: Text, 02SharedCustodyEditLabel, % "Absent Parent / Child (page 6)"
+        GuiControl, MainGui: Text, 04SchoolInformationEditLabel, % "School Information (page 7)"
+        GuiControl, MainGui: Text, 05IncomeEditLabel, % "Income (pages 2, 8-9)"
+        GuiControl, MainGui: Text, 06ChildSupportIncomeEditLabel, % "Child Support Income (page 9)"
+        GuiControl, MainGui: Text, 08ExpensesEditLabel, % "Expenses (page 10)"
+        GuiControl, MainGui: Text, 09AssetsEditLabel, % "Assets (page 10)"
+        GuiControl, MainGui: Text, 11ActivityAndScheduleEditLabel, % "Activity and Schedule (pages 10-11)"
+        GuiControl, MainGui: Text, 10ProviderEditLabel, % "Provider (pages 12-15)"
         GuiControl, MainGui: Hide, SignText
         GuiControl, MainGui: Hide, SignDate
         Gui, Show
@@ -354,15 +334,15 @@ setAppType() {
     checkWaitlist()
 }
 revertLabels() {
-    GuiControl, MainGui: Text, HouseholdCompEditLabel, % "Household Comp"
-    GuiControl, MainGui: Text, AddressVerificationEditLabel, % "Address Verification"
-    GuiControl, MainGui: Text, SharedCustodyEditLabel, % "Shared Custody"
-    GuiControl, MainGui: Text, SchoolInformationEditLabel, % "School Information"
-    GuiControl, MainGui: Text, IncomeEditLabel, % "Income"
-    GuiControl, MainGui: Text, ChildSupportIncomeEditLabel, % "Child Support Income"
-    GuiControl, MainGui: Text, ExpensesEditLabel, % "Expenses"
-    GuiControl, MainGui: Text, AssetsEditLabel, % "Assets"
-    GuiControl, MainGui: Text, ActivityAndScheduleEditLabel, % "Activity and Schedule"
+    GuiControl, MainGui: Text, 01HouseholdCompEditLabel, % "Household Comp"
+    GuiControl, MainGui: Text, 03AddressVerificationEditLabel, % "Address Verification"
+    GuiControl, MainGui: Text, 02SharedCustodyEditLabel, % "Shared Custody"
+    GuiControl, MainGui: Text, 04SchoolInformationEditLabel, % "School Information"
+    GuiControl, MainGui: Text, 05IncomeEditLabel, % "Income"
+    GuiControl, MainGui: Text, 06ChildSupportIncomeEditLabel, % "Child Support Income"
+    GuiControl, MainGui: Text, 08ExpensesEditLabel, % "Expenses"
+    GuiControl, MainGui: Text, 09AssetsEditLabel, % "Assets"
+    GuiControl, MainGui: Text, 11ActivityAndScheduleEditLabel, % "Activity and Schedule"
 }
 ; v2 convert to switch
 setEligibility() {
@@ -403,17 +383,17 @@ setCaseType() {
     caseDetails.caseType := A_GuiControl
     checkWaitlist()
 }
-copySharedCustodyEditToCSCoopEdit() {
+copy02SharedCustodyEditToCSCoopEdit() {
     Global
     Gui, MainGui: Submit, NoHide
-    If (StrLen(SharedCustodyEdit) > 0 && StrLen(ChildSupportCooperationEdit) == 0) {
-        Loop, Parse, SharedCustodyEdit, `n, `r
+    If (StrLen(02SharedCustodyEdit) > 0 && StrLen(07ChildSupportCooperationEdit) == 0) {
+        Loop, Parse, 02SharedCustodyEdit, `n, `r
         {
             colonLoc := InStr(A_LoopField, ":",, 0, 1)
             outputText .= SubStr(A_LoopField, 1, colonLoc) " `n"
         }
         outputText := Trim(outputText, "`n")
-        GuiControl, MainGui: Text, ChildSupportCooperationEdit, % outputText
+        GuiControl, MainGui: Text, 07ChildSupportCooperationEdit, % outputText
     }
 }
 ;MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION
@@ -422,19 +402,20 @@ copySharedCustodyEditToCSCoopEdit() {
 ;=======================================================================================================================================================================================================
 ;EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION 
 buildHelpGui() {
+    local widestText
     Paragraph1 := "
     (
-    This app is a template tool for generating Case Notes for CCAP applications and redeterminations 
-    and request letters for Special Letters and emails. This tool is not endorsed or sponsored by MN DHS.
+    This app is a template tool for generating Case Notes for CCAP applications, redeterminations, and request letters
+    for Special Letters and emails. This tool is not endorsed or sponsored by MN DCYF.
     )"
     Paragraph2 := "
     (
     Features:
-    ● Auto-formats text to fit within MEC2's Case Notes and Special Letter/Memo fields.
+    ● Auto-formats text to fit within MEC" sq "'s Case Notes and Special Letter/Memo fields.
+       and is designed to be compatible with the Income Calculator spreadsheet.
     ● Case Notes are formatted with categories and spacing for consistant alignment. 
     ● User-entered dates calculate the extended auto-deny date (for a minimum of 15ish days from the date processed).
     ● Incorporates document type, approval status, and dates in the notes and verification requests.
-    ● Line width is designed to be compatible with the Income Calculator spreadsheet.
     ● Compatible with mec2functions from github.com/MECH2-at-github.
     ● Case Notes can be saved to a text document in the event a case is locked or otherwise inaccessible.
     ● Special Letter requests are broken down into 'clarifications' of checkbox items, and additional items.
@@ -442,16 +423,16 @@ buildHelpGui() {
     Paragraph3 := "
     (
     Main window :
-    ● [MEC2 Note] - Formats the entire case note and sends the data to MEC2.
+    ● [MEC" sq " Note] - Formats the entire case note and sends the data to MEC" sq ".
         If you are not using mec2functions, it will simulate keypresses to navigate the page. 
-        In MEC2: Click 'New' in MEC2 on the CaseNotes webpage. In CaseNotes, click [MEC2 Note].
+        In MEC" sq ": Click 'New' in MEC" sq " on the CaseNotes webpage. In CaseNotes, click [MEC" sq " Note].
     ● [MAXIS Note] - Visible only if ""Case Note in MAXIS"" is checked in Settings.
         Formats the app date, case status, and verifications list and sends it to MAXIS.
         It will activate BlueZone and paste the case note in.
         In BlueZone (MAXIS): PF9 to start a new note. In CaseNotes, click [MAXIS Note].
-    ● [Desktop Backup] - Saves case notes for MEC2, MAXIS, the Special Letters, and Email to your desktop.
+    ● [Desktop Backup] - Saves case notes for MEC" sq ", MAXIS, the Special Letters, and Email to your desktop.
         In CaseNotes, click [To Desktop]. A text file will be saved using the case number for the file name.
-    ● [Clear] - Resets the app. If the case note has not been sent to MEC2/MAXIS or saved to file, it will give a
+    ● [Clear] - Resets the app. If the case note has not been sent to MEC" sq "/MAXIS or saved to file, it will give a
         warning. Otherwise, it will change to [Confirm]. Clicking again will reset the app.
     ● Child Support Cooperation - Click the [Child Support Cooperation] label to copy from Custody.
         The Child Support Cooperation text field must be blank when clicking the button.
@@ -468,7 +449,7 @@ buildHelpGui() {
     ● [Done] - After selecting the verifications that are missing, [Done] will generate a list and letter/email buttons.
           If the Special Letter text exceeds 30 lines, a second (/third/fourth) letter will be generated.
     ● [Letter 1/2/3/4] - Clicking these will place text on the clipboard to be pasted into the Worker Comments field.
-        If ""Use mec2functions"" is checked, [Letter 1] will auto-check and auto-fill fields in MEC2's Special Letter page.
+        If ""Use mec2functions"" is checked, [Letter 1] will auto-check and auto-fill fields in MEC" sq "'s Special Letter page.
     ● [Email] - Text is send to the clipboard, which can then be pasted into an email. It will include the document type
         that was selected (application/redetermination). For homeless cases, alternate text is generated based on if
         the case is Eligible or Pending.
@@ -478,7 +459,7 @@ buildHelpGui() {
     Hotkeys:
     ● (Alt+3): Copies the case number to the clipboard. Usable from anywhere when CaseNotes is open.
     ● (Win+m): Inserts Missing Verification text when your browser or an email is the active window.
-      Similar to the [Email] or [Letter 1] buttons, but without needing to switch windows.
+               Similar to the [Email] or [Letter 1] buttons, but without needing to switch windows.
     ● (Win+left arrow) or (Win+right arrow): Resets CaseNotes location, in the event it is off-screen.
     ● (Ctrl+F12) or (Alt+12): In your browser, types in the worker's name with a separation line (case note signature)
     ● (Ctrl+Alt+a): Shows clipboard text in a popup window. Select and copy text first (such as from a case note).
@@ -486,31 +467,36 @@ buildHelpGui() {
     Paragraph6 := "
     (
     Special notes:
-    ● CaseNotes will open in the same location it was closed, even if that monitor is no longer connected. See Hotkeys for reset instructions.
-    ● All settings for CaseNotes are saved in the My Documents folder, under AHK.ini. Deleting this file will reset all
-        saved settings.
+    ● CaseNotes will open in the same location it was closed, even if that monitor is no longer connected.
+       See Hotkeys for reset instructions.
+    ● All settings for CaseNotes are saved in the My Documents folder, under AHK.ini.
+       Deleting this file will reset all saved settings.
     ● Please send any bug reports or feature requests to MECH2.at.github@gmail.com
     )"
-
+    helpXY := "xm y+15"
     Gui, HelpGui: New, ToolWindow, % "CaseNotes Help"
-    Gui, HelpGui: Margin, 12 12
+    Gui, HelpGui: Margin, % marginW
     Gui, Font, s10, % "Segoe UI"
     Gui, HelpGui: Add, Tab3,, % "Features | CaseNotes | Missing Verifications | Hotkeys and Notes"
     Gui, Tab, 1
-    Gui, HelpGui: Add, Text, % "xm y+15", % Paragraph1
-    Gui, HelpGui: Add, Text, % "xm y+15", % Paragraph2
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph1
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph2
     Gui, Tab, 2
-    Gui, HelpGui: Add, Text, % "xm y+15", % Paragraph3
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph3
     Gui, Tab, 3
-    Gui, HelpGui: Add, Text, % "xm y+15", % Paragraph4
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph4
     Gui, Tab, 4
-    Gui, HelpGui: Add, Text, % "xm y+15", % Paragraph5
-    Gui, HelpGui: Add, Text, % "xm y+15", % Paragraph6
-    Gui, HelpGui: Add, Text, % "xm y+15", % countySpecificText[ini.employeeInfo.employeeCounty].customHotkeys
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph5
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph6
+    Gui, HelpGui: Add, Text, % helpXY, % countySpecificText[ini.employeeInfo.employeeCounty].customHotkeys
     Gui, Tab
-    Gui, HelpGui: Add, Button, % "gHelpGuiGuiClose w70 h25 x375", % "Close"
+    Gui, HelpGui: Add, Button, % "gHelpGuiGuiClose w70 h25", % "Close"
     Gui, HelpGui:+OwnerMainGui
-    Gui, HelpGui: Show,, % "CaseNotes Help"
+    Gui, HelpGui: Show, % "Hide x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes
+    GuiControlGet editSize, HelpGui:POS, Static5
+    guiX := caseNotesMonCenter[1] - ((editSizeW*zoomPPI)/2), guiY := caseNotesMonCenter[2] - (editSizeH*zoomPPI/2)
+    GuiControl, HelpGui: Move, % "Close", % "x" (editSizeW/2)
+    Gui, HelpGui: Show, % "x" guiX " y" guiY
 }
 HelpGuiGuiClose() {
     Gui, HelpGui: Destroy
@@ -539,12 +525,15 @@ makeCaseNote() {
     Gui, MainGui: Submit, NoHide
     Gui, MissingGui: Submit, NoHide
     calcDates()
-    local finishedCaseNote := {}, originalMissingEdit := MissingEdit
+    local finishedCaseNote := {}, original14MissingEdit := 14MissingEdit
     local caseDetailsModified := { caseType: caseDetails.caseType, appType: caseDetails.appType, docType: caseDetails.docType, eligibility: caseDetails.eligibility, saEntered: caseDetails.saEntered }
-    For i, editField in editControls {
-        %editField% := stWordWrap(%editField%, 100, "             ", 1, 1)
-        ;%editField% := StrReplace(%editField%, "`n", "`n             ")
+    ;v2: continuation section 
+    editFields := { 01HouseholdCompEdit: " HH COMP:    ", 02SharedCustodyEdit: " CUSTODY:    ", 03AddressVerificationEdit: " ADDRESS:    ", 04SchoolInformationEdit: "  SCHOOL:    ", 05IncomeEdit: "  INCOME:    ", 06ChildSupportIncomeEdit: "      CS:    ", 07ChildSupportCooperationEdit: " CS COOP:    ", 08ExpensesEdit: "EXPENSES:    ", 09AssetsEdit: "  ASSETS:    ", 10ProviderEdit: "PROVIDER:    ", 11ActivityAndScheduleEdit: "ACTIVITY:    ", 12ServiceAuthorizationEdit: "      SA:    ", 13NotesEdit: "   NOTES:    ", 14MissingEdit: " MISSING:    " }
+    finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote 
+    For editField, label in editFields {
+        finishedCaseNote.mec2CaseNote .= label stWordWrap(%editField%, 100, "             ", 1, 1) "`n"
     }
+    finishedCaseNote.mec2CaseNote .= "=====`n" ini.employeeInfo.employeeName
     finishedCaseNote.eligibility := caseDetails.eligibility
 	If (caseDetails.eligibility == "pends" && caseDetailsModified.docType == "Redet") {
 		caseDetailsModified.eligibility := "incomplete (due " formatMDY(SignDate) ")"
@@ -561,20 +550,6 @@ makeCaseNote() {
         caseDetailsModified.eligibility := caseDetails.eligibility " - BSF Waitlist"
         finishedCaseNote.eligibility := WaitListMissing == 1 ? "pends" : "ineligible"
     }
-    ;todo next line -> continuation section
-	;finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote " HH COMP:    " HouseholdCompEdit "`n CUSTODY:    " SharedCustodyEdit "`n ADDRESS:    " AddressVerificationEdit "`n  SCHOOL:    " SchoolInformationEdit "`n  INCOME:    " IncomeEdit "`n      CS:    " ChildSupportIncomeEdit "`n CS COOP:    " ChildSupportCooperationEdit "`nEXPENSES:    " ExpensesEdit "`n  ASSETS:    " AssetsEdit "`nPROVIDER:    " ProviderEdit "`nACTIVITY:    " ActivityAndScheduleEdit "`n      SA:    " ServiceAuthorizationEdit "`n   NOTES:    " NotesEdit "`n MISSING:    " MissingEdit "`n=====`n" ini.employeeInfo.employeeName
-	;finishedCaseNote.mec2CaseNote :=
-;(
-;autoDenyObject.autoDenyExtensionMECnote " HH COMP:    " HouseholdCompEdit "`n CUSTODY:    " SharedCustodyEdit "`n ADDRESS:    " AddressVerificationEdit "`n  SCHOOL:    " SchoolInformationEdit
-;"`n  INCOME:    " IncomeEdit "`n      CS:    " ChildSupportIncomeEdit "`n CS COOP:    " ChildSupportCooperationEdit "`nEXPENSES:    " ExpensesEdit "`n  ASSETS:    " AssetsEdit "`nPROVIDER:    " ProviderEdit
-;"`nACTIVITY:    " ActivityAndScheduleEdit "`n      SA:    " ServiceAuthorizationEdit "`n   NOTES:    " NotesEdit "`n MISSING:    " MissingEdit "`n=====`n" ini.employeeInfo.employeeName
-;)
-    finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote "
-(
- HH COMP:    " HouseholdCompEdit "`n CUSTODY:    " SharedCustodyEdit "`n ADDRESS:    " AddressVerificationEdit "`n  SCHOOL:    " SchoolInformationEdit "`n  INCOME:    " IncomeEdit "
-      CS:    " ChildSupportIncomeEdit "`n CS COOP:    " ChildSupportCooperationEdit "`nEXPENSES:    " ExpensesEdit "`n  ASSETS:    " AssetsEdit "`nPROVIDER:    " ProviderEdit "
-ACTIVITY:    " ActivityAndScheduleEdit "`n      SA:    " ServiceAuthorizationEdit "`n   NOTES:    " NotesEdit "`n MISSING:    " MissingEdit "`n=====`n" ini.employeeInfo.employeeName "
-)"
     If (Homeless == 1) {
 		caseDetailsModified.caseType := "*HL " caseDetails.caseType
 	}
@@ -602,18 +577,15 @@ ACTIVITY:    " ActivityAndScheduleEdit "`n      SA:    " ServiceAuthorizationEdi
         }
         finishedCaseNote.maxisNote .= "`n"
     }
-    If (StrLen(originalMissingEdit) > 0) {
-        ;missingMax := StrReplace(originalMissingEdit, "`n", "`n* ")
-        ;missingMax := stWordWrap(missingMax, 74, "* ", 4)
-        missingMax := stWordWrap(originalMissingEdit, 74, "* ", 4)
-        ;missingMax := StrReplace(missingMax, "`n(\w)", "  $1")
+    If (StrLen(original14MissingEdit) > 0) {
+        missingMax := stWordWrap(original14MissingEdit, 74, "* ", 4)
         finishedCaseNote.maxisNote .= "Special Letter mailed " dateObject.todayMDY " requesting:`n" missingMax "`n"
     }
-    ;finishedCaseNote.maxisNote := StrReplace(finishedCaseNote.maxisNote, "              ", " ")
     finishedCaseNote.maxisNote .= ini.employeeInfo.employeeName
     Return finishedCaseNote
 }
 outputCaseNote() {
+    Global
     madeCaseNote := makeCaseNote()
     If (!madeCaseNote) {
         Return
@@ -626,30 +598,33 @@ outputCaseNote() {
     } Else If (A_GuiControl == "notepadNoteButton") {
         outputCaseNoteNotepad(madeCaseNote)
 	}
+    sleep 500
+    Clipboard := caseNumber
 }
 outputCaseNoteMec2(sendingCaseNote) {
     Global
-    StrReplace(sendingCaseNote.mec2CaseNote, "`n", "`n", mec2CaseNoteLines) ; Counting new lines
-    ;If (mec2CaseNoteLines +1 == 31) { ;31 lines, signature lines combined
-        ;sendingCaseNote.mec2CaseNote := StrReplace(sendingCaseNote.mec2CaseNote, "`n=====`n", "`n===== ")
-    ;} Else 
-    If (mec2CaseNoteLines > 29) { ; off by 1
-        ;MsgBox,, % "MEC2 Case Note over 30 lines", % "Notice - Your case note is over 30 lines and will fail to save if not shortened."
-        sendingCaseNote.mec2CaseNote := oversizedNoteGui(sendingCaseNote.mec2CaseNote)
+    StrReplace(sendingCaseNote.mec2CaseNote, "`n", "`n", mec2CaseNoteLines) ; Counting lines
+    If (mec2CaseNoteLines > 29) { ; off by 1 - last line won't have a newline
+        sendingCaseNote.mec2CaseNote := buildOversizedNoteGui(sendingCaseNote.mec2CaseNote)
+        If (StrLen(sendingCaseNote.mec2CaseNote) < 2) {
+            Sleep 200
+            WinActivate, % "CaseNotes"
+            Return
+        }
     }
     WinActivate % ini.employeeInfo.employeeBrowser
-    Sleep 500
+    WinWaitActive, % ini.employeeInfo.employeeBrowser,, 5
     mec2docType := caseDetails.docType == "Redet" ? "Redetermination" : caseDetails.docType
     If (ini.employeeInfo.employeeUseMec2Functions == 1) {
         jsonCaseNote := "CaseNoteFromAHKJSON{""noteDocType"":""" mec2docType """,""noteTitle"":""" JSONstring(sendingCaseNote.mec2NoteTitle) """,""noteText"":""" JSONstring(sendingCaseNote.mec2CaseNote) """,""noteElig"":""" sendingCaseNote.eligibility """ }"
         Clipboard := jsonCaseNote
+        Sleep 500
         Send, ^v
     } Else If (ini.employeeInfo.employeeUseMec2Functions == 0) {
         catNum := { Application: { letter: "A", pends: 5, elig: 4, denied: 4 }, Redet: { letter: "R", incomplete: 1, elig: 2, denied: 2 } }
         catLetter := catNum[caseDetails.docType].letter
         catNumber := catNum[caseDetails.docType][caseDetails.eligibility]
-        WinActivate % ini.employeeInfo.employeeBrowser
-        Sleep 1000
+        Sleep 500
         Send {Tab 7}
         Sleep 750
         SendInput, { %catLetter% %catNumber% }
@@ -666,8 +641,6 @@ outputCaseNoteMec2(sendingCaseNote) {
     }
     caseNoteEntered.mec2NoteEntered := 1
     GuiControl, MainGui:Text, % "mec2NoteButton", % "MEC2 ✔" ; Chr(2714)
-    Sleep 500
-    Clipboard := caseNumber
 }
 outputCaseNoteMaxis(sendingCaseNote) {
     Global
@@ -675,13 +648,14 @@ outputCaseNoteMaxis(sendingCaseNote) {
     ;StrReplace(sendingCaseNote.maxisNote, "`n", "`n", MaxisNoteCaseNoteLines) ; Counting new lines
     ;ini.employeeInfo.employeeMaxis := ini.employeeInfo.employeeMaxis == "MAXIS-WINDOW-TITLE" ? "MAXIS" : ini.employeeInfo.employeeMaxis
     ;maxisWindow := WinExist(ini.employeeInfo.employeeMaxis " ahk_exe bzmd.exe")
-    maxisWindow := WinExist("ahk_group maxisGroup")
+    maxisWindow := WinExist("ahk_group maxisGroup") ; returns an ID
     If (maxisWindow == "0x0") {
         maxisWindow := WinExist("Mainframe ahk_exe bzmd.exe")
     }
     If (maxisWindow) {
-        WinActivate, % "ahk_id " maxisWindow ; WinExist returns an ID
+        WinActivate, % "ahk_id " maxisWindow
         Clipboard := sendingCaseNote.maxisNote
+        WinWaitActive, % "ahk_id " maxisWindow,, 5
         Sleep 500
         Send, ^v
     }
@@ -711,36 +685,67 @@ outputCaseNoteMaxis(sendingCaseNote) {
     ;sendingCaseNote.maxisNote := RegExReplace(sendingCaseNote.maxisNote, "i)(?<=.*`n.*){3}*.`n", "`n4thline")
     ; Test area end
 
-    caseNoteEntered.maxisNoteEnteredEntered := 1
+    caseNoteEntered.maxisNoteEntered := 1
     GuiControl, MainGui:Text, maxisNoteButton, MAXIS ✔ ; Chr(2714)
-    sleep 500
-    Clipboard := caseNumber
 }
 outputCaseNoteNotepad(sendingCaseNote) {
-    ;Global
-    ;local notepadFileName := caseNumber !== "" ? caseNumber : ""
-    ;If (notepadFileName == "") {
-        ;RegExMatch(HouseholdComp, "\w+\W", notepadFileName)
-    ;}
-    ;local letterNotepad := ""
-    ;For i, letterTextValue in letterText {
-        ;letterNotepad .= StrLen(LetterText[i]) > 0 ? "`n====== Special Letter " i " ======`n" letterTextValue "`n" : ""
-    ;}
-    ;FileAppend, % "====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n", % A_Desktop "\" notepadFileName ".txt"
-    ;GuiControl, MainGui:Text, notepadNoteButton, % "Desktop ✔"
-    ;caseNoteEntered.mec2NoteEntered := 1
-    ;caseNoteEntered.maxisNoteEntered := 1
+    Global
+    local notepadFileName := caseNumber !== "" ? caseNumber : ""
+    If (notepadFileName == "") {
+        RegExMatch(HouseholdComp, "\w+\W", notepadFileName)
+    }
+    local letterNotepad := ""
+    For i, letterTextValue in letterText {
+        letterNotepad .= StrLen(LetterText[i]) > 0 ? "`n====== Special Letter " i " ======`n" letterTextValue "`n" : ""
+    }
+    FileAppend, % "====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n", % A_Desktop "\" notepadFileName ".txt"
+    GuiControl, MainGui:Text, notepadNoteButton, % "Desktop ✔"
+    caseNoteEntered.mec2NoteEntered := 1
+    caseNoteEntered.maxisNoteEntered := 1
 }
-oversizedNoteGui(mec2CaseNote) {
-    ;Gui: oversizedNoteGui, New,, % "Oversized Note"
-    ;Gui, oversizedNoteGui: Margin, 12 12
-    ;
-    ;
-    ;Gui, Color, Silver, C0C0C0
-    ;Gui, Font, s11, Lucida Console
-    ;Gui, oversizedNoteGui: Add, Edit, % "vmec2CaseNoteEdit w" MonoChar *100, % mec2CaseNote
-    ;GuiControl, oversizedNoteGui: font, % "mec2CaseNoteEdit"
-    ;Gui, oversizedNoteGui: Show
+
+buildOversizedNoteGui(oversizedCaseNote) {
+    Global
+    Gui, OversizedNoteGui: New,, % "Oversized Note"
+    Gui, OversizedNoteGui: Color, % "a9a9a9", % "bebebe"
+    Gui, OversizedNoteGui: Margin, % marginW
+    Gui, OversizedNoteGui: Font, s10, % "Segoe UI"
+    Gui, OversizedNoteGui: Add, Text, x90, % "Your case note exceeds the maximum line count of 30. Edit your note here or return to CaseNotes."
+    Gui, OversizedNoteGui: Font, s9, % "Lucida Console"
+    ;Gui, OversizedNoteGui: Add, Edit, % "voversizedEdit goversizedEditChange xm w" (wCH*100)+scrollbar+pad " h" (hCH*30)+pad, % oversizedCaseNote
+    Gui, OversizedNoteGui: Add, Edit, % "xm voversizedEdit goversizedEditChange w" CH[1]+scrollbar+pad " h" CH[2]+pad*2, % oversizedCaseNote
+    Gui, OversizedNoteGui: Font, s10, % "Segoe UI"
+    Gui, OversizedNoteGui: Add, Text, , % "Line Count: "
+    Gui, OversizedNoteGui: Add, Text, % "voversizedLineCount x+p", "--"
+    Gui, OversizedNoteGui: Add, Button, % "vsaveOversizedButton gOversizedNoteGuiGuiClose x+185", % "Send to MEC" sq
+    Gui, OversizedNoteGui: Add, Button, % "vreturnOversizedButton gOversizedNoteGuiGuiClose x+30", % "Return to CaseNotes"
+    Gui, OversizedNoteGui: Show, % "Hide x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes
+    GuiControlGet oversizedEditSize, OversizedNoteGui:POS, oversizedEdit
+    oversizedNoteGuiX := caseNotesMonCenter[1] - ((oversizedEditSizeW*zoomPPI + scrollbar)/2), oversizedNoteGuiY := caseNotesMonCenter[2] - (oversizedEditSizeH*zoomPPI/2)
+    oversizedEditChange()
+    GuiControl, OversizedNoteGui:Text, oversizedEdit, % oversizedCaseNote
+    Gui, OversizedNoteGui: Show, % "x" oversizedNoteGuiX " y" oversizedNoteGuiY
+    Gui, OversizedNoteGui: +OwnerMainGui
+    Gui, MissingGui: +Disabled
+    Gui, MainGui: +Disabled
+    Send {end}
+    oversizedGuiCloseControl :=
+    WinWaitClose, % "Oversized Note"
+    Gui, OversizedNoteGui: Submit
+    Return oversizedGuiCloseControl == "saveOversizedButton" ? oversizedEdit : ""
+}
+OversizedNoteGuiGuiClose() {
+    Global oversizedGuiCloseControl := A_GuiControl
+    Gui, OversizedNoteGui: Submit, NoHide
+    Gui, MissingGui: -Disabled
+    Gui, MainGui: -Disabled
+    Gui, OversizedNoteGui: Destroy
+}
+oversizedEditChange() {
+    Global
+    Gui, OversizedNoteGui: Submit, NoHide
+    StrReplace(oversizedEdit, "`n", "`n", oversizedNoteLines)
+    GuiControl, OversizedNoteGui: Text, oversizedLineCount, % oversizedNoteLines+1
 }
 
 JSONstring(inputString) {
@@ -847,7 +852,7 @@ buildMissingGui() {
     ;Gui, MissingGui: Add, Progress, % ProgressLine
 
     Gui, MissingGui: New,, % "Missing Verifications"
-    Gui, MissingGui: Margin, 12 12
+    Gui, MissingGui: Margin, % marginW
     Gui, MissingGui: Add, Checkbox, % column1of1 " vIDmissing ginputBoxAGUIControl", % "ID (input)"
     Gui, MissingGui: Add, Checkbox, % column1of1 " vBCmissing ginputBoxAGUIControl", % "BC (input)"
     Gui, MissingGui: Add, Checkbox, % column1of1 " vBCNonCitizenMissing ginputBoxAGUIControl", % "BC [non-citizen] (input)"
@@ -892,7 +897,7 @@ buildMissingGui() {
     Gui, MissingGui: Add, Text, % "x+m yp+7 w120 h1 " lineColor
     Gui, MissingGui: Font
 
-    Gui, MissingGui: Add, Checkbox, % column1of2 " vChildSupportIncomeEditMissing", % "Child Support Income"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " v06ChildSupportIncomeEditMissing", % "Child Support Income"
     Gui, MissingGui: Add, Checkbox, % column2of2 " vSpousalSupportMissing", % "Spousal Support Income"
     Gui, MissingGui: Add, Checkbox, % column1of2 " vRentalMissing", % "Rental"
     Gui, MissingGui: Add, Checkbox, % column2of2 " vDisabilityMissing", % "STD / LTD "
@@ -1311,10 +1316,10 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
     }
 ; over-income is here in the list but has its own sub-routine.
 ;======================================================
-	If ChildSupportIncomeEditMissing {
-        ChildSupportIncomeEditMissingText := "Verification of your Child Support income;`n"
-		missingVerifications[missingListEnum ". " ChildSupportIncomeEditMissingText] := 1
-        emailTextString .= emailListEnum ". " ChildSupportIncomeEditMissingText
+	If 06ChildSupportIncomeEditMissing {
+        06ChildSupportIncomeEditMissingText := "Verification of your Child Support income;`n"
+		missingVerifications[missingListEnum ". " 06ChildSupportIncomeEditMissingText] := 1
+        emailTextString .= emailListEnum ". " 06ChildSupportIncomeEditMissingText
 		caseNoteMissingText .= "Child Support income;`n"
 		missingListEnum++
         emailListEnum++
@@ -1686,7 +1691,7 @@ Due to limited funding, new eligibility for CCAP in " countySpecificText[ini.emp
         }
 		GuiControl, MissingGui:Show, % "letter" . i
     }
-	GuiControl, MainGui: Text, MissingEdit, % caseNoteMissingText
+	GuiControl, MainGui: Text, 14MissingEdit, % caseNoteMissingText
 	GuiControl, MissingGui: Show, % "emailButton"
 	WinActivate, CaseNotes
 }
@@ -1697,11 +1702,25 @@ incrementLetterPage(ByRef letterTextNumber) {
     letterTextNumber++
 }
 faxAndEmailText() {
-    FaxInfo := (StrLen(ini.caseNoteCountyInfo.countyFax) > 1) ? "faxed to " ini.caseNoteCountyInfo.countyFax : ""
-    EmailInfo := (StrLen(ini.caseNoteCountyInfo.countyDocsEmail) > 1) ? "emailed to " ini.caseNoteCountyInfo.countyDocsEmail : ""
-    FaxAndEmail := (StrLen(FaxInfo) > 1 && StrLen(EmailInfo) > 1) ? " and " : ""
-    Return ((StrLen(FaxInfo) > 1 || StrLen(EmailInfo) > 1))
-    ? " Documents can also be " FaxInfo . FaxAndEmail . EmailInfo ". Please include your case number." : ""
+    contactMethodsList := { countyFax: "faxed to ", countyDocsEmail: "emailed to " }
+    contactMethods := []
+    For method, methodText in contactMethodsList {
+        contactInfo := ini.caseNoteCountyInfo[method]
+        If (StrLen(contactInfo) > 1) {
+            contactMethods.push(methodText contactInfo)
+        }
+    }
+    contactMethodsLength := contactMethods.Length()
+    If (contactMethodsLength == 0) {
+        Return
+    }
+    specLetterText := "Documents can mailed"
+    For i, contactText in contactMethods {
+        specLetterText .= (i == contactMethodsLength) ? (contactMethodsLength > 1 ? "," : "") " and " : ", "
+        specLetterText .= contactText
+    }
+    specLetterText .= ". Please include your case number."
+    Return specLetterText
 }
 countLines(VerificationArray) {
     totalLines := 0
@@ -1792,17 +1811,20 @@ otherGUI() {
     If (%A_GuiControl% == 0) { ; unchecked
         Return
     }
-    local otherEditWidth := (MonoChar*60)+27
+    local otherEditWidth := (wCH*60)+27
     local otherNumber := Trim(A_GuiControl, "otherInput")
     Gui, OtherGui: New,, % "Other Verification"
-    Gui, OtherGui: Margin, 12 12
+    Gui, OtherGui: Margin, % marginW
     Gui, OtherGui: Font, s9, % "Lucida Console"
     Gui, OtherGui: Add, Text,, % "Additional Input Required:`nState what the client needs to submit."
     Gui, OtherGui: Add, Edit, % "h100 w" otherEditWidth " votherEdit", % otherMissing[otherNumber]
     Gui, OtherGui: Add, Button, % "gOtherGuiGuiClose x100", % "Save"
     Gui, OtherGui: Add, Button, % "gOtherGuiGuiClose x+20 yp", % "Close"
     Gui, OtherGui: Add, Edit, % "Hidden votherInputID", % otherNumber
-    Gui, OtherGui: Show, % "AutoSize"
+    Gui, OtherGui: Show, % "Hide x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes
+    GuiControlGet editSize, OtherGui:POS, otherEdit
+    guiX := caseNotesMonCenter[1] - ((editSizeW*zoomPPI + scrollbar)/2), guiY := caseNotesMonCenter[2] - (editSizeH*zoomPPI/2)
+    Gui, OtherGui: Show, % "x" guiX " y" guiY
     Gui, OtherGui: +OwnerMissingGui
     Gui, MissingGui: +Disabled
 }
@@ -1859,11 +1881,12 @@ overIncomeSub(overIncomeString) {
     overIncomeObj.overIncomeText := overIncomeObj.overIncomeLimit "; your income is calculated as $" overIncomeObj.overIncomeReceived
     overIncomeObj.overIncomeDifference := overIncomeObj.overIncomeReceived - overIncomeObj.overIncomeLimit
     GuiControl, MissingGui: Text, % A_GuiControl, % "Over-income by $" overIncomeObj.overIncomeDifference
+    missingInput[A_GuiControl] := inputBoxInput
 }
 getFirstName() {
     Global
     Gui, MainGui: Submit, NoHide
-    RegExMatch(HouseholdCompEdit, "[A-Za-z\-]+", firstName)
+    RegExMatch(01HouseholdCompEdit, "[A-Za-z\-]+", firstName)
     addedName := StrLen(firstName) ? firstName ", `n`n" : ""
     Return addedName
 }
@@ -1873,8 +1896,9 @@ getFirstName() {
 ;===================================================================================================================================================================================
 ;ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION
 MainGuiGuiClose() {
+    Global
     closingPromptText := ""
-    If (confirmedClear > 0) {
+    If (caseNoteEntered.confirmedClear > 0) {
         coordSaveAndExitApp(1)
     }
     closingPromptText .= caseNoteEntered.mec2NoteEntered == 0 ? " MEC2" : ""
@@ -1891,7 +1915,7 @@ MainGuiGuiClose() {
         GuiControl, MainGui: Text, ClearFormButton, % "Confirm"
         Gui, Font, s9, Segoe UI
         GuiControl, MainGui: Font, ClearFormButton
-        confirmedClear++
+        caseNoteEntered.confirmedClear++
     } Else {
         If (StrLen(closingPromptText) == 0) {
             coordSaveAndExitApp()
@@ -1948,7 +1972,7 @@ buildSettingsGui(checkOnOpen := 0) {
     local textLabelOptions := "xm w170 h18 Right"
     Gui, Font,, % "Lucida Console"
     Gui, Color, % "989898", % "a9a9a9"
-    Gui, SettingsGui: Margin, % "12 12"
+    Gui, SettingsGui: Margin, % marginW
     Gui, SettingsGui: New, AlwaysOnTop ToolWindow,
     Gui, SettingsGui: Add, Text, % textLabelOptions " y12", % "Worker Name:"
     Gui, SettingsGui: Add, Edit, % editboxOptions " vEmployeeNameWrite", % ini.employeeInfo.employeeName
@@ -2038,6 +2062,20 @@ updateIniFileText(section, settingArray) {
 
 ;=======================================================================================================================================================================
 ;MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS
+getMonCenter(windowName) {
+    winHandle := WinExist(windowName)
+    VarSetCapacity(monitorInfo, 40), NumPut(40, monitorInfo)
+    monitorHandle := DllCall("MonitorFromWindow", "Ptr", winHandle, "UInt", 0x2)
+    DllCall("GetMonitorInfo", "Ptr", monitorHandle, "Ptr", &monitorInfo)
+    monLeft      := NumGet(monitorInfo, 20, "Int") ; Left
+    monTop       := NumGet(monitorInfo, 24, "Int") ; Top
+    monRight     := NumGet(monitorInfo, 28, "Int") ; Right
+    monBottom    := NumGet(monitorInfo, 32, "Int") ; Bottom
+    return [halfMath(monLeft, monRight), halfMath(monTop, monBottom)]
+}
+halfMath(tl, br) {
+    return tl + (br - tl)/2
+}
 setIcon() {
     If InStr(dateObject.todayYMD, 0401) { ; icon
         Menu, Tray, Icon, compstui.dll, 100
@@ -2064,11 +2102,12 @@ setFromIni() {
     coordResetIfOver9000(ini.caseNotePositions)
 }
 setTextAndResize(newText, fontOptions := "", fontName := "") {
-    Gui 9:Font, % fontOptions, % fontName
-    Gui 9:Add, Text, Limit200, % newText
+    Gui, 9:Font, % fontOptions, % fontName
+    Gui, 9:Add, Text, Limit200, % newText
+    Gui, 9: Show, % "Hide x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes
     GuiControlGet T, 9:Pos, Static1
-    Gui 9:Destroy
-    Return TW
+    Gui, 9:Destroy
+    Return [TW, TH]
 }
 checkGroupAdd() {
     If (ini.employeeInfo.employeeBrowser != "") {
@@ -2126,19 +2165,22 @@ coordStringify(coordObjIn) {
     }
     Return coordString
 }
-getRowCount(textString, maxColumns, indentString:="", indentRow:=4) {
+;getRowCount({originalString, maxColumns, indentString:="", indentRow:=4, reduceRowButDoNotIndent:=0}) {
+getRowCount(originalString, maxColumns, indentString:="", indentRow:=4) {
     ;indentString := StrLen(indentString) > 0 ? indentString : ""
-    textString := stWordWrap(textString, maxColumns, indentString, indentRow)
+    textString := stWordWrap(originalString, maxColumns, indentString, indentRow)
+    ;textString := stWordWrap({ originalString: originalString, maxColumns: maxColumns, indentString: indentString, indentRow: indentRow })
     StrReplace(textString, "`n", "`n", xCount)
     Return [textString, xCount +1]
 }
 ;function has been rewritten to allow for increased indenting options
-stWordWrap(completeString, maxColumns, indentString:="", indentRow:=4, reduceRowButDoNotIndent:=0) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
-    If (!StrLen(completeString)) {
+;stWordWrap({originalString, maxColumns, indentString:="", indentRow:=4, reduceRowButDoNotIndent:=0}) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
+stWordWrap(originalString, maxColumns, indentString:="", indentRow:=4, reduceRowButDoNotIndent:=0) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
+    If (!StrLen(originalString)) {
         Return
     }
     indentLength := StrLen(indentString), indentRow = indentLength > 0 ? indentRow : 0
-    completeString := RTrim(completeString, "`n"), firstLine := 1
+    completeString := RTrim(originalString, "`n"), firstLine := 1
     If (
         !InStr(completeString, "`n")
         && (reduceRowButDoNotIndent ? maxColumns - indentLength : maxColumns)
@@ -2147,24 +2189,34 @@ stWordWrap(completeString, maxColumns, indentString:="", indentRow:=4, reduceRow
     }
     Loop, Parse, completeString, `n, `r ; A_LoopField == sentence;
     {
+        RegExMatch(A_LoopField, "^\s{1,}", manualIndent)
         trimmedSentence := Trim(A_LoopField)
-        ;indentThisSentence := ( indentRow > 2 || (indentRow == 2 && firstLine) )
-        ;trimmedSentence := indentThisSentence ? indentChar . trimmedSentence : trimmedSentence
-        column := 0
+        maxLoopColumns := maxColumns, column := 0
+        firstLineOfPara := 1
         Loop, Parse, trimmedSentence, %A_Space% ; A_LoopField == word;
         {
+            If (column == 0) {
+                If (firstLineOfPara) {
+                    out .= manualIndent
+                    maxLoopColumns -= StrLen(manualIndent)
+                }
+                maxLoopColumns -= (firstLine && reduceRowButDoNotIndent) ? indentLength : 0
+            }
             wordLength := StrLen(A_LoopField)
             lineLength := column + wordLength
-            If (lineLength > ( (firstLine && reduceRowButDoNotIndent) ? maxColumns - indentLength : maxColumns ) ) {
-                out .= "`n", column := 0, firstLine := 0
+            If (lineLength > maxLoopColumns ) {
+                out .= "`n", column := 0, firstLine := 0, firstLineOfPara := 0
             }
-            indentThisLine := ( column == 0 && (!firstLine || ( indentRow > 2 || (indentRow == 2 && firstLine) )) && (indentRow == 4 || indentRow == 1) )
+            isFirstLineOfPara := (indentRow > 3 && firstLineOfPara)
+            test .= A_LoopField ": " isFirstLineOfPara "`n"
+            indentThisLine := ((column == 0 && indentRow > 0) && (indentRow == 4 || (!firstLine && indentRow == 1) || (indentRow > 1 && firstLine) || (indentRow > 2 && firstLineOfPara) ))
             out .= ( (indentThisLine ? indentString : "") . A_LoopField " " )
             column += ( (indentThisLine ? indentLength : 0) + wordLength + 1 )
         }
         firstLine := 0
-        out := RTrim(out, "`n") "`n" ; ensures it ends with a new line
+        out := RTrim(RTrim(out), "`n") "`n" ; ensures it ends with a new line
     }
+    ;MsgBox % out
     Return RTrim(out, "`n")
 }
 ;MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS
@@ -2325,7 +2377,7 @@ If (ini.employeeInfo.employeeCounty == "Dakota") {
         Return
         !4::
             Gui, MainGui: Submit, NoHide
-            RegExMatch(HouseholdCompEdit, "^\w+\b", NameMatch)
+            RegExMatch(01HouseholdCompEdit, "^\w+\b", NameMatch)
             SendInput, {Down 2}
             Sleep 400
             SendInput, % ReceivedDate
