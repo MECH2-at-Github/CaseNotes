@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.75"
+Version := "v0.5.76"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -47,10 +47,9 @@ SetWorkingDir % A_ScriptDir
 #NoTrayIcon
 SetTitleMatchMode, RegEx
 
-Global verbose := 1, sq := "²", cm := "✔"
+Global verbose := 1, sq := "²", cm := "✔", cs := ", "
 
 ;Settings
-;MsgBox % wCH cs hCH
 Global ini := { cbtPositions: { xClipboard: 0, yClipboard: 0 }
     , caseNotePositions: { xCaseNotes: 0, yCaseNotes: 0, xVerification: 0, yVerification: 0 }
     , caseNoteCountyInfo: { countyNoteInMaxis: 0, countyFax: A_Space, countyDocsEmail: A_Space, countyProviderWorkerPhone: A_Space, countyEdBSF: A_Space, Waitlist: 1 }
@@ -78,16 +77,14 @@ Global countySpecificText := { StLouis: { OverIncomeContactInfo: "", CountyName:
 )" } }
 
 ;Base globals
-Global cs := ", " ; for MsgBox variable separation
-Global caseDetails := { docType: "_DOC?", eligibility: "_ELIG?", saEntered: "_SA?", caseType: "_PRG?", appType: "_APP?", isHomeless: "", haveWaitlist: false }
+Global caseDetails := { docType: "_DOC?", eligibility: "_ELIG?", saEntered: "_SA?", caseType: "_PRG?", appType: "_APP?", isHomeless: "", haveWaitlist: false, newChanges: true }
 Global caseNoteEntered := { mec2NoteEntered: 0, maxisNoteEntered: 0, confirmedClear: 0 }
 Global dateObject := { todayYMD: A_Now, todayMDY: formatMDY(A_Now), receivedMDY: "", receivedYMD: "", autoDenyYMD: "" }
 Global autoDenyObject := { autoDenyExtensionMECnote: "", autoDenyExtensionDate: "", autoDenyExtensionSpecLetter: "" }
 Global editControls := ["01HouseholdCompEdit", "02SharedCustodyEdit", "03AddressVerificationEdit", "04SchoolInformationEdit", "05IncomeEdit", "06ChildSupportIncomeEdit"
     , "07ChildSupportCooperationEdit", "08ExpensesEdit", "09AssetsEdit", "10ProviderEdit", "11ActivityAndScheduleEdit", "12ServiceAuthorizationEdit", "13NotesEdit", "14MissingEdit"]
-Global exampleLabels := [ "01HouseholdCompEditLabelExample", "03AddressVerificationEditLabelExample", "02SharedCustodyEditLabelExample", "04SchoolInformationEditLabelExample", "05IncomeEditLabelExample"
-    , "06ChildSupportIncomeEditLabelExample", "07ChildSupportCooperationEditLabelExample", "08ExpensesEditLabelExample", "09AssetsEditLabelExample", "10ProviderEditLabelExample", "11ActivityAndScheduleEditLabelExample"
-    , "12ServiceAuthorizationEditLabelExample", "14MissingEditLabelExample" ]
+Global exampleLabels := [ "01HouseholdCompEditLabelExample", "02SharedCustodyEditLabelExample", "03AddressVerificationEditLabelExample", "04SchoolInformationEditLabelExample", "05IncomeEditLabelExample", "06ChildSupportIncomeEditLabelExample"
+    , "07ChildSupportCooperationEditLabelExample", "08ExpensesEditLabelExample", "09AssetsEditLabelExample", "10ProviderEditLabelExample", "11ActivityAndScheduleEditLabelExample", "12ServiceAuthorizationEditLabelExample", "14MissingEditLabelExample" ]
 
 setIcon()
 ;Missing Verification globals
@@ -111,40 +108,6 @@ buildMainGui()
 buildMissingGui()
 buildSettingsGui(1)
 Global caseNotesMonCenter := getMonCenter("CaseNotes")
-;mec2CaseNoteTest := "
-;(
-;1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
-;2___________________________________________________________________________________________________
-;3
-;4
-;5
-;6
-;7
-;8
-;9
-;0
-;1234567890
-;2
-;3
-;4
-;5
-;6
-;7
-;8
-;9
-;0
-;1234567890
-;2
-;3
-;4
-;5
-;6
-;7
-;8
-;9
-;0
-;)"
-;buildOversizedNoteGui(mec2CaseNoteTest)
 
 Return
 
@@ -155,16 +118,14 @@ buildMainGui() {
     Gui +OwnDialogs
     local LabelSettings := "xm+5 y+1 w200"
     local LabelExampleSettings := "x220 yp+4 h12 w" wCH*60 " "
-    ; 995 is about the right size (* .666 == 663)
     local TextboxSettings := "xm y+1 w" (wCH*87)+scrollbar+pad
-    ;local OneRow := "h17 Limit87", TwoRows := "h33", ThreeRows := "h43", FourRows := "h55"
 
     Gui, MainGui: Font,, % "Segoe UI"
     Gui, MainGui: Color, % "a9a9a9", % "bebebe"
 
     Gui, MainGui: Add, Radio, % "Group Section h17 x12 w75 y+5 gsetDocType vApplicationRadio", % "Application"
     Gui, MainGui: Add, Radio, % "xp y+2 wp h17 gsetDocType vRedeterminationRadio", % "Redeterm."
-    Gui, MainGui: Add, Checkbox, % "xp y+2 wp h17 Hidden vHomeless", % "Homeless"
+    Gui, MainGui: Add, Checkbox, % "xp y+2 wp h17 Hidden vHomeless gnewChangesTrue", % "Homeless"
 
     Gui, MainGui: Add, Radio, % "Group x+10 ys h17 w78 gsetAppType vMNBenefitsRadio", % "MNBenefits"
     Gui, MainGui: Add, Radio, % "xp y+2 h17 wp gsetAppType vPaperAppRadio", % "3550 App"
@@ -189,8 +150,8 @@ buildMainGui() {
     Gui, MainGui: Add, Text, % "xp y+2 w35 h20 vSignText Hidden", % "Signed:"
 
     Gui, MainGui: Add, Edit, % "x+0 ys w70 h17 -Background Limit8 vcaseNumber",
-    Gui, MainGui: Add, DateTime, % "xp y+5 w70 h17 vReceivedDate", % "M/d/yy"
-    Gui, MainGui: Add, DateTime, % "xp y+5 w70 h17 vSignDate Hidden", % "M/d/yy"
+    Gui, MainGui: Add, DateTime, % "xp y+5 w70 h17 vReceivedDate gnewChangesTrue", % "M/d/yy"
+    Gui, MainGui: Add, DateTime, % "xp y+5 w70 h17 vSignOrDueDate Hidden", % "M/d/yy"
 
     Gui, MainGui: Add, Button, % "Section x535 ys+0 h17 w70 -TabStop vmec2NoteButton goutputCaseNote", % "MEC" sq " Note"
     Gui, MainGui: Add, Button, % "xs y+5 h17 w70 -TabStop Hidden vmaxisNoteButton goutputCaseNote", % "MAXIS Note"
@@ -224,7 +185,7 @@ buildMainGui() {
     Gui, MainGui: Add, Text, % LabelExampleSettings " v06ChildSupportIncomeEditLabelExample Hidden", % "6 month total $2345.67; annual @ 4691.34"
     Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " v06ChildSupportIncomeEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " v07ChildSupportCooperationEditLabel Border gcopy02SharedCustodyEditToCSCoopEdit", % "Child Support Cooperation"
+    Gui, MainGui: Add, Text, % LabelSettings " v07ChildSupportCooperationEditLabel Border gcopySharedCustodyEditToCSCoopEdit", % "Child Support Cooperation"
     Gui, MainGui: Add, Text, % LabelExampleSettings " v07ChildSupportCooperationEditLabelExample Hidden", % "Absent Parent / Child: Open, cooperating"
     Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " v07ChildSupportCooperationEdit",
 
@@ -263,7 +224,6 @@ buildMainGui() {
 
     Gui, MainGui: Show, % "x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes, CaseNotes
     Gui, MainGui: Show, AutoSize
-    GuiControl, Focus, 01HouseholdCompEdit
 
     For i, editField in editControls {
         Gui, MainGui: Font, s9, % "Lucida Console" ; monospace font
@@ -273,7 +233,6 @@ buildMainGui() {
         Gui, MainGui: Font, s9, % "Lucida Console"
         GuiControl, MainGui: Font, % catLabel
     }
-    GuiControl, , MainGui: 01HouseholdCompEdit, , gdoToolTip
 }
 ; v2 convert to switch
 setDocType() {
@@ -284,7 +243,7 @@ setDocType() {
         GuiControl, MainGui: Text, SignText, % "Signed:"
         If (caseDetails.appType != "3550") {
             GuiControl, MainGui: Hide, SignText
-            GuiControl, MainGui: Hide, SignDate
+            GuiControl, MainGui: Hide, SignOrDueDate
         }
         If (ini.caseNoteCountyInfo.countyNoteInMaxis == 1) {
             GuiControl, MainGui: Show, maxisNoteButton
@@ -298,7 +257,7 @@ setDocType() {
         GuiControl, MainGui: Text, PendingRadio, % "Incomplete"
         GuiControl, MainGui: Text, SignText, % "Due:"
         GuiControl, MainGui: Show, SignText
-        GuiControl, MainGui: Show, SignDate
+        GuiControl, MainGui: Show, SignOrDueDate
         GuiControl, MainGui: Hide, autoDenyStatus
         GuiControl, MainGui: Hide, maxisNoteButton
         GuiControl, MainGui: Hide, MNBenefitsRadio
@@ -314,7 +273,7 @@ setAppType() {
         caseDetails.appType := "3550"
         revertLabels()
         GuiControl, MainGui: Show, SignText
-        GuiControl, MainGui: Show, SignDate
+        GuiControl, MainGui: Show, SignOrDueDate
     } Else If (A_GuiControl == "MNBenefitsRadio") {
         caseDetails.appType := "MNB"
         GuiControl, MainGui: Text, 01HouseholdCompEditLabel, % "Household Comp (pages 1, 3-5)"
@@ -328,21 +287,10 @@ setAppType() {
         GuiControl, MainGui: Text, 11ActivityAndScheduleEditLabel, % "Activity and Schedule (pages 10-11)"
         GuiControl, MainGui: Text, 10ProviderEditLabel, % "Provider (pages 12-15)"
         GuiControl, MainGui: Hide, SignText
-        GuiControl, MainGui: Hide, SignDate
+        GuiControl, MainGui: Hide, SignOrDueDate
         Gui, Show
     }
     checkWaitlist()
-}
-revertLabels() {
-    GuiControl, MainGui: Text, 01HouseholdCompEditLabel, % "Household Comp"
-    GuiControl, MainGui: Text, 03AddressVerificationEditLabel, % "Address Verification"
-    GuiControl, MainGui: Text, 02SharedCustodyEditLabel, % "Shared Custody"
-    GuiControl, MainGui: Text, 04SchoolInformationEditLabel, % "School Information"
-    GuiControl, MainGui: Text, 05IncomeEditLabel, % "Income"
-    GuiControl, MainGui: Text, 06ChildSupportIncomeEditLabel, % "Child Support Income"
-    GuiControl, MainGui: Text, 08ExpensesEditLabel, % "Expenses"
-    GuiControl, MainGui: Text, 09AssetsEditLabel, % "Assets"
-    GuiControl, MainGui: Text, 11ActivityAndScheduleEditLabel, % "Activity and Schedule"
 }
 ; v2 convert to switch
 setEligibility() {
@@ -367,6 +315,14 @@ setEligibility() {
         checkWaitlist()
     }
 }
+setCaseType() {
+    caseDetails.caseType := A_GuiControl
+    checkWaitlist()
+}
+setSA() {
+    Gui, Submit, NoHide
+    caseDetails.saEntered := A_GuiControl == "SaApproved" ? " & SA" : A_GuiControl == "NoSA" ? ", no SA" : A_GuiControl == "NoProvider" ? ", no provider" : ""
+}
 checkWaitlist() {
     If (ini.caseNoteCountyInfo.Waitlist > 1 && caseDetails.caseType == "BSF" && caseDetails.docType == "Application" && caseDetails.eligibility == "pends") {
         GuiControl, MainGui: Show, manualWaitlistBox
@@ -374,16 +330,23 @@ checkWaitlist() {
         GuiControl, MainGui: Hide, manualWaitlistBox
         GuiControl,, manualWaitlistBox, 0
     }
+    newChangesTrue()
 }
-setSA() {
-    Gui, Submit, NoHide
-    caseDetails.saEntered := A_GuiControl == "SaApproved" ? " & SA" : A_GuiControl == "NoSA" ? ", no SA" : A_GuiControl == "NoProvider" ? ", no provider" : ""
+newChangesTrue() {
+    caseDetails.newChanges := true
 }
-setCaseType() {
-    caseDetails.caseType := A_GuiControl
-    checkWaitlist()
+revertLabels() {
+    GuiControl, MainGui: Text, 01HouseholdCompEditLabel, % "Household Comp"
+    GuiControl, MainGui: Text, 03AddressVerificationEditLabel, % "Address Verification"
+    GuiControl, MainGui: Text, 02SharedCustodyEditLabel, % "Shared Custody"
+    GuiControl, MainGui: Text, 04SchoolInformationEditLabel, % "School Information"
+    GuiControl, MainGui: Text, 05IncomeEditLabel, % "Income"
+    GuiControl, MainGui: Text, 06ChildSupportIncomeEditLabel, % "Child Support Income"
+    GuiControl, MainGui: Text, 08ExpensesEditLabel, % "Expenses"
+    GuiControl, MainGui: Text, 09AssetsEditLabel, % "Assets"
+    GuiControl, MainGui: Text, 11ActivityAndScheduleEditLabel, % "Activity and Schedule"
 }
-copy02SharedCustodyEditToCSCoopEdit() {
+copySharedCustodyEditToCSCoopEdit() {
     Global
     Gui, MainGui: Submit, NoHide
     If (StrLen(02SharedCustodyEdit) > 0 && StrLen(07ChildSupportCooperationEdit) == 0) {
@@ -524,8 +487,10 @@ makeCaseNote() {
     Global
     Gui, MainGui: Submit, NoHide
     Gui, MissingGui: Submit, NoHide
-    calcDates()
-    local finishedCaseNote := {}, original14MissingEdit := 14MissingEdit
+    If (caseDetails.newChanges) {
+        missingVerifsDoneButton()
+    }
+    local finishedCaseNote := {}, originalMissingEdit := 14MissingEdit
     local caseDetailsModified := { caseType: caseDetails.caseType, appType: caseDetails.appType, docType: caseDetails.docType, eligibility: caseDetails.eligibility, saEntered: caseDetails.saEntered }
     ;v2: continuation section 
     editFields := { 01HouseholdCompEdit: " HH COMP:    ", 02SharedCustodyEdit: " CUSTODY:    ", 03AddressVerificationEdit: " ADDRESS:    ", 04SchoolInformationEdit: "  SCHOOL:    ", 05IncomeEdit: "  INCOME:    ", 06ChildSupportIncomeEdit: "      CS:    ", 07ChildSupportCooperationEdit: " CS COOP:    ", 08ExpensesEdit: "EXPENSES:    ", 09AssetsEdit: "  ASSETS:    ", 10ProviderEdit: "PROVIDER:    ", 11ActivityAndScheduleEdit: "ACTIVITY:    ", 12ServiceAuthorizationEdit: "      SA:    ", 13NotesEdit: "   NOTES:    ", 14MissingEdit: " MISSING:    " }
@@ -536,7 +501,7 @@ makeCaseNote() {
     finishedCaseNote.mec2CaseNote .= "=====`n" ini.employeeInfo.employeeName
     finishedCaseNote.eligibility := caseDetails.eligibility
 	If (caseDetails.eligibility == "pends" && caseDetailsModified.docType == "Redet") {
-		caseDetailsModified.eligibility := "incomplete (due " formatMDY(SignDate) ")"
+		caseDetailsModified.eligibility := "incomplete (due " formatMDY(SignOrDueDate) ")"
         finishedCaseNote.eligibility := "incomplete"
 	}
 	If (caseDetails.eligibility != "elig") {
@@ -577,8 +542,8 @@ makeCaseNote() {
         }
         finishedCaseNote.maxisNote .= "`n"
     }
-    If (StrLen(original14MissingEdit) > 0) {
-        missingMax := stWordWrap(original14MissingEdit, 74, "* ", 4)
+    If (StrLen(originalMissingEdit) > 0) {
+        missingMax := stWordWrap(originalMissingEdit, 74, "* ", 4)
         finishedCaseNote.maxisNote .= "Special Letter mailed " dateObject.todayMDY " requesting:`n" missingMax "`n"
     }
     finishedCaseNote.maxisNote .= ini.employeeInfo.employeeName
@@ -771,13 +736,13 @@ subtractDates(futureDate, pastDate) {
     EnvSub, futureDate, % pastDate, days
     Return futureDate
 }
-formatMDY(DateYMD) {
-    FormatTime, DateMDY, % DateYMD, % "M/d/yy"
-    Return DateMDY ;v2 can this be combined?
+formatMDY(inputDate) {
+    FormatTime, dateMDY, % inputDate, % "M/d/yy"
+    Return dateMDY ;v2 can this be combined?
 }
 calcDates() {
-    GuiControlGet, ReceivedDate
-    GuiControlGet, SignDate
+    Global
+    Gui, MainGui: Submit, NoHide
     dateObject.receivedYMD := ReceivedDate
     dateObject.receivedMDY := formatMDY(dateObject.receivedYMD)
     dateObject.autoDenyYMD := addDays(dateObject.receivedYMD, 29)
@@ -786,9 +751,8 @@ calcDates() {
     dateObject.recdPlusFifteenishYMD := addFifteenishDays(dateObject.receivedYMD)
     dateObject.needsNoExtension := subtractDates(dateObject.autoDenyYMD, dateObject.todayPlusFifteenishYMD)
     dateObject.needsExtension := subtractDates(dateObject.recdPlusFortyfiveYMD, dateObject.todayPlusFifteenishYMD)
-    
-    dateObject.SignedYMD := SignDate
-    dateObject.SignedMDY := formatMDY(SignDate)
+    dateObject.RedetDueYMD := SignOrDueDate
+    dateObject.RedetDueMDY := formatMDY(SignOrDueDate)
     
     NeedsFakeExtension := formatMDY(dateObject.recdPlusFifteenishYMD)
     autoDenyObject.autoDenyExtensionSpecLetter :=
@@ -818,10 +782,10 @@ calcDates() {
     }
     
     If (caseDetails.docType == "Redet") {
-        dateObject.RedetCaseCloseYMD := addFifteenishDays(dateObject.SignedYMD)
+        dateObject.RedetCaseCloseYMD := addFifteenishDays(dateObject.RedetDueYMD)
         dateObject.RedetCaseCloseMDY := formatMDY(dateObject.RedetCaseCloseYMD)
         dateObject.RedetDocsLastDayMDY := formatMDY(addDays(dateObject.RedetCaseCloseYMD, 29))
-        autoDenyObject.autoDenyExtensionSpecLetter := "** If your redetermination is not completed by " dateObject.SignedMDY ",`n   your case will close on " dateObject.RedetCaseCloseMDY ". If it closes,`n   the latest it can be reinstated is " dateObject.RedetDocsLastDayMDY "."
+        autoDenyObject.autoDenyExtensionSpecLetter := "** If your redetermination is not completed by " dateObject.RedetDueMDY ",`n   your case will close on " dateObject.RedetCaseCloseMDY ". If it closes,`n   the latest it can be reinstated is " dateObject.RedetDocsLastDayMDY "."
     }
     If (caseDetails.eligibility == "elig") {
         autoDenyObject := {}
@@ -897,7 +861,7 @@ buildMissingGui() {
     Gui, MissingGui: Add, Text, % "x+m yp+7 w120 h1 " lineColor
     Gui, MissingGui: Font
 
-    Gui, MissingGui: Add, Checkbox, % column1of2 " v06ChildSupportIncomeEditMissing", % "Child Support Income"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vChildSupportIncomeMissing", % "Child Support Income"
     Gui, MissingGui: Add, Checkbox, % column2of2 " vSpousalSupportMissing", % "Spousal Support Income"
     Gui, MissingGui: Add, Checkbox, % column1of2 " vRentalMissing", % "Rental"
     Gui, MissingGui: Add, Checkbox, % column2of2 " vDisabilityMissing", % "STD / LTD "
@@ -954,58 +918,6 @@ buildMissingGui() {
     Gui, MissingGui: Show, % "Hide x" ini.caseNotePositions.xVerification " y" ini.caseNotePositions.yVerification
 }
 
-
-
-
-;reqVerifs := { missing: {}, missingEnum: 0, clarified: {}, clarifiedEnum: 0, asterisk: {} }
-;verificationListObj := {
-    ;IDmissing: {
-        ;verifCat: "missing",
-        ;indentText: "",
-        ;caseNoteMissing: "",
-        ;verificationText: "",
-        ;emailText: this.verificationText,
-    ;}
-;}
-
-;For verifLabel, verifData in verificationListObj {
-    ;If (%verifLabel%) {
-        ;addToVerifList(verifData)
-    ;}
-;}
-
-;addToVerifList(verifData) { ; verifCat; indentText; 
-    ;tempTextAndCount := getRowCount(verifText, 60, indentText)
-    ;%missOrClar%Verifications[%missOrClar%ListEnum ". " tempTextAndCount[1]] listItemEnd(%missOrClar%ListEnum) := tempTextAndCount[2]
-    ;If (caseNoteMissing != "") {
-        ;caseNoteMissingText .= caseNoteMissing
-    ;}
-    ;emailTextString .= emailListEnum ". " emailVerifText listItemEnd(emailListEnum)
-;}
-;addToEmail(emailVerifText) {
-    ;emailTextString .= emailListEnum ". " emailVerifText
-    ;emailListEnum++
-;}
-;listItemEnd(ByRef listToIncrement) {
-    ;listToIncrement++
-    ;Return ";`n"
-;}
-;mecCheckboxes(ByRef mecCheckboxIds, listOfIds) { ; mecCheckboxes(mecCheckboxIds, [ "proofOfBirth", "proofOfRelation", "citizenStatus" ])
-    ;For i, boxId in listOfIds {
-        ;mecCheckboxIds[boxId] := 1
-    ;}
-;}
-
-
-
-
-
-
-
-
-
-
-
 missingVerifsDoneButton() {
     Global
 	Gui, MainGui: Submit, NoHide
@@ -1013,7 +925,6 @@ missingVerifsDoneButton() {
     calcDates()
     
     emailTextString := "", emailTextObject := {}
-    ;LetterText1 := "", LetterText2 := "", LetterText3 := "", LetterText4 := "", 
     mecCheckboxIds := {}
     letterNumber := 1, letterTextNumber := 1, letterText := {}
     lineNumber := 1, missingListEnum := 1, clarifiedListEnum := 1, emailListEnum := 1, lineCount := 0
@@ -1034,6 +945,7 @@ missingVerifsDoneButton() {
         missingVerifications[overIncomeMissingText2] := 3
         caseNoteMissingText .= "Household is calculated to be over-income by $" overIncomeObj.overIncomeDifference " ($" overIncomeObj.overIncomeReceived " - $" overIncomeObj.overIncomeLimit ");`n"
     }
+
     stillRequiredText := "These verifications are still required, and must be received within 90 days of your application date for continued eligibility."
     PendingHomelessPreText := "
 (
@@ -1050,6 +962,7 @@ Before we can approve expedited eligibility, we need information that was not on
             caseNoteMissingText .= "Missing for expedited approval:`n" StrReplace(missingHomelessItems, "`n", "`n  ") ";`n"
         }
     }
+
 	If (!overIncomeMissing) {
         emailTextObject.StartHL := (caseDetails.eligibility == "elig") ? "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. " stillRequiredText : PendingHomelessPreText missingHomelessItems
 
@@ -1071,7 +984,85 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
 
         emailTextObject.Combined := emailTextObject.Start emailTextObject.Middle
 	}
-    
+
+
+
+    parseMissingVerifications(missingVerifications, missingListEnum, clarifiedVerifications, clarifiedListEnum, emailTextString, emailListEnum, caseNoteMissingText)
+
+
+
+    caseDetails.haveWaitlist := (caseDetails.caseType == "BSF" && caseDetails.eligibility == "ineligible" && ini.caseNoteCountyInfo.Waitlist > 1)
+    If (!caseDetails.haveWaitlist) {
+        faxAndEmailWrapped := faxAndEmailText()
+        faxAndEmailWrapped := getRowCount(faxAndEmailWrapped, 60, "")
+        autoDeny := getRowCount(autoDenyObject.autoDenyExtensionSpecLetter, 60, "")
+        clarifiedVerifications[ "NEWLINE" faxAndEmailWrapped[1] "`nNEWLINE" autoDeny[1] ] := faxAndEmailWrapped[2]+autoDeny[2]
+        emailTextString .= autoDeny[1] 
+    }
+
+    idList := "other"
+    For checkboxId in mecCheckboxIds {
+        idList .= "," checkboxId
+    }
+    insertAtOffset := (caseDetails.eligibility == "pends" && Homeless) ? 2 : 0
+    If ( !overIncomeMissing && !caseDetails.haveWaitlist && !manualWaitlistBox && missingVerifications.Length() > (0 + insertAtOffset) ) {
+        If (StrLen(idList) > 5 || insertAtOffset == 2) { ; "other" will always add at least 5
+            missingVerifications.InsertAt(1 + insertAtOffset, "In addition to the above, please submit the following items:`n", 1)
+        }
+        Else If (StrLen(idList) == 5) {
+            missingVerifications.InsertAt(1+ insertAtOffset, "_____________Please submit the following items:_____________`n", 1)
+        }
+    }
+    waitlistText := ""
+    If (caseDetails.haveWaitlist || manualWaitlistBox) {
+        waitlistNumber := ini.caseNoteCountyInfo.Waitlist -1
+        waitlistPriorities := { 1: "• Are attending High School, GED, or ESL classes;`n" }
+        waitlistPriorities.2 := waitlistPriorities.1 "• Families in which an applicant is a veteran;`n"
+        waitlistPriorities.3 := waitlistPriorities.2 "• Families which don't qualify for other priorities;`n"
+        waitlistText := "
+(
+Due to limited funding, new eligibility for CCAP in " countySpecificText[ini.employeeInfo.employeeCounty].CountyName " is currently limited to those who:
+• Received Cash Assistance (MFIP/DWP) within the past year;
+• Are applying for and are approved for Cash Assistance;
+" waitlistPriorities[waitlistNumber] "`n
+)"
+        emailTextObject.Waitlist := "`n`n" waitlistText "`n" (manualWaitlistBox ? submitOnlyCommentItemsText "`n" : "")
+        submitOnlyCommentItemsText := "If you meet one of the above criteria, please submit the following items:`n"
+        submitCommentAndCheckboxItemsText := "If you meet one of the above criteria, in addition to items above the Worker Comments, please submit the following:`n"
+        If (manualWaitlistBox) {
+            waitlistText .= StrLen(idList) == 5 ? submitOnlyCommentItemsText : submitCommentAndCheckboxItemsText
+        }
+        waitlistText := getRowCount(waitlistText, 60, "")
+        missingVerifications.InsertAt(1, waitlistText[1] "`n", waitlistText[2])
+        caseNoteMissingText .= "Approved MFIP/DWP or meet current Waitlist criteria;`n"
+    }
+    If (clarifiedVerifications.Length() > 1) {
+        clarifiedVerifications.InsertAt(1, (missingVerifications.Length() > 1 ? "`n" : "") "__Clarification of items listed above the Worker Comments:__`n", 1)
+        ;clarifiedVerifications.InsertAt(1, "__Clarification of items listed above the Worker Comments:__`n", 1)
+    }
+    emailTextObject.output := setEmailText(emailTextString)
+    listifyMissingObject := { 1missing: { arrayLines: 0, verificationList: missingVerifications }, 2clarified: { arrayLines: countLines(clarifiedVerifications), verificationList: clarifiedVerifications } }
+    For objName, objContents in listifyMissingObject {
+        listifyMissing( objContents )
+    }
+	caseNoteMissingText := Trim(caseNoteMissingText, "`n") ; removes the last new line
+    For i, letterTextContents in letterText {
+        If (InStr(letterTextContents, "__Clarification",,2)) {
+            StrReplace(stWordWrap(letterTextContents, 60, ""), "`n", "`n", letterLineCount)
+            If (letterLineCount < 27) {
+                letterText[i] := StrReplace(letterTextContents, "__Clarification", "`n__Clarification")
+            }
+        }
+		GuiControl, MissingGui:Show, % "letter" . i
+    }
+	GuiControl, MainGui: Text, 14MissingEdit, % caseNoteMissingText
+	GuiControl, MissingGui: Show, % "emailButton"
+	WinActivate, CaseNotes
+    caseDetails.newChanges := false
+}
+
+parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByRef clarifiedVerifications, ByRef clarifiedListEnum, ByRef emailTextString, ByRef emailListEnum, ByRef caseNoteMissingText) {
+	Global
 ; Start of verif revamp section ============================================
 	If IDmissing {
         IDmissingText := "ID for " missingInput.IDmissing ";`n"
@@ -1085,7 +1076,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
 	If BCmissing {
         BCmissingText := "Birth date / relationship / citizenship verification for: " missingInput.BCmissing
 		clarifiedVerifications[clarifiedListEnum ". " BCmissingText ";`n"] := 2
-        emailTextString .= emailListEnum ". " BCmissingText ", such as the official birth certificate;`n"
+        emailTextString .= emailListEnum ". " BCmissingText " (example: official birth certificate);`n"
 		caseNoteMissingText .= BCmissingText ";`n"
         clarifiedListEnum++
         emailListEnum++
@@ -1126,8 +1117,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
             missingInput.ChildSupportFormsMissing .= missingInput.ChildSupportFormsMissing < 2 ? " set" : " sets"
         }
         ChildSupportFormsMissingText := "Cooperation with Child Support forms (" missingInput.ChildSupportFormsMissing ", sent separately);`n"
-        ;CSFMlines := missingInput.ChildSupportFormsMissing ~= "^\d" ? 1 : 2
-		missingVerifications[missingListEnum ". " ChildSupportFormsMissingText] := 2 ; CSFMlines
+		missingVerifications[missingListEnum ". " ChildSupportFormsMissingText] := 2
         emailTextString .= emailListEnum ". " ChildSupportFormsMissingText
 		caseNoteMissingText .= "CS forms (" missingInput.ChildSupportFormsMissing ");`n"
 		missingListEnum++
@@ -1135,7 +1125,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
     }
     sharedCustodyOptionsText := "A. Stating that you have full custody, or`n  B. Your current Parenting Time (shared custody) schedule `n     listing the days and times of the custody switches;"
 	If CustodyScheduleMissing {
-        CustodyScheduleMissingText := "A statement, written by you that is signed and dated, for each child that has a parent not in your household:`n  " sharedCustodyOptionsText "`n"
+        CustodyScheduleMissingText := "A statement, written by you that is signed and dated, for each child needing CCAP that has a parent not in your household:`n  " sharedCustodyOptionsText "`n"
 		missingVerifications[missingListEnum ". " CustodyScheduleMissingText] := 5
         emailTextString .= emailListEnum ". " CustodyScheduleMissingText
 		caseNoteMissingText .= "Shared custody / parenting time;`n"
@@ -1193,7 +1183,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
     }
 ;======================================================
 	If IncomeMissing {
-        IncomeText := dateObject.needsExtension > -1 ? " your most recent 30 days income" : caseDetails.docType == "Redet" ? " 30 days income prior to " dateObject.SignedMDY : " 30 days income prior to " dateObject.receivedMDY
+        IncomeText := dateObject.needsExtension > -1 ? " your most recent 30 days income" : caseDetails.docType == "Redet" ? " 30 days income prior to " dateObject.RedetDueMDY : " 30 days income prior to " dateObject.receivedMDY
         ; IncomeText := if doesn't need extension : elseif redetermination : elseif app needs extension
         IncomeMissingText := "Verification of" IncomeText ";`n"
         clarifiedVerifications[clarifiedListEnum ". Proof of Financial Information: " IncomeMissingText] := 2
@@ -1205,7 +1195,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
         ;MEC2 text: Proof of Financial Information- You can provide proof of financial information and income with the last 30 days of check stubs, income tax records, business ledger, award letter, or a letter from your employer with pay rate, number of hours worked per week and how often you are paid.
     }
 	If IncomePlusNameMissing {
-        IncomeText := dateObject.needsExtension > -1 ? missingInput.IncomePlusNameMissing "'s most recent 30 days income" : caseDetails.docType == "Redet" ? missingInput.IncomePlusNameMissing "'s 30 days income prior to " dateObject.SignedMDY : missingInput.IncomePlusNameMissing "'s 30 days income prior to " dateObject.receivedMDY
+        IncomeText := dateObject.needsExtension > -1 ? missingInput.IncomePlusNameMissing "'s most recent 30 days income" : caseDetails.docType == "Redet" ? missingInput.IncomePlusNameMissing "'s 30 days income prior to " dateObject.RedetDueMDY : missingInput.IncomePlusNameMissing "'s 30 days income prior to " dateObject.receivedMDY
         IncomeMissingText := "Verification of " IncomeText ";`n"
         clarifiedVerifications[clarifiedListEnum ". Proof of Financial Information: " IncomeMissingText] := 2
         emailTextString .= emailListEnum ". " IncomeMissingText
@@ -1215,7 +1205,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
         mecCheckboxIds.proofOfFInfo := 1
     }
 	If WorkScheduleMissing {
-        WorkScheduleText := dateObject.needsExtension > -1 ? " your work schedule" : caseDetails.docType == "Redet" ? " work schedule from " dateObject.SignedMDY : " work schedule from " dateObject.receivedMDY
+        WorkScheduleText := dateObject.needsExtension > -1 ? " your work schedule" : caseDetails.docType == "Redet" ? " work schedule from " dateObject.RedetDueMDY : " work schedule from " dateObject.receivedMDY
         WorkScheduleMissingText := "Verification of" WorkScheduleText " showing days of the week and start/end times;`n"
         clarifiedVerifications[clarifiedListEnum ". Proof of Activity Schedule: " WorkScheduleMissingText] := 2
         emailTextString .= emailListEnum ". " WorkScheduleMissingText
@@ -1226,7 +1216,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
         ;MEC2 text: Proof of Activity Schedule- You can provide proof of adult activity schedules with work schedules, school schedules, time cards, or letter from the employer or school with the days and times working or in school. If you have a flexible work schedule, include a statement with typical or possible times worked.
     }
 	If WorkSchedulePlusNameMissing {
-        WorkScheduleText := dateObject.needsExtension > -1 ? missingInput.WorkSchedulePlusNameMissing "'s work schedule" : caseDetails.docType == "Redet" ? missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.SignedMDY : missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.receivedMDY
+        WorkScheduleText := dateObject.needsExtension > -1 ? missingInput.WorkSchedulePlusNameMissing "'s work schedule" : caseDetails.docType == "Redet" ? missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.RedetDueMDY : missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.receivedMDY
         WorkScheduleMissingText := "Verification of " WorkScheduleText " showing days of the week and start/end times;`n"
         clarifiedVerifications[clarifiedListEnum ". Proof of Activity Schedule: " WorkScheduleMissingText] := 2
         emailTextString .= emailListEnum ". " WorkScheduleMissingText
@@ -1316,10 +1306,10 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
     }
 ; over-income is here in the list but has its own sub-routine.
 ;======================================================
-	If 06ChildSupportIncomeEditMissing {
-        06ChildSupportIncomeEditMissingText := "Verification of your Child Support income;`n"
-		missingVerifications[missingListEnum ". " 06ChildSupportIncomeEditMissingText] := 1
-        emailTextString .= emailListEnum ". " 06ChildSupportIncomeEditMissingText
+	If ChildSupportIncomeMissing {
+        ChildSupportIncomeMissingText := "Verification of your Child Support income;`n"
+		missingVerifications[missingListEnum ". " ChildSupportIncomeMissingText] := 1
+        emailTextString .= emailListEnum ". " ChildSupportIncomeMissingText
 		caseNoteMissingText .= "Child Support income;`n"
 		missingListEnum++
         emailListEnum++
@@ -1397,75 +1387,7 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
         emailListEnum++
     }
 ;======================================================
-    ;If (UnearnedUnansweredMissing || LumpSumUnansweredMissing || EmploymentUnansweredMissing || SelfEmploymentUnansweredMissing || AssetsUnansweredMissing) {
-        ;UnansweredText := "You did not answer all questions on the " mec2docType ".`n Please submit a statement that is written, dated, and signed by you, answering:`n"
-        ;CaseNoteUnansweredMissing := Unanswered ?: 
-        ;AnsweredMoreThan :=, AnsweredYes :=, AnsweredBoth :=
-        ;If UnearnedUnansweredMissing {
-            ;UnansweredText .= "Have you received any unearned income in the past 12 months? (Includes: Child/Spousal support, Unemployment, RSDI, Rentals, Insurance payments, RSDI, VA benefits, Contract for deed, Trust income, Interest, Dividends, Worker's comp, Gambling winnings, Inheritance, Capital gains, etc.)`n"
-            ;CaseNoteUnansweredMissing .= "Unearned income, "
-            ;AnsweredYes := " yes"
-        ;}
-        ;If LumpSumUnansweredMissing {
-            ;UnansweredText .= "Have you received any lump sums in the past 12 months?`n"
-            ;CaseNoteUnansweredMissing .= "Lump sum, "
-            ;AnsweredYes := " yes"
-        ;}
-        ;If EmploymentUnansweredMissing {
-            ;UnansweredText .= "Is anyone in your household employed?`n"
-            ;CaseNoteUnansweredMissing .= "Employment, "
-            ;AnsweredYes := " yes"
-        ;}
-        ;If SelfEmploymentUnansweredMissing {
-            ;UnansweredText .= "Is anyone in your household self-employed?`n"
-            ;CaseNoteUnansweredMissing .= "Self-employment, "
-            ;AnsweredYes := " yes"
-        ;}
-        ;If ExpensesUnansweredMissing {
-            ;UnansweredText .= "Does anyone in your household pay Healthcare premiums, or child/spousal support?`n"
-            ;CaseNoteUnansweredMissing .= "Self-employment, "
-            ;AnsweredYes := " yes"
-        ;}
-        ;If AssetsUnansweredMissing {
-            ;UnansweredText .= "Are your assets MORE THAN, or are they LESS THAN $1 million?`n"
-            ;CaseNoteUnansweredMissing .= "Assets, "
-            ;AnsweredMoreThan := " MORE THAN"
-        ;}
-        ;If ChildSchoolUnansweredMissing {
-            ;UnansweredText .= "Are any of your children in school now or starting school in the next 12 months?`n"
-            ;CaseNoteUnansweredMissing .= "Child school, "
-            ;AnsweredYes := " yes"
-        ;}
-        ;If AdultSchoolUnansweredMissing {
-            ;UnansweredText .= "Do any adults need child care assistance for going to school?`n"
-            ;CaseNoteUnansweredMissing .= "Adult school, "
-            ;AnsweredYes := " yes"
-        ;}
-        ;If JobSearchUnansweredMissing {
-            ;UnansweredText .= "Do any adults need child care assistance for looking for work?`n"
-            ;CaseNoteUnansweredMissing .= "Job search, "
-            ;AnsweredYes := " yes"
-        ;}
-        ;If ActivityHistoryPRI1UnansweredMissing {
-            ;UnansweredText .= "In the past 12 months has there been a period of more than 3 months where you (or the other parent in the household) did not work, go to school, or participate in activities as listed on an MFIP/DWP Employment Plan?"
-            ;CaseNoteUnansweredMissing .= "Past 12-month activity history question, "
-            ;AnsweredYes := " yes"
-        ;}
-        ;; need str replace CaseNoteUnansweredMissing , " -> ;" (last comma -> semi-colon)
-        ;If (StrLen(AnsweredYes AnsweredMoreThan) == 14) {
-            ;AnsweredBoth == " or"
-        ;}
-        ;UnansweredText .= "* Submit verification if you answered" AnsweredYes AnsweredBoth AnsweredMoreThan ". *`n"
-        ;UnansweredText := stWordWrap(UnansweredText, 60, " ")
-			;UnansweredTextCount := 0
-			;StrReplace(UnansweredText, "`n", "`n", UnansweredTextCount)
-			;UnansweredTextCount++
-            ;missingVerifications[missingListEnum ". " UnansweredText] := UnansweredTextCount
-            ;emailTextString .= emailListEnum ". " UnansweredText
-			;caseNoteMissingText .= CaseNoteUnansweredMissing ";`n"
-			;missingListEnum++
-            ;emailListEnum++
-    ;}
+
 ;======================================================
 	If EdBSFformMissing {
         EdBSFformMissingText := ini.caseNoteCountyInfo.countyEdBSF " form (sent separately);`n"
@@ -1528,13 +1450,13 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
         If (!otherInput%i%) { ; not checked
             continue
         }
-			caseNoteMissingText .= otherText ";`n"
-            otherTextTemp := getRowCount(missingListEnum ". " otherText, 60, "")
-			missingVerifications[otherTextTemp[1]] := otherTextTemp[2]
-            emailTextString .= emailListEnum ". " otherText
-			missingListEnum++
-            emailListEnum++
-        ;}
+        otherText := RTrim(otherText, ".")
+        caseNoteMissingText .= otherText ";`n"
+        otherTextTemp := getRowCount(missingListEnum ". " otherText ";", 60, "")
+        missingVerifications[otherTextTemp[1] "`n"] := otherTextTemp[2]
+        emailTextString .= emailListEnum ". " otherText ";`n"
+        missingListEnum++
+        emailListEnum++
     }
 ;======================================================
 	If InHomeCareMissing {
@@ -1626,75 +1548,78 @@ If you have a 'copay,' the amount the county pays to the provider will be reduce
         emailTextString .= ProviderForNonImmigrantMissingText
         caseNoteMissingText .= "Provider subject to Public Educational Standards (4.15), if child not citizen/immigrant;`n"
     }
+        ;If (UnearnedUnansweredMissing || LumpSumUnansweredMissing || EmploymentUnansweredMissing || SelfEmploymentUnansweredMissing || AssetsUnansweredMissing) {
+        ;UnansweredText := "You did not answer all questions on the " mec2docType ".`n Please submit a statement that is written, dated, and signed by you, answering:`n"
+        ;CaseNoteUnansweredMissing := Unanswered ?: 
+        ;AnsweredMoreThan :=, AnsweredYes :=, AnsweredBoth :=
+        ;If UnearnedUnansweredMissing {
+            ;UnansweredText .= "Have you received any unearned income in the past 12 months? (Includes: Child/Spousal support, Unemployment, RSDI, Rentals, Insurance payments, RSDI, VA benefits, Contract for deed, Trust income, Interest, Dividends, Worker's comp, Gambling winnings, Inheritance, Capital gains, etc.)`n"
+            ;CaseNoteUnansweredMissing .= "Unearned income, "
+            ;AnsweredYes := " yes"
+        ;}
+        ;If LumpSumUnansweredMissing {
+            ;UnansweredText .= "Have you received any lump sums in the past 12 months?`n"
+            ;CaseNoteUnansweredMissing .= "Lump sum, "
+            ;AnsweredYes := " yes"
+        ;}
+        ;If EmploymentUnansweredMissing {
+            ;UnansweredText .= "Is anyone in your household employed?`n"
+            ;CaseNoteUnansweredMissing .= "Employment, "
+            ;AnsweredYes := " yes"
+        ;}
+        ;If SelfEmploymentUnansweredMissing {
+            ;UnansweredText .= "Is anyone in your household self-employed?`n"
+            ;CaseNoteUnansweredMissing .= "Self-employment, "
+            ;AnsweredYes := " yes"
+        ;}
+        ;If ExpensesUnansweredMissing {
+            ;UnansweredText .= "Does anyone in your household pay Healthcare premiums, or child/spousal support?`n"
+            ;CaseNoteUnansweredMissing .= "Self-employment, "
+            ;AnsweredYes := " yes"
+        ;}
+        ;If AssetsUnansweredMissing {
+            ;UnansweredText .= "Are your assets MORE THAN, or are they LESS THAN $1 million?`n"
+            ;CaseNoteUnansweredMissing .= "Assets, "
+            ;AnsweredMoreThan := " MORE THAN"
+        ;}
+        ;If ChildSchoolUnansweredMissing {
+            ;UnansweredText .= "Are any of your children in school now or starting school in the next 12 months?`n"
+            ;CaseNoteUnansweredMissing .= "Child school, "
+            ;AnsweredYes := " yes"
+        ;}
+        ;If AdultSchoolUnansweredMissing {
+            ;UnansweredText .= "Do any adults need child care assistance for going to school?`n"
+            ;CaseNoteUnansweredMissing .= "Adult school, "
+            ;AnsweredYes := " yes"
+        ;}
+        ;If JobSearchUnansweredMissing {
+            ;UnansweredText .= "Do any adults need child care assistance for looking for work?`n"
+            ;CaseNoteUnansweredMissing .= "Job search, "
+            ;AnsweredYes := " yes"
+        ;}
+        ;If ActivityHistoryPRI1UnansweredMissing {
+            ;UnansweredText .= "In the past 12 months has there been a period of more than 3 months where you (or the other parent in the household) did not work, go to school, or participate in activities as listed on an MFIP/DWP Employment Plan?"
+            ;CaseNoteUnansweredMissing .= "Past 12-month activity history question, "
+            ;AnsweredYes := " yes"
+        ;}
+        ;; need str replace CaseNoteUnansweredMissing , " -> ;" (last comma -> semi-colon)
+        ;If (StrLen(AnsweredYes AnsweredMoreThan) == 14) {
+            ;AnsweredBoth == " or"
+        ;}
+        ;UnansweredText .= "* Submit verification if you answered" AnsweredYes AnsweredBoth AnsweredMoreThan ". *`n"
+        ;UnansweredText := stWordWrap(UnansweredText, 60, " ")
+			;UnansweredTextCount := 0
+			;StrReplace(UnansweredText, "`n", "`n", UnansweredTextCount)
+			;UnansweredTextCount++
+            ;missingVerifications[missingListEnum ". " UnansweredText] := UnansweredTextCount
+            ;emailTextString .= emailListEnum ". " UnansweredText
+			;caseNoteMissingText .= CaseNoteUnansweredMissing ";`n"
+			;missingListEnum++
+            ;emailListEnum++
+    ;}
 ; End of verif revamp section ============================================
-    caseDetails.haveWaitlist := (caseDetails.caseType == "BSF" && caseDetails.eligibility == "ineligible" && ini.caseNoteCountyInfo.Waitlist > 1)
-    If (!caseDetails.haveWaitlist) {
-        faxAndEmailWrapped := faxAndEmailText()
-        faxAndEmailWrapped := getRowCount(faxAndEmailWrapped, 60, " ")
-        autoDeny := getRowCount(autoDenyObject.autoDenyExtensionSpecLetter, 60, "")
-        clarifiedVerifications[ "NEWLINE" faxAndEmailWrapped[1] "`nNEWLINE" autoDeny[1] ] := faxAndEmailWrapped[2]+autoDeny[2]
-        emailTextString .= autoDeny[1] 
-    }
-
-    idList := "other"
-    For checkboxId in mecCheckboxIds {
-        idList .= "," checkboxId
-    }
-    insertAtOffset := (caseDetails.eligibility == "pends" && Homeless) ? 2 : 0
-    If ( !overIncomeMissing && !caseDetails.haveWaitlist && !manualWaitlistBox && missingVerifications.Length() > (0 + insertAtOffset) ) {
-        If (StrLen(idList) > 5 || insertAtOffset == 2) { ; "other" will always add at least 5
-            missingVerifications.InsertAt(1 + insertAtOffset, "In addition to the above, please submit the following items:`n", 1)
-        }
-        Else If (StrLen(idList) == 5) {
-            missingVerifications.InsertAt(1+ insertAtOffset, "_____________Please submit the following items:_____________`n", 1)
-        }
-    }
-    waitlistText := ""
-    If (caseDetails.haveWaitlist || manualWaitlistBox) {
-        waitlistNumber := ini.caseNoteCountyInfo.Waitlist -1
-        waitlistPriorities := { 1: "• Are attending High School, GED, or ESL classes;`n" }
-        waitlistPriorities.2 := waitlistPriorities.1 "• Families in which an applicant is a veteran;`n"
-        waitlistPriorities.3 := waitlistPriorities.2 "• Families which don't qualify for other priorities;`n"
-        waitlistText := "
-(
-Due to limited funding, new eligibility for CCAP in " countySpecificText[ini.employeeInfo.employeeCounty].CountyName " is currently limited to those who:
-• Received Cash Assistance (MFIP/DWP) within the past year;
-• Are applying for and are approved for Cash Assistance;
-" waitlistPriorities[waitlistNumber] "`n
-)"
-        emailTextObject.Waitlist := "`n`n" waitlistText "`n" (manualWaitlistBox ? submitOnlyCommentItemsText "`n" : "")
-        submitOnlyCommentItemsText := "If you meet one of the above criteria, please submit the following items:`n"
-        submitCommentAndCheckboxItemsText := "If you meet one of the above criteria, in addition to items above the Worker Comments, please submit the following:`n"
-        If (manualWaitlistBox) {
-            waitlistText .= StrLen(idList) == 5 ? submitOnlyCommentItemsText : submitCommentAndCheckboxItemsText
-        }
-        waitlistText := getRowCount(waitlistText, 60, "")
-        missingVerifications.InsertAt(1, waitlistText[1] "`n", waitlistText[2])
-        caseNoteMissingText .= "Approved MFIP/DWP or meet current Waitlist criteria;`n"
-    }
-    If (clarifiedVerifications.Length() > 1) {
-        clarifiedVerifications.InsertAt(1, (missingVerifications.Length() > 1 ? "`n" : "") "__Clarification of items listed above the Worker Comments:__`n", 1)
-        ;clarifiedVerifications.InsertAt(1, "__Clarification of items listed above the Worker Comments:__`n", 1)
-    }
-    emailTextObject.output := setEmailText(emailTextString)
-    listifyMissingObject := { 1missing: { arrayLines: 0, verificationList: missingVerifications }, 2clarified: { arrayLines: countLines(clarifiedVerifications), verificationList: clarifiedVerifications } }
-    For objName, objContents in listifyMissingObject {
-        listifyMissing( objContents )
-    }
-	caseNoteMissingText := Trim(caseNoteMissingText, "`n") ; removes the last new line
-    For i, letterTextContents in letterText {
-        If (InStr(letterTextContents, "__Clarification",,2)) {
-            StrReplace(stWordWrap(letterTextContents, 60, ""), "`n", "`n", letterLineCount)
-            If (letterLineCount < 27) {
-                letterText[i] := StrReplace(letterTextContents, "__Clarification", "`n__Clarification")
-            }
-        }
-		GuiControl, MissingGui:Show, % "letter" . i
-    }
-	GuiControl, MainGui: Text, 14MissingEdit, % caseNoteMissingText
-	GuiControl, MissingGui: Show, % "emailButton"
-	WinActivate, CaseNotes
 }
+
 incrementLetterPage(ByRef letterTextNumber) {
     ;Global
     letterText[letterTextNumber] .= "                   Continued on letter " letterTextNumber+1
@@ -1811,20 +1736,21 @@ otherGUI() {
     If (%A_GuiControl% == 0) { ; unchecked
         Return
     }
-    local otherEditWidth := (wCH*60)+27
+    local otherEditWidth := (wCH*60)+scrollbar+pad
     local otherNumber := Trim(A_GuiControl, "otherInput")
     Gui, OtherGui: New,, % "Other Verification"
     Gui, OtherGui: Margin, % marginW
     Gui, OtherGui: Font, s9, % "Lucida Console"
     Gui, OtherGui: Add, Text,, % "Additional Input Required:`nState what the client needs to submit."
     Gui, OtherGui: Add, Edit, % "h100 w" otherEditWidth " votherEdit", % otherMissing[otherNumber]
-    Gui, OtherGui: Add, Button, % "gOtherGuiGuiClose x100", % "Save"
+    Gui, OtherGui: Add, Button, % "gOtherGuiGuiClose x175", % "Save"
     Gui, OtherGui: Add, Button, % "gOtherGuiGuiClose x+20 yp", % "Close"
     Gui, OtherGui: Add, Edit, % "Hidden votherInputID", % otherNumber
     Gui, OtherGui: Show, % "Hide x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes
     GuiControlGet editSize, OtherGui:POS, otherEdit
     guiX := caseNotesMonCenter[1] - ((editSizeW*zoomPPI + scrollbar)/2), guiY := caseNotesMonCenter[2] - (editSizeH*zoomPPI/2)
     Gui, OtherGui: Show, % "x" guiX " y" guiY
+    Gui, OtherGui: Show, AutoSize
     Gui, OtherGui: +OwnerMissingGui
     Gui, MissingGui: +Disabled
 }
@@ -1834,14 +1760,13 @@ OtherGuiGuiClose() {
     If (A_GuiControl == "Save" && otherEdit != "") {
         GuiControl, MissingGui: Text, % "otherInput" . otherInputID, % otherEdit
         otherMissing[otherInputID] := Trim(otherEdit, "`n")
-        Gui, OtherGui: Destroy
     } Else {
         If (otherEdit == "") {
             GuiControl, MissingGui: Text, % "otherInput" . otherInputID, Other
         }
         GuiControl, MissingGui:, % "otherInput" . otherInputID, 0
-        Gui, OtherGui: Destroy
     }
+    Gui, OtherGui: Destroy
     Gui, MissingGui: -Disabled
     WinActivate, % "Missing Verifications"
 }
@@ -2319,7 +2244,7 @@ Return
     Clipboard := caseNumber
 Return
 
-;Shows Clipboard text in a AHK GUI
+;Shows Clipboard text in an AHK GUI
 !^a::
     If WinExist("Clipboard Text") {
         Gui, CBT: Destroy
