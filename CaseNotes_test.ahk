@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.76"
+Version := "v0.5.78"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -61,7 +61,7 @@ checkGroupAdd()
 
 Global CH := setTextAndResize("1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890`n2`n3`n4`n5`n6`n7`n8`n9`n0`n1`n2`n3`n4`n5`n6`n7`n8`n9`n0`n1`n2`n3`n4`n5`n6`n7`n8`n9`n0", "s9", "Lucida Console"),
     wCH := CH[1]/100, hCH := CH[2]/30, zoomPPI := A_ScreenDPI/96
-Global pad := 2, scrollbar := 24, margin := 12, OneRow := "h" hCH*1+pad+2 " Limit87", TwoRows := "h" (hCH*2.7)+pad, ThreeRows := "h" (hCH*3)+pad*3, FourRows := "h" (hCH*4)+pad*3
+Global pad := 2, scrollbar := 24, margin := 12, oneRow := "h" hCH*1+pad+2 " Limit87", twoRows := "h" (hCH*2.7)+pad, threeRows := "h" (hCH*3)+pad*3, fourRows := "h" (hCH*4)+pad*3
 
 Global countySpecificText := { StLouis: { OverIncomeContactInfo: "", CountyName: "St. Louis County" }
     , Dakota: { OverIncomeContactInfo: " contact 651-554-6696 and", CountyName: "Dakota County", customHotkeys: "
@@ -85,7 +85,7 @@ Global editControls := ["01HouseholdCompEdit", "02SharedCustodyEdit", "03Address
     , "07ChildSupportCooperationEdit", "08ExpensesEdit", "09AssetsEdit", "10ProviderEdit", "11ActivityAndScheduleEdit", "12ServiceAuthorizationEdit", "13NotesEdit", "14MissingEdit"]
 Global exampleLabels := [ "01HouseholdCompEditLabelExample", "02SharedCustodyEditLabelExample", "03AddressVerificationEditLabelExample", "04SchoolInformationEditLabelExample", "05IncomeEditLabelExample", "06ChildSupportIncomeEditLabelExample"
     , "07ChildSupportCooperationEditLabelExample", "08ExpensesEditLabelExample", "09AssetsEditLabelExample", "10ProviderEditLabelExample", "11ActivityAndScheduleEditLabelExample", "12ServiceAuthorizationEditLabelExample", "14MissingEditLabelExample" ]
-
+Global emailText := { stillRequiredText: "These verifications are still required, and must be received within 90 days of your application date for continued eligibility.", pendingHomelessPreText: "You may be eligible for the homeless policy, which allows us to approve eligibility even though there are verifications we need but do not have. " emailText.stillRequiredText "`n`nBefore we can approve expedited eligibility, we need information that was not on the application:", initialApproval: "`nThe initial approval of child care assistance is 30 hours per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.`nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children.`nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay.", approvedWithMissing: "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. " }
 setIcon()
 ;Missing Verification globals
 Global emailTextObject := {}, missingInput := {}, otherMissing := {}, letterText := {}, letterTextNumber := 1, missingHomelessItems := "", idList := "", lineCount := 0
@@ -116,9 +116,9 @@ Return
 buildMainGui() {
     Global
     Gui +OwnDialogs
-    local LabelSettings := "xm+5 y+1 w200"
-    local LabelExampleSettings := "x220 yp+4 h12 w" wCH*60 " "
-    local TextboxSettings := "xm y+1 w" (wCH*87)+scrollbar+pad
+    local labelSettings := "xm+5 y+1 w200"
+    local labelExampleSettings := "x220 yp+4 h12 w" wCH*60 " "
+    local textboxSettings := "xm y+1 w" (wCH*87)+scrollbar+pad
 
     Gui, MainGui: Font,, % "Segoe UI"
     Gui, MainGui: Color, % "a9a9a9", % "bebebe"
@@ -161,60 +161,60 @@ buildMainGui() {
     Gui, MainGui: Font, s9, % "Segoe UI"
     Gui, MainGui: Margin, % marginW
     Gui, MainGui: Add, Text, % "xm y+45 h0 w0" ; Blank space
-    Gui, MainGui: Add, Text, % LabelSettings " v01HouseholdCompEditLabel", % "Household Comp"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v01HouseholdCompEditLabelExample Hidden", % "Parent (ID), ChildOne (4, BC), ChildName (age, verif)"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " v01HouseholdCompEdit", ;v2 add LoseFocus gui_event to force spacing.
+    Gui, MainGui: Add, Text, % labelSettings " v01HouseholdCompEditLabel", % "Household Comp"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v01HouseholdCompEditLabelExample Hidden", % "Parent (ID), ChildOne (4, BC), ChildName (age, verif)"
+    Gui, MainGui: Add, Edit, % textboxSettings " " twoRows " v01HouseholdCompEdit", ;v2 add LoseFocus gui_event to force spacing.
 
-    Gui, MainGui: Add, Text, % LabelSettings " v03AddressVerificationEditLabel", % "Address Verification"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v03AddressVerificationEditLabelExample Hidden", % "1234 W Minnesota St APT 21, St Paul: ID 5/4/20 (scan date)"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " ThreeRows " v03AddressVerificationEdit",
+    Gui, MainGui: Add, Text, % labelSettings " v03AddressVerificationEditLabel", % "Address Verification"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v03AddressVerificationEditLabelExample Hidden", % "1234 W Minnesota St APT 21, St Paul: ID 5/4/20 (scan date)"
+    Gui, MainGui: Add, Edit, % textboxSettings " " threeRows " v03AddressVerificationEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " v02SharedCustodyEditLabel", % "Shared Custody"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v02SharedCustodyEditLabelExample Hidden", % "Absent Parent / Child: Thursday 6pm - Monday 7am"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " v02SharedCustodyEdit",
+    Gui, MainGui: Add, Text, % labelSettings " v02SharedCustodyEditLabel", % "Shared Custody"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v02SharedCustodyEditLabelExample Hidden", % "Absent Parent / Child: Thursday 6pm - Monday 7am"
+    Gui, MainGui: Add, Edit, % textboxSettings " " fourRows " v02SharedCustodyEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " v04SchoolInformationEditLabel", % "School information"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v04SchoolInformationEditLabelExample Hidden", % "ChildOne, ChildTwo: Wildcat Elementary, M-F 730am - 2pm"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " ThreeRows " v04SchoolInformationEdit",
+    Gui, MainGui: Add, Text, % labelSettings " v04SchoolInformationEditLabel", % "School information"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v04SchoolInformationEditLabelExample Hidden", % "ChildOne, ChildTwo: Wildcat Elementary, M-F 730am - 2pm"
+    Gui, MainGui: Add, Edit, % textboxSettings " " threeRows " v04SchoolInformationEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " v05IncomeEditLabel", % "Income"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v05IncomeEditLabelExample Hidden Border", % "Parent - Job: BW avg $1234.56, 43.2hr/wk; annual @ 32098.56"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " v05IncomeEdit",
+    Gui, MainGui: Add, Text, % labelSettings " v05IncomeEditLabel", % "Income"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v05IncomeEditLabelExample Hidden Border", % "Parent - Job: BW avg $1234.56, 43.2hr/wk; annual @ 32098.56"
+    Gui, MainGui: Add, Edit, % textboxSettings " " fourRows " v05IncomeEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " v06ChildSupportIncomeEditLabel", % "Child Support Income"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v06ChildSupportIncomeEditLabelExample Hidden", % "6 month total $2345.67; annual @ 4691.34"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " v06ChildSupportIncomeEdit",
+    Gui, MainGui: Add, Text, % labelSettings " v06ChildSupportIncomeEditLabel", % "Child Support Income"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v06ChildSupportIncomeEditLabelExample Hidden", % "6 month total $2345.67; annual @ 4691.34"
+    Gui, MainGui: Add, Edit, % textboxSettings " " twoRows " v06ChildSupportIncomeEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " v07ChildSupportCooperationEditLabel Border gcopySharedCustodyEditToCSCoopEdit", % "Child Support Cooperation"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v07ChildSupportCooperationEditLabelExample Hidden", % "Absent Parent / Child: Open, cooperating"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " v07ChildSupportCooperationEdit",
+    Gui, MainGui: Add, Text, % labelSettings " v07ChildSupportCooperationEditLabel Border gcopySharedCustodyEditToCSCoopEdit", % "Child Support Cooperation"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v07ChildSupportCooperationEditLabelExample Hidden", % "Absent Parent / Child: Open, cooperating"
+    Gui, MainGui: Add, Edit, % textboxSettings " " fourRows " v07ChildSupportCooperationEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " v08ExpensesEditLabel", % "Expenses"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v08ExpensesEditLabelExample Hidden", % "BW Medical $121.23, BW Dental $12.23, BW Vision $2.23"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " v08ExpensesEdit",
+    Gui, MainGui: Add, Text, % labelSettings " v08ExpensesEditLabel", % "Expenses"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v08ExpensesEditLabelExample Hidden", % "BW Medical $121.23, BW Dental $12.23, BW Vision $2.23"
+    Gui, MainGui: Add, Edit, % textboxSettings " " twoRows " v08ExpensesEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " v09AssetsEditLabel", % "Assets"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v09AssetsEditLabelExample Hidden", % "< $1m   or   (blank)"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " OneRow " Limit87 v09AssetsEdit",
+    Gui, MainGui: Add, Text, % labelSettings " v09AssetsEditLabel", % "Assets"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v09AssetsEditLabelExample Hidden", % "< $1m   or   (blank)"
+    Gui, MainGui: Add, Edit, % textboxSettings " " oneRow " Limit87 v09AssetsEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " v10ProviderEditLabel", % "Provider"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v10ProviderEditLabelExample Hidden", % "Kid Kare (PID#, HQ): ChildOne, ChildTwo - Start date 5/4/20"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " TwoRows " v10ProviderEdit",
+    Gui, MainGui: Add, Text, % labelSettings " v10ProviderEditLabel", % "Provider"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v10ProviderEditLabelExample Hidden", % "Kid Kare (PID#, HQ): ChildOne, ChildTwo - Start date 5/4/20"
+    Gui, MainGui: Add, Edit, % textboxSettings " " twoRows " v10ProviderEdit",
 
-    Gui, MainGui: Add, Text, % LabelSettings " v11ActivityAndScheduleEditLabel", % "Activity and Schedule"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v11ActivityAndScheduleEditLabelExample Hidden", % "ParentOne - Employment: M-F 9a - 5p (8h x 5d)"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " v11ActivityAndScheduleEdit", 
+    Gui, MainGui: Add, Text, % labelSettings " v11ActivityAndScheduleEditLabel", % "Activity and Schedule"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v11ActivityAndScheduleEditLabelExample Hidden", % "ParentOne - Employment: M-F 9a - 5p (8h x 5d)"
+    Gui, MainGui: Add, Edit, % textboxSettings " " fourRows " v11ActivityAndScheduleEdit", 
 
-    Gui, MainGui: Add, Text, % LabelSettings " v12ServiceAuthorizationEditLabel", % "Service Authorization"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v12ServiceAuthorizationEditLabelExample Hidden", % "8h work + 1h travel = 9h/day, 90h/period"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " ThreeRows " v12ServiceAuthorizationEdit", 
+    Gui, MainGui: Add, Text, % labelSettings " v12ServiceAuthorizationEditLabel", % "Service Authorization"
+    Gui, MainGui: Add, Text, % labelExampleSettings " v12ServiceAuthorizationEditLabelExample Hidden", % "8h work + 1h travel = 9h/day, 90h/period"
+    Gui, MainGui: Add, Edit, % textboxSettings " " threeRows " v12ServiceAuthorizationEdit", 
 
-    Gui, MainGui: Add, Text, % LabelSettings " v13NotesEditLabel", % "Notes"
-    Gui, MainGui: Add, Edit, % TextboxSettings " " FourRows " v13NotesEdit",
+    Gui, MainGui: Add, Text, % labelSettings " v13NotesEditLabel", % "Notes"
+    Gui, MainGui: Add, Edit, % textboxSettings " " fourRows " v13NotesEdit",
 
     Gui, MainGui: Add, Text, % "xm+5 y+1 gshowMissingVerifs v14MissingEditLabel Border", % "Missing"
-    Gui, MainGui: Add, Text, % LabelExampleSettings " v14MissingEditLabelExample Hidden", % "(Click ""Missing"" to bring up the missing verification list)"
-    Gui, MainGui: Add, Edit, % TextboxSettings " h" hCH*10+pad " v14MissingEdit",
+    Gui, MainGui: Add, Text, % labelExampleSettings " v14MissingEditLabelExample Hidden", % "(Click ""Missing"" to bring up the missing verification list)"
+    Gui, MainGui: Add, Edit, % textboxSettings " h" hCH*10+pad " v14MissingEdit",
 
     Gui, MainGui: Add, Text, % "x15 y+4", % Version
     Gui, MainGui: Add, Button, % "x+20 yp w65 h19 -TabStop gbuildSettingsGui", % "Settings"
@@ -266,6 +266,7 @@ setDocType() {
         GuiControl,, Homeless, 0
     }
     checkWaitlist()
+    newChangesTrue()
 }
 setAppType() {
     Gui, Submit, NoHide
@@ -314,6 +315,7 @@ setEligibility() {
         GuiControl, MainGui: Hide, NoProvider
         checkWaitlist()
     }
+    newChangesTrue()
 }
 setCaseType() {
     caseDetails.caseType := A_GuiControl
@@ -330,7 +332,6 @@ checkWaitlist() {
         GuiControl, MainGui: Hide, manualWaitlistBox
         GuiControl,, manualWaitlistBox, 0
     }
-    newChangesTrue()
 }
 newChangesTrue() {
     caseDetails.newChanges := true
@@ -946,45 +947,35 @@ missingVerifsDoneButton() {
         caseNoteMissingText .= "Household is calculated to be over-income by $" overIncomeObj.overIncomeDifference " ($" overIncomeObj.overIncomeReceived " - $" overIncomeObj.overIncomeLimit ");`n"
     }
 
-    stillRequiredText := "These verifications are still required, and must be received within 90 days of your application date for continued eligibility."
-    PendingHomelessPreText := "
-(
-You may be eligible for the homeless policy, which allows us to approve eligibility even though there are verifications we need but do not have. " stillRequiredText "`n
-Before we can approve expedited eligibility, we need information that was not on the application:
-)"
-    If (Homeless && caseDetails.eligibility == "pends" && caseDetails.docType == "Application") {
-        InputBox, missingHomelessItems, % "Homeless Info Missing", % "What information is needed from the client to approve expedited eligibility?`n`nUse a double space ""  "" without quotation marks to start a new line.",,,,,,,, % StrReplace(missingHomelessItems, "`n", "  ")
-        If (ErrorLevel == 0) {
-            missingHomelessItems := StrReplace(missingHomelessItems, "  ", "`n")
-            pendingHomelessMissing := getRowCount("  " missingHomelessItems, 60, "  ")
-            missingVerifications[stWordWrap(PendingHomelessPreText, 60, " ") "`n"] := 8
-            missingVerifications[pendingHomelessMissing[1] "`n"] := pendingHomelessMissing[2]
-            caseNoteMissingText .= "Missing for expedited approval:`n" StrReplace(missingHomelessItems, "`n", "`n  ") ";`n"
+; ------ Email --------
+    emailTextObject.StartAll := "Your Child Care Assistance " mec2docType " has been processed. " emailTextObject.WaitList
+    If (Homeless && !overIncomeMissing && caseDetails.docType == "Application") {
+
+        If (caseDetails.eligibility == "pends") {
+            InputBox, missingHomelessItems, % "Homeless Info Missing", % "What information is needed from the client to approve expedited eligibility?`n`nUse a double space ""  "" without quotation marks to start a new line.",,,,,,,, % StrReplace(missingHomelessItems, "`n", "  ")
+            If (ErrorLevel == 0) {
+                missingHomelessItems := StrReplace(missingHomelessItems, "  ", "`n")
+                pendingHomelessMissing := getRowCount("  " missingHomelessItems, 60, "  ")
+                missingVerifications[stWordWrap(emailText.pendingHomelessPreText, 60, " ") "`n"] := 8
+                missingVerifications[pendingHomelessMissing[1] "`n"] := pendingHomelessMissing[2]
+                caseNoteMissingText .= "Missing for expedited approval:`n" StrReplace(missingHomelessItems, "`n", "`n  ") ";`n"
+            }
         }
+        emailTextObject.StartHL := (caseDetails.eligibility == "elig") ? emailText.approvedWithMissing "`n" emailText.stillRequiredText : PendingHomelessPreText missingHomelessItems
+
+        emailTextObject.EndHL := (caseDetails.eligibility == "elig") ? emailText.initialApproval : ""
     }
 
-	If (!overIncomeMissing) {
-        emailTextObject.StartHL := (caseDetails.eligibility == "elig") ? "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. " stillRequiredText : PendingHomelessPreText missingHomelessItems
+    emailTextObject.AreOrWillBe := (Homeless == 1) ? "will be" : "are"
 
-        emailTextObject.EndHL := (caseDetails.eligibility == "elig") ? "
-(
-`nThe initial approval of child care assistance is 30 hours per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.
-If the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children.
-If you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay.
-)" : ""
+    emailTextObject.Reason1 := (caseDetails.eligibility == "elig") ? "for authorizing assistance hours" : "to determine eligibility or calculate assistance hours"
+    emailTextObject.Reason2 := (Homeless == 1) ? "to determine on-going eligibility or calculate assistance hours after the 90-day period" : emailTextObject.Reason1
 
-        emailTextObject.AreOrWillBe := (Homeless == 1) ? "will be" : "are"
+    emailTextObject.Start := (Homeless == 1) ? emailTextObject.StartAll emailTextObject.StartHL : emailTextObject.StartAll
+    emailTextObject.Middle := "`n`nThe following documents or verifications " emailTextObject.AreOrWillBe " needed " emailTextObject.Reason2 ":`n`n"
 
-        emailTextObject.Reason1 := (caseDetails.eligibility == "elig") ? "for authorizing assistance hours" : "to determine eligibility or calculate assistance hours"
-        emailTextObject.Reason2 := (Homeless == 1) ? "to determine on-going eligibility or calculate assistance hours after the 90-day period" : emailTextObject.Reason1
-        emailTextObject.StartAll := "Your Child Care Assistance " mec2docType " has been processed. " emailTextObject.WaitList
-
-        emailTextObject.Start := (Homeless == 1) ? emailTextObject.StartAll emailTextObject.StartHL : emailTextObject.StartAll
-        emailTextObject.Middle := "`n`nThe following documents or verifications " emailTextObject.AreOrWillBe " needed " emailTextObject.Reason2 ":`n`n"
-
-        emailTextObject.Combined := emailTextObject.Start emailTextObject.Middle
-	}
-
+    emailTextObject.Combined := emailTextObject.Start emailTextObject.Middle
+; ------ Email --------
 
 
     parseMissingVerifications(missingVerifications, missingListEnum, clarifiedVerifications, clarifiedListEnum, emailTextString, emailListEnum, caseNoteMissingText)
