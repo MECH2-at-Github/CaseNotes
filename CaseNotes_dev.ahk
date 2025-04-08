@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.78"
+Version := "v0.5.79"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -46,6 +46,8 @@ SetWorkingDir % A_ScriptDir
 #SingleInstance force
 #NoTrayIcon
 SetTitleMatchMode, RegEx
+
+; Rule for AHKv1 GUI functions and variables: If you are doing a "Gui, Submit" the function needs to be declared Global.
 
 Global verbose := 1, sq := "²", cm := "✔", cs := ", "
 
@@ -151,7 +153,7 @@ buildMainGui() {
 
     Gui, MainGui: Add, Edit, % "x+0 ys w70 h17 -Background Limit8 vcaseNumber",
     Gui, MainGui: Add, DateTime, % "xp y+5 w70 h17 vReceivedDate gnewChangesTrue", % "M/d/yy"
-    Gui, MainGui: Add, DateTime, % "xp y+5 w70 h17 vSignOrDueDate Hidden", % "M/d/yy"
+    Gui, MainGui: Add, DateTime, % "xp y+5 w70 h17 vSignOrDueDate gnewChangesTrue Hidden", % "M/d/yy"
 
     Gui, MainGui: Add, Button, % "Section x535 ys+0 h17 w70 -TabStop vmec2NoteButton goutputCaseNote", % "MEC" sq " Note"
     Gui, MainGui: Add, Button, % "xs y+5 h17 w70 -TabStop Hidden vmaxisNoteButton goutputCaseNote", % "MAXIS Note"
@@ -363,125 +365,6 @@ copySharedCustodyEditToCSCoopEdit() {
 ;MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION - MAIN GUI SECTION
 ;==============================================================================================================================================================================================
 
-;=======================================================================================================================================================================================================
-;EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION 
-buildHelpGui() {
-    local widestText
-    Paragraph1 := "
-    (
-    This app is a template tool for generating Case Notes for CCAP applications, redeterminations, and request letters
-    for Special Letters and emails. This tool is not endorsed or sponsored by MN DCYF.
-    )"
-    Paragraph2 := "
-    (
-    Features:
-    ● Auto-formats text to fit within MEC" sq "'s Case Notes and Special Letter/Memo fields.
-       and is designed to be compatible with the Income Calculator spreadsheet.
-    ● Case Notes are formatted with categories and spacing for consistant alignment. 
-    ● User-entered dates calculate the extended auto-deny date (for a minimum of 15ish days from the date processed).
-    ● Incorporates document type, approval status, and dates in the notes and verification requests.
-    ● Compatible with mec2functions from github.com/MECH2-at-github.
-    ● Case Notes can be saved to a text document in the event a case is locked or otherwise inaccessible.
-    ● Special Letter requests are broken down into 'clarifications' of checkbox items, and additional items.
-    )"
-    Paragraph3 := "
-    (
-    Main window :
-    ● [MEC" sq " Note] - Formats the entire case note and sends the data to MEC" sq ".
-        If you are not using mec2functions, it will simulate keypresses to navigate the page. 
-        In MEC" sq ": Click 'New' in MEC" sq " on the CaseNotes webpage. In CaseNotes, click [MEC" sq " Note].
-    ● [MAXIS Note] - Visible only if ""Case Note in MAXIS"" is checked in Settings.
-        Formats the app date, case status, and verifications list and sends it to MAXIS.
-        It will activate BlueZone and paste the case note in.
-        In BlueZone (MAXIS): PF9 to start a new note. In CaseNotes, click [MAXIS Note].
-    ● [Desktop Backup] - Saves case notes for MEC" sq ", MAXIS, the Special Letters, and Email to your desktop.
-        In CaseNotes, click [To Desktop]. A text file will be saved using the case number for the file name.
-    ● [Clear] - Resets the app. If the case note has not been sent to MEC" sq "/MAXIS or saved to file, it will give a
-        warning. Otherwise, it will change to [Confirm]. Clicking again will reset the app.
-    ● Child Support Cooperation - Click the [Child Support Cooperation] label to copy from Custody.
-        The Child Support Cooperation text field must be blank when clicking the button.
-    ● Missing Verifications - Click either the [Missing] label or [Missing] button to open the verification window.
-    )"
-    Paragraph4 := "
-    (
-      Missing Verifications window:
-    ● Checkboxes which cover almost all documents needed, with 3 ""Other"" selections for free-form requests.
-    ● Verification types are clustered by categories.
-    ● If a checkbox label has (Input) it will open a popup requesting clarifying information.
-    ● ""Over-income"" will modify the beginning of the Special Letter text, adding income limit information.
-    
-    ● [Done] - After selecting the verifications that are missing, [Done] will generate a list and letter/email buttons.
-          If the Special Letter text exceeds 30 lines, a second (/third/fourth) letter will be generated.
-    ● [Letter 1/2/3/4] - Clicking these will place text on the clipboard to be pasted into the Worker Comments field.
-        If ""Use mec2functions"" is checked, [Letter 1] will auto-check and auto-fill fields in MEC" sq "'s Special Letter page.
-    ● [Email] - Text is send to the clipboard, which can then be pasted into an email. It will include the document type
-        that was selected (application/redetermination). For homeless cases, alternate text is generated based on if
-        the case is Eligible or Pending.
-    )"
-    Paragraph5 := "
-    (
-    Hotkeys:
-    ● (Alt+3): Copies the case number to the clipboard. Usable from anywhere when CaseNotes is open.
-    ● (Win+m): Inserts Missing Verification text when your browser or an email is the active window.
-               Similar to the [Email] or [Letter 1] buttons, but without needing to switch windows.
-    ● (Win+left arrow) or (Win+right arrow): Resets CaseNotes location, in the event it is off-screen.
-    ● (Ctrl+F12) or (Alt+12): In your browser, types in the worker's name with a separation line (case note signature)
-    ● (Ctrl+Alt+a): Shows clipboard text in a popup window. Select and copy text first (such as from a case note).
-    )"
-    Paragraph6 := "
-    (
-    Special notes:
-    ● CaseNotes will open in the same location it was closed, even if that monitor is no longer connected.
-       See Hotkeys for reset instructions.
-    ● All settings for CaseNotes are saved in the My Documents folder, under AHK.ini.
-       Deleting this file will reset all saved settings.
-    ● Please send any bug reports or feature requests to MECH2.at.github@gmail.com
-    )"
-    helpXY := "xm y+15"
-    Gui, HelpGui: New, ToolWindow, % "CaseNotes Help"
-    Gui, HelpGui: Margin, % marginW
-    Gui, Font, s10, % "Segoe UI"
-    Gui, HelpGui: Add, Tab3,, % "Features | CaseNotes | Missing Verifications | Hotkeys and Notes"
-    Gui, Tab, 1
-    Gui, HelpGui: Add, Text, % helpXY, % Paragraph1
-    Gui, HelpGui: Add, Text, % helpXY, % Paragraph2
-    Gui, Tab, 2
-    Gui, HelpGui: Add, Text, % helpXY, % Paragraph3
-    Gui, Tab, 3
-    Gui, HelpGui: Add, Text, % helpXY, % Paragraph4
-    Gui, Tab, 4
-    Gui, HelpGui: Add, Text, % helpXY, % Paragraph5
-    Gui, HelpGui: Add, Text, % helpXY, % Paragraph6
-    Gui, HelpGui: Add, Text, % helpXY, % countySpecificText[ini.employeeInfo.employeeCounty].customHotkeys
-    Gui, Tab
-    Gui, HelpGui: Add, Button, % "gHelpGuiGuiClose w70 h25", % "Close"
-    Gui, HelpGui:+OwnerMainGui
-    Gui, HelpGui: Show, % "Hide x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes
-    GuiControlGet editSize, HelpGui:POS, Static5
-    guiX := caseNotesMonCenter[1] - ((editSizeW*zoomPPI)/2), guiY := caseNotesMonCenter[2] - (editSizeH*zoomPPI/2)
-    GuiControl, HelpGui: Move, % "Close", % "x" (editSizeW/2)
-    Gui, HelpGui: Show, % "x" guiX " y" guiY
-}
-HelpGuiGuiClose() {
-    Gui, HelpGui: Destroy
-}
-examplesButton() {
-    GuiControlGet, examplesButtonText
-    If (examplesButtonText == "Examples") {
-        For i, exampleLabel in exampleLabels {
-            GuiControl, MainGui:Show, % exampleLabel
-        }
-        GuiControl, MainGui:Text, examplesButtonText, % "Restore"
-    } Else If (examplesButtonText == "Restore") {
-        For i, exampleLabel in exampleLabels {
-            GuiControl, MainGui:Hide, % exampleLabel
-        }
-        GuiControl, MainGui:Text, examplesButtonText, % "Examples"
-    }
-}
-;EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION 
-;=======================================================================================================================================================================================================
-
 ;=====================================================================================================================================================================================================
 ;BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION
 makeCaseNote() {
@@ -665,6 +548,9 @@ outputCaseNoteNotepad(sendingCaseNote) {
         letterNotepad .= StrLen(LetterText[i]) > 0 ? "`n====== Special Letter " i " ======`n" letterTextValue "`n" : ""
     }
     FileAppend, % "====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n", % A_Desktop "\" notepadFileName ".txt"
+    If (verbose) {
+        buildOversizedNoteGui("====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n")
+    }
     GuiControl, MainGui:Text, notepadNoteButton, % "Desktop ✔"
     caseNoteEntered.mec2NoteEntered := 1
     caseNoteEntered.maxisNoteEntered := 1
@@ -744,20 +630,18 @@ formatMDY(inputDate) {
 calcDates() {
     Global
     Gui, MainGui: Submit, NoHide
-    dateObject.receivedYMD := ReceivedDate
-    dateObject.receivedMDY := formatMDY(dateObject.receivedYMD)
-    dateObject.autoDenyYMD := addDays(dateObject.receivedYMD, 29)
-    dateObject.recdPlusFortyfiveYMD := addDays(dateObject.receivedYMD, 44)
-    dateObject.todayPlusFifteenishYMD := addFifteenishDays(dateObject.todayYMD)
-    dateObject.recdPlusFifteenishYMD := addFifteenishDays(dateObject.receivedYMD)
-    dateObject.needsNoExtension := subtractDates(dateObject.autoDenyYMD, dateObject.todayPlusFifteenishYMD)
-    dateObject.needsExtension := subtractDates(dateObject.recdPlusFortyfiveYMD, dateObject.todayPlusFifteenishYMD)
-    dateObject.RedetDueYMD := SignOrDueDate
-    dateObject.RedetDueMDY := formatMDY(SignOrDueDate)
-    
-    NeedsFakeExtension := formatMDY(dateObject.recdPlusFifteenishYMD)
     autoDenyObject.autoDenyExtensionSpecLetter :=
     If (caseDetails.docType == "Application") {
+
+        dateObject.receivedYMD := ReceivedDate
+        dateObject.receivedMDY := formatMDY(dateObject.receivedYMD)
+        dateObject.autoDenyYMD := addDays(dateObject.receivedYMD, 29)
+        dateObject.recdPlusFortyfiveYMD := addDays(dateObject.receivedYMD, 44)
+        dateObject.todayPlusFifteenishYMD := addFifteenishDays(dateObject.todayYMD)
+        dateObject.recdPlusFifteenishYMD := addFifteenishDays(dateObject.receivedYMD)
+        dateObject.needsNoExtension := subtractDates(dateObject.autoDenyYMD, dateObject.todayPlusFifteenishYMD)
+        dateObject.needsExtension := subtractDates(dateObject.recdPlusFortyfiveYMD, dateObject.todayPlusFifteenishYMD)
+
         If (caseDetails.eligibility == "pends") {
             If (dateObject.needsNoExtension > -1) {
                 autoDenyObject.autoDenyExtensionDate := formatMDY(dateObject.autoDenyYMD)
@@ -782,15 +666,27 @@ calcDates() {
         }
     }
     
-    If (caseDetails.docType == "Redet") {
+    If (caseDetails.docType == "Redet" && caseDetails.eligibility != "elig") {
+
+        dateObject.RedetDueYMD := SignOrDueDate
+        dateObject.RedetDueMDY := formatMDY(SignOrDueDate)
         dateObject.RedetCaseCloseYMD := addFifteenishDays(dateObject.RedetDueYMD)
         dateObject.RedetCaseCloseMDY := formatMDY(dateObject.RedetCaseCloseYMD)
-        dateObject.RedetDocsLastDayMDY := formatMDY(addDays(dateObject.RedetCaseCloseYMD, 29))
-        autoDenyObject.autoDenyExtensionSpecLetter := "** If your redetermination is not completed by " dateObject.RedetDueMDY ",`n   your case will close on " dateObject.RedetCaseCloseMDY ". If it closes,`n   the latest it can be reinstated is " dateObject.RedetDocsLastDayMDY "."
+        dateObject.RedetDocsLastDayYMD := addDays(dateObject.RedetCaseCloseYMD, 29)
+        dateObject.RedetDocsLastDayMDY := formatMDY(dateObject.RedetDocsLastDayYMD)
+
+        If (dateObject.todayYMD > dateObject.RedetDocsLastDayYMD) {
+            autoDenyObject.autoDenyExtensionSpecLetter := "** Your case has closed due to failure to complete the redetermination process. Because your redetermination was not completed within 30 days of closure, your case cannot be reinstated. To be eligible for CCAP, you must reapply by completing an application. The date you submit an application is the earliest date of your eligibility. If you have received Cash Assistance (MFIP, DWP) within the last 12 months, you may be eligible for limited backdating."
+        } Else {
+            autoDenyObject.autoDenyExtensionSpecLetter := dateObject.todayYMD < dateObject.RedetDueYMD
+            ? "** If your redetermination is not completed by " dateObject.RedetDueMDY ", "
+            : "** Your redetermination was not completed by " dateObject.RedetDueMDY " and "
+            autoDenyObject.autoDenyExtensionSpecLetter .= dateObject.todayYMD < dateObject.RedetCaseCloseYMD
+            ? "your case will close on " dateObject.RedetCaseCloseMDY ". If it closes, the latest it can be reinstated is " dateObject.RedetDocsLastDayMDY "."
+            : "your case has closed. To reinstate your case, you must complete the redetermination process by " dateObject.RedetDocsLastDayMDY "."
+        }
     }
-    If (caseDetails.eligibility == "elig") {
-        autoDenyObject := {}
-    }
+    If (caseDetails.docType == "Redet" && caseDetails.eligibility != "elig") {
 }
 ;DATES SECTION DATES SECTION DATES SECTION DATES SECTION DATES SECTION DATES SECTION DATES SECTION  DATES SECTION  DATES SECTION  DATES SECTION  DATES SECTION  DATES SECTION  DATES SECTION  
 ;===========================================================================================================================================================================================
@@ -948,7 +844,7 @@ missingVerifsDoneButton() {
     }
 
 ; ------ Email --------
-    emailTextObject.StartAll := "Your Child Care Assistance " mec2docType " has been processed. " emailTextObject.WaitList
+    emailTextObject.StartAll := "Your Child Care Assistance " mec2docType " has been " caseDetails.eligibility == "elig" ? "approved." : "processed. " emailTextObject.WaitList
     If (Homeless && !overIncomeMissing && caseDetails.docType == "Application") {
 
         If (caseDetails.eligibility == "pends") {
@@ -1459,8 +1355,8 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
         emailListEnum++
     }
 	If LNLProviderMissing {
-        LNLProviderMissingText := "Legal Non-Licensed Acknowledgement (sent separately).`n Your provider may not be eligible to be paid for care`n provided prior to completion of specific trainings;`n"
-		missingVerifications[missingListEnum ". " LNLProviderMissingText] := 3
+        LNLProviderMissingText := "Legal Non-Licensed Acknowledgement (send separately). Your provider may not be eligible to be paid for care provided prior to them completing age specific trainings. The ‘Health and Safety Resources’ documents do not need to be completed or returned;"
+		missingVerifications[missingListEnum ". " LNLProviderMissingText] := 5
         emailTextString .= emailListEnum ". " LNLProviderMissingText
 		caseNoteMissingText .= "LNL Acknowledgement form;`n"
 		missingListEnum++
@@ -1503,7 +1399,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
 		caseNoteMissingText .= "Eligible activity (none selected on form);`n"
     }
     If EmploymentIneligibleMissing {
-        EmploymentIneligibleMissingText := "* Your employment does not meet eligible activity requirements. " EligibleActivityWithJSText "`nYou can submit up to 6 months of recent paystubs to average above 20 hours.`n"
+        EmploymentIneligibleMissingText := "* Your employment does not meet eligible activity requirements. " EligibleActivityWithJSText "`nYou can submit up to 6 months of recent paystubs to meet the requirement.`n"
 		missingVerifications[EmploymentIneligibleMissingText] := 8
         emailTextString .= EmploymentIneligibleMissingText
 		caseNoteMissingText .= "Employment hours meeting minimum requirement, or other eligible activity;`n"
@@ -1699,7 +1595,7 @@ setEmailText(emailTextStringIn) {
     emailTextStringOut := StrReplace(emailTextStringOut, "sent separately", "see attached")
 	return emailTextObject.Combined emailTextStringOut emailTextObject.EndHL
 }
-letterButtonClick(letterGUINumber := 0) {
+letterButtonClick(letterGUINumber := 1) {
     Global
 	Gui, MainGui: Submit, NoHide
 	Gui, MissingGui: Submit, NoHide
@@ -1707,17 +1603,17 @@ letterButtonClick(letterGUINumber := 0) {
     If (Homeless == 1 && caseDetails.eligibility == "pends" && StrLen(missingHomelessItems) < 1) {
         missingVerifsDoneButton()
     }
-    WinActivate % ini.employeeInfo.employeeBrowser
-    Sleep 500
+    thisLetterText := Trim(letterText[letterGUINumber], "`n")
     If (ini.employeeInfo.employeeUseMec2Functions == 1) {
         caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (Homeless == 1) ? "Homeless App" : caseDetails.docType
-        jsonLetterText := "LetterTextFromAHKJSON{""LetterText"":""" JSONstring(letterText[letterGUINumber]) """,""CaseStatus"":""" caseStatus """,""IdList"":""" idList """ }"
+        jsonLetterText := "LetterTextFromAHKJSON{""LetterText"":""" JSONstring(thisLetterText) """,""CaseStatus"":""" caseStatus """,""IdList"":""" idList """ }"
         Clipboard := jsonLetterText
-        Send, ^v
     } Else {
-        Clipboard := letterText[letterGUINumber]
-        Send, ^v
+        Clipboard := thisLetterText
     }
+    WinActivate % ini.employeeInfo.employeeBrowser
+    Sleep 500
+    Send, ^v
     Sleep 500
     Clipboard := caseNumber
 }
@@ -1865,6 +1761,9 @@ CBTGuiClose() {
     }
     Gui, CBT: Destroy
 }
+HelpGuiGuiClose() {
+    Gui, HelpGui: Destroy
+}
 ;ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION - ON WINDOW CLOSE SECTION
 ;===================================================================================================================================================================================
 
@@ -1975,6 +1874,122 @@ updateIniFileText(section, settingArray) {
 }
 ;SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION
 ;========================================================================================================================================================================
+
+;=======================================================================================================================================================================================================
+;EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION 
+buildHelpGui() {
+    local widestText
+    Paragraph1 := "
+    (
+    This app is a template tool for generating Case Notes for CCAP applications, redeterminations, and request letters
+    for Special Letters and emails. This tool is not endorsed or sponsored by MN DCYF.
+    )"
+    Paragraph2 := "
+    (
+    Features:
+    ● Auto-formats text to fit within MEC" sq "'s Case Notes and Special Letter/Memo fields.
+       and is designed to be compatible with the Income Calculator spreadsheet.
+    ● Case Notes are formatted with categories and spacing for consistant alignment. 
+    ● User-entered dates calculate the extended auto-deny date (for a minimum of 15ish days from the date processed).
+    ● Incorporates document type, approval status, and dates in the notes and verification requests.
+    ● Compatible with mec2functions from github.com/MECH2-at-github.
+    ● Case Notes can be saved to a text document in the event a case is locked or otherwise inaccessible.
+    ● Special Letter requests are broken down into 'clarifications' of checkbox items, and additional items.
+    )"
+    Paragraph3 := "
+    (
+    Main window :
+    ● [MEC" sq " Note] - Formats the entire case note and sends the data to MEC" sq ".
+        If you are not using mec2functions, it will simulate keypresses to navigate the page. 
+        In MEC" sq ": Click 'New' in MEC" sq " on the CaseNotes webpage. In CaseNotes, click [MEC" sq " Note].
+    ● [MAXIS Note] - Visible only if ""Case Note in MAXIS"" is checked in Settings.
+        Formats the app date, case status, and verifications list and sends it to MAXIS.
+        It will activate BlueZone and paste the case note in.
+        In BlueZone (MAXIS): PF9 to start a new note. In CaseNotes, click [MAXIS Note].
+    ● [Desktop Backup] - Saves case notes for MEC" sq ", MAXIS, the Special Letters, and Email to your desktop.
+        In CaseNotes, click [To Desktop]. A text file will be saved using the case number for the file name.
+    ● [Clear] - Resets the app. If the case note has not been sent to MEC" sq "/MAXIS or saved to file, it will give a
+        warning. Otherwise, it will change to [Confirm]. Clicking again will reset the app.
+    ● Child Support Cooperation - Click the [Child Support Cooperation] label to copy from Custody.
+        The Child Support Cooperation text field must be blank when clicking the button.
+    ● Missing Verifications - Click either the [Missing] label or [Missing] button to open the verification window.
+    )"
+    Paragraph4 := "
+    (
+      Missing Verifications window:
+    ● Checkboxes which cover almost all documents needed, with 3 ""Other"" selections for free-form requests.
+    ● Verification types are clustered by categories.
+    ● If a checkbox label has (Input) it will open a popup requesting clarifying information.
+    ● ""Over-income"" will modify the beginning of the Special Letter text, adding income limit information.
+    
+    ● [Done] - After selecting the verifications that are missing, [Done] will generate a list and letter/email buttons.
+          If the Special Letter text exceeds 30 lines, a second (/third/fourth) letter will be generated.
+    ● [Letter 1/2/3/4] - Clicking these will place text on the clipboard to be pasted into the Worker Comments field.
+        If ""Use mec2functions"" is checked, [Letter 1] will auto-check and auto-fill fields in MEC" sq "'s Special Letter page.
+    ● [Email] - Text is send to the clipboard, which can then be pasted into an email. It will include the document type
+        that was selected (application/redetermination). For homeless cases, alternate text is generated based on if
+        the case is Eligible or Pending.
+    )"
+    Paragraph5 := "
+    (
+    Hotkeys:
+    ● (Alt+3): Copies the case number to the clipboard. Usable from anywhere when CaseNotes is open.
+    ● (Win+m): Inserts Missing Verification text when your browser or an email is the active window.
+               Similar to the [Email] or [Letter 1] buttons, but without needing to switch windows.
+    ● (Win+left arrow) or (Win+right arrow): Resets CaseNotes location, in the event it is off-screen.
+    ● (Ctrl+F12) or (Alt+12): In your browser, types in the worker's name with a separation line (case note signature)
+    ● (Ctrl+Alt+a): Shows clipboard text in a popup window. Select and copy text first (such as from a case note).
+    )"
+    Paragraph6 := "
+    (
+    Special notes:
+    ● CaseNotes will open in the same location it was closed, even if that monitor is no longer connected.
+       See Hotkeys for reset instructions.
+    ● All settings for CaseNotes are saved in the My Documents folder, under AHK.ini.
+       Deleting this file will reset all saved settings.
+    ● Please send any bug reports or feature requests to MECH2.at.github@gmail.com
+    )"
+    helpXY := "xm y+15"
+    Gui, HelpGui: New, ToolWindow, % "CaseNotes Help"
+    Gui, HelpGui: Margin, % marginW
+    Gui, Font, s10, % "Segoe UI"
+    Gui, HelpGui: Add, Tab3,, % "Features | CaseNotes | Missing Verifications | Hotkeys and Notes"
+    Gui, Tab, 1
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph1
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph2
+    Gui, Tab, 2
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph3
+    Gui, Tab, 3
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph4
+    Gui, Tab, 4
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph5
+    Gui, HelpGui: Add, Text, % helpXY, % Paragraph6
+    Gui, HelpGui: Add, Text, % helpXY, % countySpecificText[ini.employeeInfo.employeeCounty].customHotkeys
+    Gui, Tab
+    Gui, HelpGui: Add, Button, % "gHelpGuiGuiClose w70 h25", % "Close"
+    Gui, HelpGui:+OwnerMainGui
+    Gui, HelpGui: Show, % "Hide x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes
+    GuiControlGet editSize, HelpGui:POS, Static5
+    guiX := caseNotesMonCenter[1] - ((editSizeW*zoomPPI)/2), guiY := caseNotesMonCenter[2] - (editSizeH*zoomPPI/2)
+    GuiControl, HelpGui: Move, % "Close", % "x" (editSizeW/2)
+    Gui, HelpGui: Show, % "x" guiX " y" guiY
+}
+examplesButton() {
+    GuiControlGet, examplesButtonText
+    If (examplesButtonText == "Examples") {
+        For i, exampleLabel in exampleLabels {
+            GuiControl, MainGui:Show, % exampleLabel
+        }
+        GuiControl, MainGui:Text, examplesButtonText, % "Restore"
+    } Else If (examplesButtonText == "Restore") {
+        For i, exampleLabel in exampleLabels {
+            GuiControl, MainGui:Hide, % exampleLabel
+        }
+        GuiControl, MainGui:Text, examplesButtonText, % "Examples"
+    }
+}
+;EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION 
+;=======================================================================================================================================================================================================
 
 ;=======================================================================================================================================================================
 ;MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS
