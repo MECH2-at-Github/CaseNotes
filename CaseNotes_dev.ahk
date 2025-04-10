@@ -81,7 +81,7 @@ Global countySpecificText := { StLouis: { OverIncomeContactInfo: "", CountyName:
 )" } }
 
 ;Base globals
-Global caseDetails := { docType: "_DOC?", eligibility: "_ELIG?", saEntered: "_SA?", caseType: "_PRG?", appType: "_APP?", isHomeless: "", haveWaitlist: false, newChanges: true }
+Global caseDetails := { docType: "_DOC?", eligibility: "_ELIG?", saEntered: "_SA?", caseType: "_PRG?", appType: "_APP?", haveWaitlist: false, newChanges: true }
 Global caseNoteEntered := { mec2NoteEntered: 0, maxisNoteEntered: 0, confirmedClear: 0 }
 Global dateObject := { todayYMD: A_Now, todayMDY: formatMDY(A_Now), receivedMDY: "", receivedYMD: "", autoDenyYMD: "" }
 Global autoDenyObject := { autoDenyExtensionMECnote: "", autoDenyExtensionDate: "", autoDenyExtensionSpecLetter: "" }
@@ -500,45 +500,45 @@ outputCaseNoteMec2(sendingCaseNote) {
 outputCaseNoteMaxis(sendingCaseNote) {
     Global
     Clipboard := sendingCaseNote.maxisNote
-    ;StrReplace(sendingCaseNote.maxisNote, "`n", "`n", MaxisNoteCaseNoteLines) ; Counting new lines
-    ;ini.employeeInfo.employeeMaxis := ini.employeeInfo.employeeMaxis == "MAXIS-WINDOW-TITLE" ? "MAXIS" : ini.employeeInfo.employeeMaxis
-    ;maxisWindow := WinExist(ini.employeeInfo.employeeMaxis " ahk_exe bzmd.exe")
     maxisWindow := WinExist("ahk_group maxisGroup") ; returns an ID
     If (maxisWindow == "0x0") {
-        maxisWindow := WinExist("Mainframe ahk_exe bzmd.exe")
+        MsgBox, 1, % "MAXIS window not found", % "MAXIS window not found. Open or click on the MAXIS window, then click the OK button."
+        IfMsgBox, Cancel
+            Return
+        maxWin := WinExist("ahk_exe bzmd.exe")
+        WinGetTitle, maxWinName, % "ahk_id " maxWin
+        GroupAdd, maxisGroup, % maxWinName
+        ini.employeeInfo.employeeMaxis := maxWinName
+        IniWrite, % maxWinName, % A_MyDocuments "\AHK.ini", EmployeeInfo, EmployeeMaxis
     }
-    If (maxisWindow) {
-        WinActivate, % "ahk_id " maxisWindow
-        Clipboard := sendingCaseNote.maxisNote
-        WinWaitActive, % "ahk_id " maxisWindow,, 5
-        Sleep 500
-        Send, ^v
-    }
-    ; Test area start
-    ; Ideally, after the max lines, it would pop up a Confirm button allowing the user to increment the page. Or pause and send the increment page then send the rest.
-    ; Need to modify the line count function to return an array, then forEach the array.
-    ;If (MaxisNoteCaseNoteLines > 13) {
-    
-        ;MaxisNoteArray := StrSplit(sendingCaseNote.maxisNote, "`n")
-
-        ;MaxisNoteArraySplitter(MaxisNoteArray) {
-            ;let tempArray := ""
-            ;While (A_Index < 15) {
-                ;tempArray .= MaxisNoteArray[1]
-                ;MaxisNoteArray.RemoveAt(1)
-            ;}
-            ;return tempArray
-        ;}
-
-        ;While (MaxisNoteArray.Length() > 0) {
-            ;i := 1
-            ;MaxisNotePage%i% := MaxisNoteArraySplitter(MaxisNoteArray)
-            ;
-        ;}
-        
+; Current code (works)
+    ;If (maxisWindow) {
+        ;WinActivate, % "ahk_id " maxisWindow
+        ;Clipboard := sendingCaseNote.maxisNote
+        ;WinWaitActive, % "ahk_id " maxisWindow,, 5
+        ;Sleep 500
+        ;Send, ^v
     ;}
-    ;sendingCaseNote.maxisNote := RegExReplace(sendingCaseNote.maxisNote, "i)(?<=.*`n.*){3}*.`n", "`n4thline")
-    ; Test area end
+; End current code
+; Test area start
+
+    maxisNote := sendingCaseNote.maxisNote
+    maxisNoteLength := maxisNote.Length() -1, maxisNoteOutput := "", j := 1
+    For i, textLine in maxisNote {
+        maxisNoteOutput .= textLine "`n"
+        j++
+        If (j == 14 && i < maxisNoteLength) {
+            maxisNoteOutput .= "...continued on next page"
+            doPasteInMaxis(maxisNoteOutput, maxisWindow)
+            j := 1
+            maxisNoteOutput := ""
+            Send, {F9}
+            Sleep 1000
+        }
+    }
+    doPasteInMaxis(maxisNoteOutput, maxisWindow)
+
+; Test area end
 
     caseNoteEntered.maxisNoteEntered := 1
     GuiControl, MainGui:Text, maxisNoteButton, MAXIS ✔ ; Chr(2714)
@@ -560,6 +560,14 @@ outputCaseNoteNotepad(sendingCaseNote) {
     GuiControl, MainGui:Text, notepadNoteButton, % "Desktop ✔"
     caseNoteEntered.mec2NoteEntered := 1
     caseNoteEntered.maxisNoteEntered := 1
+}
+doPasteInMaxis(textString, ByRef maxisWindow) {
+    textString := Trim(textString, "`n")
+    clipboard := textString
+    WinActivate, % "ahk_id " maxisWindow
+    WinWaitActive, % "ahk_id " maxisWindow
+    Send, ^v
+    Return 1
 }
 
 buildOversizedNoteGui(oversizedCaseNote) {
@@ -1545,7 +1553,6 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
 }
 
 incrementLetterPage(ByRef letterTextNumber) {
-    ;Global
     letterText[letterTextNumber] .= "                   Continued on letter " letterTextNumber+1
     letterText[letterTextNumber+1] .= "                  Continued from letter " letterTextNumber "`n"
     letterTextNumber++
@@ -1642,7 +1649,8 @@ letterButtonClick(letterGUINumber := 1) {
     }
     thisLetterText := Trim(letterText[letterGUINumber], "`n")
     If (ini.employeeInfo.employeeUseMec2Functions == 1) {
-        caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (Homeless == 1) ? "Homeless App" : caseDetails.docType
+        ;caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (Homeless == 1) ? "Homeless App" : caseDetails.docType
+        caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (Homeless == 1 && caseDetails.eligibility == "elig") ? "Homeless App" : caseDetails.docType
         jsonLetterText := "LetterTextFromAHKJSON{""LetterText"":""" JSONstring(thisLetterText) """,""CaseStatus"":""" caseStatus """,""IdList"":""" idList """ }"
         Clipboard := jsonLetterText
     } Else {
