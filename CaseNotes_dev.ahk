@@ -1395,7 +1395,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
         emailListEnum++
     }
 	If LNLProviderMissing {
-        missingText := "Legal Non-Licensed Acknowledgement (send separately). Your provider may not be eligible to be paid for care provided prior to them completing age specific trainings. The ‘Health and Safety Resources’ documents do not need to be completed or returned;"
+        missingText := "Legal Non-Licensed Acknowledgement (sent separately). Your provider may not be eligible to be paid for care provided prior to them completing age specific trainings. The ‘Health and Safety Resources’ documents do not need to be completed or returned;"
 		missingVerifications[missingListEnum ". " missingText] := 5
         emailTextString .= emailListEnum ". " missingText
 		caseNoteMissingText .= "LNL Acknowledgement form;`n"
