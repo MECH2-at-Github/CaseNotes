@@ -49,7 +49,7 @@ SetTitleMatchMode, RegEx
 
 ; Rule for AHKv1 GUI functions and variables: If you are doing a "Gui, Submit" the function needs to be declared Global.
 
-Global verbose := 1, sq := "²", cm := "✔", cs := ", "
+Global verbose := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, sq := "²", cm := "✔", cs := ", "
 
 ;Settings
 Global ini := { cbtPositions: { xClipboard: 0, yClipboard: 0 }
