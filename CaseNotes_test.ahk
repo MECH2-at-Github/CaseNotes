@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.80"
+Version := "v0.5.81"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -384,6 +384,12 @@ makeCaseNote() {
     local caseDetailsModified := { caseType: caseDetails.caseType, appType: caseDetails.appType, docType: caseDetails.docType, eligibility: caseDetails.eligibility, saEntered: caseDetails.saEntered }
     ;v2: continuation section 
     editFields := { 01HouseholdCompEdit: " HH COMP:    ", 02SharedCustodyEdit: " CUSTODY:    ", 03AddressVerificationEdit: " ADDRESS:    ", 04SchoolInformationEdit: "  SCHOOL:    ", 05IncomeEdit: "  INCOME:    ", 06ChildSupportIncomeEdit: "      CS:    ", 07ChildSupportCooperationEdit: " CS COOP:    ", 08ExpensesEdit: "EXPENSES:    ", 09AssetsEdit: "  ASSETS:    ", 10ProviderEdit: "PROVIDER:    ", 11ActivityAndScheduleEdit: "ACTIVITY:    ", 12ServiceAuthorizationEdit: "      SA:    ", 13NotesEdit: "   NOTES:    ", 14MissingEdit: " MISSING:    " }
+    For i, pattern in [ "i)([a-z]*)([0-9]+)", "i)([a-z0-9])(\()", "i)(\()([a-z0-9])" ] {
+        01HouseholdCompEdit := RegExReplace(01HouseholdCompEdit, pattern, "$1 $2")
+    }
+    ;01HouseholdCompEdit := RegExReplace(01HouseholdCompEdit, "i)([a-z]*)([0-9]+)", "$1 $2")
+    ;01HouseholdCompEdit := RegExReplace(01HouseholdCompEdit, "i)([a-z0-9])(\()", "$1 $2")
+    ;01HouseholdCompEdit := RegExReplace(01HouseholdCompEdit, "i)(\()([a-z0-9])", "$1 $2")
     finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote 
     For editField, label in editFields {
         finishedCaseNote.mec2CaseNote .= label stWordWrap(%editField%, 100, "             ", 1, 1) "`n"
@@ -644,17 +650,17 @@ calcDates() {
     Global
     Gui, MainGui: Submit, NoHide
     autoDenyObject.autoDenyExtensionSpecLetter :=
+
+    dateObject.receivedYMD := ReceivedDate
+    dateObject.receivedMDY := formatMDY(dateObject.receivedYMD)
+    dateObject.autoDenyYMD := addDays(dateObject.receivedYMD, 29)
+    dateObject.recdPlusFortyfiveYMD := addDays(dateObject.receivedYMD, 44)
+    dateObject.todayPlusFifteenishYMD := addFifteenishDays(dateObject.todayYMD)
+    dateObject.recdPlusFifteenishYMD := addFifteenishDays(dateObject.receivedYMD)
+    dateObject.needsNoExtension := subtractDates(dateObject.autoDenyYMD, dateObject.todayPlusFifteenishYMD)
+    dateObject.needsExtension := subtractDates(dateObject.recdPlusFortyfiveYMD, dateObject.todayPlusFifteenishYMD)
+
     If (caseDetails.docType == "Application") {
-
-        dateObject.receivedYMD := ReceivedDate
-        dateObject.receivedMDY := formatMDY(dateObject.receivedYMD)
-        dateObject.autoDenyYMD := addDays(dateObject.receivedYMD, 29)
-        dateObject.recdPlusFortyfiveYMD := addDays(dateObject.receivedYMD, 44)
-        dateObject.todayPlusFifteenishYMD := addFifteenishDays(dateObject.todayYMD)
-        dateObject.recdPlusFifteenishYMD := addFifteenishDays(dateObject.receivedYMD)
-        dateObject.needsNoExtension := subtractDates(dateObject.autoDenyYMD, dateObject.todayPlusFifteenishYMD)
-        dateObject.needsExtension := subtractDates(dateObject.recdPlusFortyfiveYMD, dateObject.todayPlusFifteenishYMD)
-
         If (caseDetails.eligibility == "pends") {
             If (dateObject.needsNoExtension > -1) {
                 autoDenyObject.autoDenyExtensionDate := formatMDY(dateObject.autoDenyYMD)
@@ -702,11 +708,11 @@ calcDates() {
     If (caseDetails.docType == "Redet" && caseDetails.eligibility == "elig" && NoSA) {
         scheduleMissing := (WorkSchedulePlusNameMissing + WorkScheduleMissing + CustodyScheduleMissing + CustodySchedulePlusNamesMissing + SelfEmploymentScheduleMissing + ClassScheduleMissing)
         providerIssue := (UnregisteredProviderMissing + InHomeCareMissing + LNLProviderMissing + StartDateMissing)
-        autoDenyObject.autoDenyExtensionSpecLetter := "** Your redetermination is complete and your case remains eligible. "
+        autoDenyObject.autoDenyExtensionSpecLetter := "** Your redetermination is approved and your case remains eligible. "
         If (scheduleMissing) {
             autoDenyObject.autoDenyExtensionSpecLetter .= "Assistance hours at your provider"
             autoDenyObject.autoDenyExtensionSpecLetter .= dateObject.todayYMD < dateObject.RedetDueYMD ? " have ended" : " will end"
-            autoDenyObject.autoDenyExtensionSpecLetter .= " because we did not receive the above items.`n"
+            autoDenyObject.autoDenyExtensionSpecLetter .= " until we receive the above items.`n"
         }
         If (providerIssue) {
             autoDenyObject.autoDenyExtensionSpecLetter .= "The above items must be resolved before assistance hours at your provider can be approved.`n"
@@ -908,11 +914,11 @@ missingVerifsDoneButton() {
 
     caseDetails.haveWaitlist := (caseDetails.caseType == "BSF" && caseDetails.eligibility == "ineligible" && ini.caseNoteCountyInfo.Waitlist > 1)
     If (!caseDetails.haveWaitlist) {
-        faxAndEmailWrapped := faxAndEmailText()
-        faxAndEmailWrapped := getRowCount(faxAndEmailWrapped, 60, "")
-        autoDeny := getRowCount(autoDenyObject.autoDenyExtensionSpecLetter, 60, "")
-        clarifiedVerifications[ "NEWLINE" faxAndEmailWrapped[1] "`nNEWLINE" autoDeny[1] ] := faxAndEmailWrapped[2]+autoDeny[2]
-        emailTextString .= autoDeny[1] 
+        faxAndEmail := faxAndEmailText()
+        faxAndEmailWrapped := getRowCount(faxAndEmail, 60, "")
+        autoDenyTextAndLines := getRowCount(autoDenyObject.autoDenyExtensionSpecLetter, 60, "")
+        clarifiedVerifications[ "NEWLINE" faxAndEmail "`nNEWLINE" autoDenyObject.autoDenyExtensionSpecLetter ] := faxAndEmailWrapped[2]+autoDenyTextAndLines[2]+1
+        emailTextString .= autoDenyObject.autoDenyExtensionSpecLetter
     }
 
     idList := "other"
