@@ -31,14 +31,14 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.81"
+Version := "v0.5.83"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
 ;Make a restore button.
 ;Import from clipboard (when copied from MEC2) (likely mostly same code as restore button)
-
-; --- Currently broken: Missing Verification buttons. Other. Global issue for email.
+;Restructure MissingVerifications
+;'Other': Add a checkbox to check to make it an asterisk instead of numbered item
 
 #Requires AutoHotkey v1+
 SetWorkingDir % A_ScriptDir
@@ -50,6 +50,7 @@ SetTitleMatchMode, RegEx
 ; Rule for AHKv1 GUI functions and variables: If you are doing a "Gui, Submit" the function needs to be declared Global.
 
 Global verbose := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, sq := "²", cm := "✔", cs := ", "
+Global signRecDateVisible, signRecDateVisible1, signRecDateVisible2, signRecDateVisible3
 
 ;Settings
 Global ini := { cbtPositions: { xClipboard: 0, yClipboard: 0 }
@@ -123,7 +124,6 @@ buildMainGui() {
     Gui +OwnDialogs
     local labelSettings := "xm+5 y+1 w200"
     local labelExampleSettings := "x220 yp+4 h12 w" wCH*60 " "
-    ;local textboxSettings := "xm y+1 w" (wCH*87)+scrollbar+pad
     local textboxSettings := "xm y+1 w" (wCH87)+scrollbar+pad
 
     Gui, MainGui: Font,, % "Segoe UI"
@@ -131,7 +131,7 @@ buildMainGui() {
 
     Gui, MainGui: Add, Radio, % "Group Section h17 x12 w75 y+5 gsetDocType vApplicationRadio", % "Application"
     Gui, MainGui: Add, Radio, % "xp y+2 wp h17 gsetDocType vRedeterminationRadio", % "Redeterm."
-    Gui, MainGui: Add, Checkbox, % "xp y+2 wp h17 Hidden vHomeless gnewChangesTrue", % "Homeless"
+    Gui, MainGui: Add, Checkbox, % "xp y+2 wp h17 vHomeless gnewChangesTrue", % "Homeless"
 
     Gui, MainGui: Add, Radio, % "Group x+10 ys h17 w78 gsetAppType vMNBenefitsRadio", % "MNBenefits"
     Gui, MainGui: Add, Radio, % "xp y+2 h17 wp gsetAppType vPaperAppRadio", % "3550 App"
@@ -153,7 +153,7 @@ buildMainGui() {
 
     Gui, MainGui: Add, Text, % "x420 w35 h20 ys+2", % "Case #"
     Gui, MainGui: Add, Text, % "xp y+2 w35 h20", % "Rec'd:"
-    Gui, MainGui: Add, Text, % "xp y+2 w35 h20 vSignText Hidden", % "Signed:"
+    Gui, MainGui: Add, Text, % "xp y+2 w35 h20 vSignOrDueLabel Hidden", % "Signed:"
 
     Gui, MainGui: Add, Edit, % "x+0 ys w70 h17 -Background Limit8 vcaseNumber",
     Gui, MainGui: Add, DateTime, % "xp y+5 w70 h17 vReceivedDate gnewChangesTrue", % "M/d/yy"
@@ -246,30 +246,27 @@ setDocType() {
     If (A_GuiControl == "ApplicationRadio") {
         caseDetails.docType := "Application"
         GuiControl, MainGui: Text, PendingRadio, % "Pending"
-        GuiControl, MainGui: Text, SignText, % "Signed:"
+        GuiControl, MainGui: Text, SignOrDueLabel, % "Signed:"
         If (caseDetails.appType != "3550") {
-            GuiControl, MainGui: Hide, SignText
+            GuiControl, MainGui: Hide, SignOrDueLabel
             GuiControl, MainGui: Hide, SignOrDueDate
         }
         If (ini.caseNoteCountyInfo.countyNoteInMaxis == 1) {
             GuiControl, MainGui: Show, maxisNoteButton
         }
-        GuiControl, MainGui: Show, Homeless
         GuiControl, MainGui: Show, MNBenefitsRadio
         GuiControl, MainGui: Show, PaperAppRadio
     } Else If (A_GuiControl == "RedeterminationRadio") {
         caseDetails.docType := "Redet"
         revertLabels()
         GuiControl, MainGui: Text, PendingRadio, % "Incomplete"
-        GuiControl, MainGui: Text, SignText, % "Due:"
-        GuiControl, MainGui: Show, SignText
+        GuiControl, MainGui: Text, SignOrDueLabel, % "Due:"
+        GuiControl, MainGui: Show, SignOrDueLabel
         GuiControl, MainGui: Show, SignOrDueDate
         GuiControl, MainGui: Hide, autoDenyStatus
         GuiControl, MainGui: Hide, maxisNoteButton
         GuiControl, MainGui: Hide, MNBenefitsRadio
         GuiControl, MainGui: Hide, PaperAppRadio
-        GuiControl, MainGui: Hide, Homeless
-        GuiControl,, Homeless, 0
     }
     checkWaitlist()
     newChangesTrue()
@@ -279,7 +276,7 @@ setAppType() {
     If (A_GuiControl == "PaperAppRadio") {
         caseDetails.appType := "3550"
         revertLabels()
-        GuiControl, MainGui: Show, SignText
+        GuiControl, MainGui: Show, SignOrDueLabel
         GuiControl, MainGui: Show, SignOrDueDate
     } Else If (A_GuiControl == "MNBenefitsRadio") {
         caseDetails.appType := "MNB"
@@ -293,7 +290,7 @@ setAppType() {
         GuiControl, MainGui: Text, 09AssetsEditLabel, % "Assets (page 10)"
         GuiControl, MainGui: Text, 11ActivityAndScheduleEditLabel, % "Activity and Schedule (pages 10-11)"
         GuiControl, MainGui: Text, 10ProviderEditLabel, % "Provider (pages 12-15)"
-        GuiControl, MainGui: Hide, SignText
+        GuiControl, MainGui: Hide, SignOrDueLabel
         GuiControl, MainGui: Hide, SignOrDueDate
         Gui, Show
     }
@@ -384,12 +381,10 @@ makeCaseNote() {
     local caseDetailsModified := { caseType: caseDetails.caseType, appType: caseDetails.appType, docType: caseDetails.docType, eligibility: caseDetails.eligibility, saEntered: caseDetails.saEntered }
     ;v2: continuation section 
     editFields := { 01HouseholdCompEdit: " HH COMP:    ", 02SharedCustodyEdit: " CUSTODY:    ", 03AddressVerificationEdit: " ADDRESS:    ", 04SchoolInformationEdit: "  SCHOOL:    ", 05IncomeEdit: "  INCOME:    ", 06ChildSupportIncomeEdit: "      CS:    ", 07ChildSupportCooperationEdit: " CS COOP:    ", 08ExpensesEdit: "EXPENSES:    ", 09AssetsEdit: "  ASSETS:    ", 10ProviderEdit: "PROVIDER:    ", 11ActivityAndScheduleEdit: "ACTIVITY:    ", 12ServiceAuthorizationEdit: "      SA:    ", 13NotesEdit: "   NOTES:    ", 14MissingEdit: " MISSING:    " }
-    For i, pattern in [ "i)([a-z]*)([0-9]+)", "i)([a-z0-9])(\()", "i)(\()([a-z0-9])" ] {
+    ;For i, pattern in [ "i)([a-z])([0-9])", "i)([a-z0-9])(\()", "i)(\))([a-z0-9])" ] {
+    For i, pattern in [ "i)([a-z])([0-9])", "i)(\))([a-z0-9])" ] {
         01HouseholdCompEdit := RegExReplace(01HouseholdCompEdit, pattern, "$1 $2")
     }
-    ;01HouseholdCompEdit := RegExReplace(01HouseholdCompEdit, "i)([a-z]*)([0-9]+)", "$1 $2")
-    ;01HouseholdCompEdit := RegExReplace(01HouseholdCompEdit, "i)([a-z0-9])(\()", "$1 $2")
-    ;01HouseholdCompEdit := RegExReplace(01HouseholdCompEdit, "i)(\()([a-z0-9])", "$1 $2")
     finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote 
     For editField, label in editFields {
         finishedCaseNote.mec2CaseNote .= label stWordWrap(%editField%, 100, "             ", 1, 1) "`n"
@@ -411,15 +406,32 @@ makeCaseNote() {
         caseDetailsModified.eligibility := caseDetails.eligibility " - BSF Waitlist"
         finishedCaseNote.eligibility := WaitListMissing == 1 ? "pends" : "ineligible"
     }
-    If (Homeless == 1) {
+    If (Homeless == 1 && caseDetailsModified.docType == "Application") {
 		caseDetailsModified.caseType := "*HL " caseDetails.caseType
 	}
 	If (caseDetailsModified.docType == "Application") {
 		finishedCaseNote.mec2NoteTitle := caseDetailsModified.caseType " " caseDetailsModified.appType " rec'd " dateObject.receivedMDY ", " caseDetailsModified.eligibility caseDetailsModified.saEntered
         If (caseDetails.eligibility == "pends") {
             finishedCaseNote.mec2NoteTitle .= " until " autoDenyObject.autoDenyExtensionDate
-            finishedCaseNote.maxisNote := "CCAP app rec'd " dateObject.receivedMDY ", pend date " autoDenyObject.autoDenyExtensionDate ".`n"
+            finishedCaseNote.maxisNote := "CCAP app rec'd " dateObject.receivedMDY ", pend date " autoDenyObject.autoDenyExtensionDate ".`n" ; MAXIS
         }
+    ; MAXIS ----------------------------------------
+        If (caseDetails.eligibility == "elig") {
+            finishedCaseNote.maxisNote := "CCAP app rec'd " dateObject.receivedMDY ", approved eligible." (Homeless == 1 ? " Expedited." : "") "`n"
+        }
+        If (caseDetailsModified.eligibility == "ineligible" || caseDetailsModified.eligibility == "over-income") {
+            finishedCaseNote.maxisNote := "CCAP app rec'd " dateObject.receivedMDY ", denied " dateObject.todayMDY ".`n"
+            If (overIncomeMissing) {
+                finishedCaseNote.maxisNote .= " Over-income"
+            }
+            finishedCaseNote.maxisNote .= "`n"
+        }
+        If (StrLen(originalMissingEdit) > 0) {
+            missingMax := stWordWrap(originalMissingEdit, 74, "* ", 4)
+            finishedCaseNote.maxisNote .= "Special Letter mailed " dateObject.todayMDY " requesting:`n" missingMax "`n"
+        }
+        finishedCaseNote.maxisNote .= ini.employeeInfo.employeeName
+    ; MAXIS ----------------------------------------
 	} Else If (caseDetailsModified.docType == "Redet") {
 		finishedCaseNote.mec2NoteTitle := caseDetailsModified.caseType " " caseDetailsModified.docType " rec'd " dateObject.receivedMDY ", " caseDetailsModified.eligibility caseDetailsModified.saEntered
 	}
@@ -427,22 +439,8 @@ makeCaseNote() {
         MsgBox,, % "Case Note Error", % "Select options at the top before case noting.`n  (Document type, Program, Eligibility, etc.)"
         Return false
     }
-    If (caseDetails.eligibility == "elig") {
-        IsExpedited := (Homeless == 1) ? " Expedited." : ""
-        finishedCaseNote.maxisNote := "CCAP app rec'd " dateObject.receivedMDY ", approved eligible." (Homeless == 1 ? " Expedited." : "") "`n"
-    }
-    If (caseDetailsModified.eligibility == "ineligible" || caseDetailsModified.eligibility == "over-income") {
-        finishedCaseNote.maxisNote := "CCAP app rec'd " dateObject.receivedMDY ", denied " dateObject.todayMDY ".`n"
-        If (overIncomeMissing) {
-            finishedCaseNote.maxisNote .= " Over-income"
-        }
-        finishedCaseNote.maxisNote .= "`n"
-    }
-    If (StrLen(originalMissingEdit) > 0) {
-        missingMax := stWordWrap(originalMissingEdit, 74, "* ", 4)
-        finishedCaseNote.maxisNote .= "Special Letter mailed " dateObject.todayMDY " requesting:`n" missingMax "`n"
-    }
-    finishedCaseNote.maxisNote .= ini.employeeInfo.employeeName
+
+
     Return finishedCaseNote
 }
 outputCaseNote() {
@@ -501,7 +499,7 @@ outputCaseNoteMec2(sendingCaseNote) {
         Send {Tab}
     }
     caseNoteEntered.mec2NoteEntered := 1
-    GuiControl, MainGui:Text, % "mec2NoteButton", % "MEC2 ✔" ; Chr(2714)
+    GuiControl, MainGui:Text, % "mec2NoteButton", % "MEC2 " cm
 }
 outputCaseNoteMaxis(sendingCaseNote) {
     Global
@@ -547,7 +545,7 @@ outputCaseNoteMaxis(sendingCaseNote) {
 ; Test area end
 
     caseNoteEntered.maxisNoteEntered := 1
-    GuiControl, MainGui:Text, maxisNoteButton, MAXIS ✔ ; Chr(2714)
+    GuiControl, MainGui:Text, maxisNoteButton, % "MAXIS " cm
 }
 outputCaseNoteNotepad(sendingCaseNote) {
     Global
@@ -563,7 +561,7 @@ outputCaseNoteNotepad(sendingCaseNote) {
     If (verbose) {
         buildOversizedNoteGui("====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n")
     }
-    GuiControl, MainGui:Text, notepadNoteButton, % "Desktop ✔"
+    GuiControl, MainGui:Text, notepadNoteButton, % "Desktop " cm
     caseNoteEntered.mec2NoteEntered := 1
     caseNoteEntered.maxisNoteEntered := 1
 }
@@ -674,48 +672,51 @@ calcDates() {
             } Else {
                 autoDenyObject.autoDenyExtensionDate := formatMDY(dateObject.todayPlusFifteenishYMD)
                 autoDenyObject.autoDenyExtensionMECnote := "Reinstate date is " autoDenyObject.autoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
-                autoDenyObject.autoDenyExtensionSpecLetter := "**Please note that you will be mailed an auto-denial notice.`n  You have through " autoDenyObject.autoDenyExtensionDate " to submit required verifications.`n  If you are eligible, your case will be reinstated."
+                autoDenyObject.autoDenyExtensionSpecLetter := "*Please note that you will be mailed an auto-denial notice.`n  You have through " autoDenyObject.autoDenyExtensionDate " to submit required verifications.`n  If you are eligible, your case will be reinstated."
                 GuiControl, MainGui: Text, autoDenyStatus, % "Auto-denies tonight, pends until " autoDenyObject.autoDenyExtensionDate
             }
-        }
-        If (Homeless == 1) {
+        } Else If (Homeless == 1) {
             dateObject.ExpeditedNinetyDaysYMD := addDays(dateObject.receivedYMD, 89)
             autoDenyObject.autoDenyExtensionDate := formatMDY(dateObject.ExpeditedNinetyDaysYMD)
-            autoDenyObject.autoDenyExtensionSpecLetter := "**You have until " autoDenyObject.autoDenyExtensionDate " to submit required verifications"
-        }
-    }
-    
-    If (caseDetails.docType == "Redet" && caseDetails.eligibility != "elig") {
-
-        dateObject.RedetDueYMD := SignOrDueDate
-        dateObject.RedetDueMDY := formatMDY(SignOrDueDate)
-        dateObject.RedetCaseCloseYMD := addFifteenishDays(dateObject.RedetDueYMD)
-        dateObject.RedetCaseCloseMDY := formatMDY(dateObject.RedetCaseCloseYMD)
-        dateObject.RedetDocsLastDayYMD := addDays(dateObject.RedetCaseCloseYMD, 29)
-        dateObject.RedetDocsLastDayMDY := formatMDY(dateObject.RedetDocsLastDayYMD)
-
-        If (dateObject.todayYMD > dateObject.RedetDocsLastDayYMD) {
-            autoDenyObject.autoDenyExtensionSpecLetter := "** Your case has closed due to failure to complete the redetermination process. Because your redetermination was not completed within 30 days of closure, your case cannot be reinstated. To be eligible for CCAP, you must reapply by completing an application. The date you submit an application is the earliest date of your eligibility. If you have received Cash Assistance (MFIP, DWP) within the last 12 months, you may be eligible for limited backdating."
+            autoDenyObject.autoDenyExtensionSpecLetter := "*You have through " autoDenyObject.autoDenyExtensionDate " to submit required verifications."
         } Else {
-            autoDenyObject.autoDenyExtensionSpecLetter := dateObject.todayYMD < dateObject.RedetDueYMD
-            ? "** If your redetermination is not completed by " dateObject.RedetDueMDY ", "
-            : "** Your redetermination was not completed by " dateObject.RedetDueMDY " and "
-            autoDenyObject.autoDenyExtensionSpecLetter .= dateObject.todayYMD < dateObject.RedetCaseCloseYMD
-            ? "your case will close on " dateObject.RedetCaseCloseMDY ". If it closes, the latest it can be reinstated is " dateObject.RedetDocsLastDayMDY "."
-            : "your case has closed. To reinstate your case, you must complete the redetermination process by " dateObject.RedetDocsLastDayMDY "."
+            GuiControl, MainGui: Text, autoDenyStatus, % ""
+            autoDenyObject.autoDenyExtensionSpecLetter := ""
         }
     }
-    If (caseDetails.docType == "Redet" && caseDetails.eligibility == "elig" && NoSA) {
-        scheduleMissing := (WorkSchedulePlusNameMissing + WorkScheduleMissing + CustodyScheduleMissing + CustodySchedulePlusNamesMissing + SelfEmploymentScheduleMissing + ClassScheduleMissing)
-        providerIssue := (UnregisteredProviderMissing + InHomeCareMissing + LNLProviderMissing + StartDateMissing)
-        autoDenyObject.autoDenyExtensionSpecLetter := "** Your redetermination is approved and your case remains eligible. "
-        If (scheduleMissing) {
-            autoDenyObject.autoDenyExtensionSpecLetter .= "Assistance hours at your provider"
-            autoDenyObject.autoDenyExtensionSpecLetter .= dateObject.todayYMD < dateObject.RedetDueYMD ? " have ended" : " will end"
-            autoDenyObject.autoDenyExtensionSpecLetter .= " until we receive the above items.`n"
-        }
-        If (providerIssue) {
-            autoDenyObject.autoDenyExtensionSpecLetter .= "The above items must be resolved before assistance hours at your provider can be approved.`n"
+    If (caseDetails.docType == "Redet") {
+        dateObject.RedetDueYMD := SignOrDueDate
+
+        If (caseDetails.eligibility != "elig") {
+        
+            dateObject.RedetDueMDY := formatMDY(SignOrDueDate)
+            dateObject.RedetCaseCloseYMD := addFifteenishDays(dateObject.RedetDueYMD)
+            dateObject.RedetCaseCloseMDY := formatMDY(dateObject.RedetCaseCloseYMD)
+            dateObject.RedetDocsLastDayYMD := addDays(dateObject.RedetCaseCloseYMD, 29)
+            dateObject.RedetDocsLastDayMDY := formatMDY(dateObject.RedetDocsLastDayYMD)
+        
+            If (dateObject.todayYMD > dateObject.RedetDocsLastDayYMD) {
+                autoDenyObject.autoDenyExtensionSpecLetter := "** Your case has closed due to failure to complete the redetermination process. Because your redetermination was not completed within 30 days of closure, your case cannot be reinstated. To be eligible for CCAP, you must reapply by completing an application. The date you submit an application is the earliest date of your eligibility. If you have received Cash Assistance (MFIP, DWP) within the last 12 months, you may be eligible for limited backdating."
+            } Else {
+                autoDenyObject.autoDenyExtensionSpecLetter := dateObject.todayYMD < dateObject.RedetDueYMD
+                ? "** If your redetermination is not completed by " dateObject.RedetDueMDY ", "
+                : "** Your redetermination was not completed by " dateObject.RedetDueMDY " and "
+                autoDenyObject.autoDenyExtensionSpecLetter .= dateObject.todayYMD < dateObject.RedetCaseCloseYMD
+                ? "your case will close on " dateObject.RedetCaseCloseMDY ". If it closes, the latest it can be reinstated is " dateObject.RedetDocsLastDayMDY "."
+                : "your case has closed. To reinstate your case, you must complete the redetermination process by " dateObject.RedetDocsLastDayMDY "."
+            }
+        } Else If (caseDetails.eligibility == "elig" && NoSA) {
+            scheduleMissing := (WorkSchedulePlusNameMissing + WorkScheduleMissing + CustodyScheduleMissing + CustodySchedulePlusNamesMissing + SelfEmploymentScheduleMissing + ClassScheduleMissing)
+            providerIssue := (UnregisteredProviderMissing + InHomeCareMissing + LNLProviderMissing + StartDateMissing)
+            autoDenyObject.autoDenyExtensionSpecLetter := "** Your redetermination is approved and your case remains eligible. "
+            If (scheduleMissing) {
+                autoDenyObject.autoDenyExtensionSpecLetter .= "Assistance hours at your provider"
+                autoDenyObject.autoDenyExtensionSpecLetter .= dateObject.todayYMD < dateObject.RedetDueYMD ? " have ended" : " will end"
+                autoDenyObject.autoDenyExtensionSpecLetter .= " until we receive the above items.`n"
+            }
+            If (providerIssue) {
+                autoDenyObject.autoDenyExtensionSpecLetter .= "The above items must be resolved before assistance hours at your provider can be approved.`n"
+            }
         }
     }
 }
@@ -868,21 +869,17 @@ missingVerifsDoneButton() {
 	GuiControl, MissingGui: Hide, % "letter3"
 	GuiControl, MissingGui: Hide, % "letter4"
     
+    emailTextObject.StartAll := "Your Child Care Assistance " mec2docType " has been " (caseDetails.eligibility == "elig" ? "approved. " : "processed. ")
     If overIncomeMissing {
         overIncomeMissingText1 := "Using information you provided, your case is ineligible as your income is over the limit for a household of " overIncomeObj.overIncomeHHsize ". The gross limit is $" overIncomeObj.overIncomeText ".`n"
         overIncomeMissingText2 := "If your gross income does not match this calculation, you must" countySpecificText[ini.employeeInfo.employeeCounty].OverIncomeContactInfo " submit income and eligible expense documents along with the following verifications:`n"
-        emailTextString := "Your Child Care Assistance " mec2docType " has been processed.`n`n" overIncomeMissingText1 overIncomeMissingText2 "`n"
+        emailTextObject.StartAll .= "`n`n" overIncomeMissingText1 overIncomeMissingText2 "`n"
         missingVerifications[overIncomeMissingText1] := 3
         missingVerifications[overIncomeMissingText2] := 3
         caseNoteMissingText .= "Household is calculated to be over-income by $" overIncomeObj.overIncomeDifference " ($" overIncomeObj.overIncomeReceived " - $" overIncomeObj.overIncomeLimit ");`n"
-    }
-
-; ------ Email --------
-    emailTextObject.StartAll := "Your Child Care Assistance " mec2docType " has been " (caseDetails.eligibility == "elig" ? "approved." : "processed. ") emailTextObject.WaitList
-    If (Homeless && !overIncomeMissing && caseDetails.docType == "Application") {
-
+    } Else If (Homeless && caseDetails.docType == "Application") {
         If (caseDetails.eligibility == "pends") {
-            InputBox, missingHomelessItems, % "Homeless Info Missing", % "What information is needed from the client to approve expedited eligibility?`n`nUse a double space ""  "" without quotation marks to start a new line.",,,,,,,, % StrReplace(missingHomelessItems, "`n", "  ")
+            InputBox, missingHomelessItems, % "Homeless App - Info Missing", % "Eligibility is marked as Pending. What information is needed from the client to approve expedited eligibility?`n`nUse a double space ""  "" without quotation marks to start a new line.",,,,,,,, % StrReplace(missingHomelessItems, "`n", "  ")
             If (ErrorLevel == 0) {
                 missingHomelessItems := StrReplace(missingHomelessItems, "  ", "`n")
                 pendingHomelessMissing := getRowCount("  " missingHomelessItems, 60, "  ")
@@ -890,23 +887,18 @@ missingVerifsDoneButton() {
                 missingVerifications[pendingHomelessMissing[1] "`n"] := pendingHomelessMissing[2]
                 caseNoteMissingText .= "Missing for expedited approval:`n" StrReplace(missingHomelessItems, "`n", "`n  ") ";`n"
             }
+        } Else If (caseDetails.eligibility == "elig") {
+            emailTextObject.StartHL := (caseDetails.eligibility == "elig") ? emailText.approvedWithMissing "`n" emailText.stillRequiredText : PendingHomelessPreText missingHomelessItems
+            emailTextObject.EndHL := (caseDetails.eligibility == "elig") ? emailText.initialApproval : ""
         }
-        emailTextObject.StartHL := (caseDetails.eligibility == "elig") ? emailText.approvedWithMissing "`n" emailText.stillRequiredText : PendingHomelessPreText missingHomelessItems
 
-        emailTextObject.EndHL := (caseDetails.eligibility == "elig") ? emailText.initialApproval : ""
+        emailTextObject.AreOrWillBe := (Homeless == 1) ? "will be" : "are"
+        emailTextObject.Reason1 := (caseDetails.eligibility == "elig") ? "for authorizing assistance hours" : "to determine eligibility or calculate assistance hours"
+        emailTextObject.Reason2 := (Homeless == 1) ? "to determine on-going eligibility or calculate assistance hours after the 90-day period" : emailTextObject.Reason1
     }
-
-    emailTextObject.AreOrWillBe := (Homeless == 1) ? "will be" : "are"
-
-    emailTextObject.Reason1 := (caseDetails.eligibility == "elig") ? "for authorizing assistance hours" : "to determine eligibility or calculate assistance hours"
-    emailTextObject.Reason2 := (Homeless == 1) ? "to determine on-going eligibility or calculate assistance hours after the 90-day period" : emailTextObject.Reason1
-
     emailTextObject.Start := (Homeless == 1) ? emailTextObject.StartAll emailTextObject.StartHL : emailTextObject.StartAll
-    emailTextObject.Middle := "`n`nThe following documents or verifications " emailTextObject.AreOrWillBe " needed " emailTextObject.Reason2 ":`n`n"
-
+    emailTextObject.Middle := !overIncomeMissing ? "`n`nThe following documents or verifications " emailTextObject.AreOrWillBe " needed " emailTextObject.Reason2 ":`n`n" : ""
     emailTextObject.Combined := emailTextObject.Start emailTextObject.Middle
-; ------ Email --------
-
 
     parseMissingVerifications(missingVerifications, missingListEnum, clarifiedVerifications, clarifiedListEnum, emailTextString, emailListEnum, caseNoteMissingText)
 
@@ -925,6 +917,7 @@ missingVerifsDoneButton() {
     For checkboxId in mecCheckboxIds {
         idList .= "," checkboxId
     }
+    Trim(idList, ",")
     insertAtOffset := (caseDetails.eligibility == "pends" && Homeless) ? 2 : 0
     If ( !overIncomeMissing && !caseDetails.haveWaitlist && !manualWaitlistBox && missingVerifications.Length() > (0 + insertAtOffset) ) {
         If (StrLen(idList) > 5 || insertAtOffset == 2) { ; "other" will always add at least 5
@@ -1026,20 +1019,19 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
         mecCheckboxIds.proofOfRelation := 1
     }
 	If AddressMissing {
-        If (Homeless == 1) {
+        If (Homeless) {
             missingText := "Verification of current residence, such as a signed statement of your county of residence;`n"
             clarifiedVerifications[clarifiedListEnum ". " missingText] := 2
             emailTextString .= emailListEnum ". " missingText
+            caseNoteMissingText .= "Address (homeless);`n"
             clarifiedListEnum++
             emailListEnum++
-            mecCheckboxIds.proofOfResidence := 1
-        } Else If (Homeless == 0) {
+        } Else {
             missingText := "Verification of current residence;`n"
             emailTextString .= emailListEnum ". " missingText
-            mecCheckboxIds.proofOfResidence := 1
+            caseNoteMissingText .= "Address;`n"
             emailListEnum++
         }
-		caseNoteMissingText .= "Address;`n"
         mecCheckboxIds.proofOfResidence := 1
     }
 	If ChildSupportFormsMissing {
@@ -1429,8 +1421,8 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
 		caseNoteMissingText .= "* Client informed only up to first bachelor's degree is BSF/TY eligible;`n"
     }
 
-    EligibleActivityWithJSText := "Eligible activities are:`n  A. Employment of 20+ hours per week (10+ for FT students)`n  B. Education with an approved plan`n  C. Job Search up to 20 hours per week`n  D. Activities on a Cash Assistance Employment Plan."
-    EligibleActivityWithoutJSText := "Eligible activities are:`n  A. Employment of 20+ hours per week (10+ for FT students)`n  B. Education with an approved plan`n  C. Activities on a Cash Assistance Employment Plan."
+    EligibleActivityWithJSText := "Eligible activities are:`n  A. Employment of 20+ hours per week (10+ for FT students)`n  B. Education with an approved plan`n  C. Job Search up to 20 hours per week`n  D. Activities on a Cash Assistance Employment Plan"
+    EligibleActivityWithoutJSText := "Eligible activities are:`n  A. Employment of 20+ hours per week (10+ for FT students)`n  B. Education with an approved plan`n  C. Activities on a Cash Assistance Employment Plan"
 
     If SelfEmploymentIneligibleMissing {
         missingText := "* Your self-employment does not meet activity requirements. Self-employment hours are calculated using 50% of recent gross income, or gross minus expenses on tax return divided by minimum wage. " EligibleActivityWithJSText "`n"
@@ -1482,7 +1474,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
 		caseNoteMissingText .= "Registered provider;`n"
     }
     If ProviderForNonImmigrantMissing {
-        missingText := "* If your child is not a US citizen, Lawful Permanent Resident, Lawfully residing non-citizen, or fleeing persecution, assistance can only be approved at a daycare that is subject to public educational standards.`n"
+        missingText := "* If your child is not a US citizen, Lawful Permanent Resident, Lawfully residing non-citizen, or fleeing persecution, assistance can only be approved at a daycare that is subject to public educational standards (Head Start, pre-K, school age program).`n"
         missingVerifications[missingText] := 4
         emailTextString .= missingText
         caseNoteMissingText .= "Provider subject to Public Educational Standards (4.15), if child not citizen/immigrant;`n"
