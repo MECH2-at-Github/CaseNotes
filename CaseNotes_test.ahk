@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.83"
+Version := "v0.5.86"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -49,7 +49,7 @@ SetTitleMatchMode, RegEx
 
 ; Rule for AHKv1 GUI functions and variables: If you are doing a "Gui, Submit" the function needs to be declared Global.
 
-Global verbose := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, sq := "²", cm := "✔", cs := ", "
+Global verbose := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, sq := "²", cm := "✔", cs := ", ", pct := "%"
 Global signRecDateVisible, signRecDateVisible1, signRecDateVisible2, signRecDateVisible3
 
 ;Settings
@@ -102,7 +102,7 @@ Global missingInputObject := { IDmissing: { baseText: "ID", inputAdject: " for "
     , IncomePlusNameMissing: { baseText: "Income", inputAdject: " for ", promptText: "Who is the income verification needed for?" }
     , CustodySchedulePlusNamesMissing: { baseText: "Custody", inputAdject: " for ", promptText: "Who is the schedule needed for? `n'...stating the current parenting time schedule for: ____________'`n`nExample: 'Susie and Bobby Jr' or 'your children'" }
     , WorkSchedulePlusNameMissing: { baseText: "Work Schedule", inputAdject: " for ", promptText: "Who is the work schedule needed for?" }
-    , DependentAdultStudentMissing: { baseText: "Dependent adult child - FT Student, 50{U+0025}+ expenses", inputAdject: " for ", promptText: "Who is the adult dependent student?" }
+    , DependentAdultStudentMissing: { baseText: "Dependent adult child - FT Student, 50" pct "+ expenses", inputAdject: " for ", promptText: "Who is the adult dependent student?" }
     , ChildSupportFormsMissing: { baseText: "Child Support forms", inputAdject: " - ", promptText: "Enter the number of sets of Child Support forms needed`nor the names of the absent parent/children.`n`nExample: 'Robert / Susie, Bobby Jr' or '2'" }
     , ChildSupportNoncooperationMissing: { baseText: "CS Non-cooperation", inputAdject: " - CSO phone: ", promptText: "What is the phone number of the Child Support officer?" }
     , LegalNameChangeMissing: { baseText: "Name change", inputAdject: " for ", promptText: "Who is the name change proof needed for?" }
@@ -131,7 +131,7 @@ buildMainGui() {
 
     Gui, MainGui: Add, Radio, % "Group Section h17 x12 w75 y+5 gsetDocType vApplicationRadio", % "Application"
     Gui, MainGui: Add, Radio, % "xp y+2 wp h17 gsetDocType vRedeterminationRadio", % "Redeterm."
-    Gui, MainGui: Add, Checkbox, % "xp y+2 wp h17 vHomeless gnewChangesTrue", % "Homeless"
+    Gui, MainGui: Add, Checkbox, % "xp y+2 wp h17 vHomelessStatus gnewChangesTrue", % "Homeless"
 
     Gui, MainGui: Add, Radio, % "Group x+10 ys h17 w78 gsetAppType vMNBenefitsRadio", % "MNBenefits"
     Gui, MainGui: Add, Radio, % "xp y+2 h17 wp gsetAppType vPaperAppRadio", % "3550 App"
@@ -251,7 +251,7 @@ setDocType() {
             GuiControl, MainGui: Hide, SignOrDueLabel
             GuiControl, MainGui: Hide, SignOrDueDate
         }
-        If (ini.caseNoteCountyInfo.countyNoteInMaxis == 1) {
+        If (ini.caseNoteCountyInfo.countyNoteInMaxis) {
             GuiControl, MainGui: Show, maxisNoteButton
         }
         GuiControl, MainGui: Show, MNBenefitsRadio
@@ -372,17 +372,16 @@ copySharedCustodyEditToCSCoopEdit() {
 ;BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION
 makeCaseNote() {
     Global
-    Gui, MainGui: Submit, NoHide
-    Gui, MissingGui: Submit, NoHide
     If (caseDetails.newChanges) {
         missingVerifsDoneButton()
     }
+    Gui, MainGui: Submit, NoHide
+    Gui, MissingGui: Submit, NoHide
     local finishedCaseNote := {}, originalMissingEdit := 14MissingEdit
     local caseDetailsModified := { caseType: caseDetails.caseType, appType: caseDetails.appType, docType: caseDetails.docType, eligibility: caseDetails.eligibility, saEntered: caseDetails.saEntered }
     ;v2: continuation section 
     editFields := { 01HouseholdCompEdit: " HH COMP:    ", 02SharedCustodyEdit: " CUSTODY:    ", 03AddressVerificationEdit: " ADDRESS:    ", 04SchoolInformationEdit: "  SCHOOL:    ", 05IncomeEdit: "  INCOME:    ", 06ChildSupportIncomeEdit: "      CS:    ", 07ChildSupportCooperationEdit: " CS COOP:    ", 08ExpensesEdit: "EXPENSES:    ", 09AssetsEdit: "  ASSETS:    ", 10ProviderEdit: "PROVIDER:    ", 11ActivityAndScheduleEdit: "ACTIVITY:    ", 12ServiceAuthorizationEdit: "      SA:    ", 13NotesEdit: "   NOTES:    ", 14MissingEdit: " MISSING:    " }
-    ;For i, pattern in [ "i)([a-z])([0-9])", "i)([a-z0-9])(\()", "i)(\))([a-z0-9])" ] {
-    For i, pattern in [ "i)([a-z])([0-9])", "i)(\))([a-z0-9])" ] {
+    For i, pattern in [ "i)([a-z])([0-9])", "i)([a-z0-9]+)(\()", "(\))([a-z0-9]+)" ] {
         01HouseholdCompEdit := RegExReplace(01HouseholdCompEdit, pattern, "$1 $2")
     }
     finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote 
@@ -402,11 +401,11 @@ makeCaseNote() {
         caseDetailsModified.eligibility := "over-income"
         finishedCaseNote.eligibility := "ineligible"
     }
-    If ( (caseDetailsModified.docType == "Application" && caseDetailsModified.caseType == "BSF" && caseDetailsModified.eligibility == "ineligible" && ini.caseNoteCountyInfo.Waitlist > 1) || WaitlistMissing == 1) {
+    If ( (caseDetailsModified.docType == "Application" && caseDetailsModified.caseType == "BSF" && caseDetailsModified.eligibility == "ineligible" && ini.caseNoteCountyInfo.Waitlist > 1) || WaitlistMissing) {
         caseDetailsModified.eligibility := caseDetails.eligibility " - BSF Waitlist"
-        finishedCaseNote.eligibility := WaitListMissing == 1 ? "pends" : "ineligible"
+        finishedCaseNote.eligibility := WaitListMissing ? "pends" : "ineligible"
     }
-    If (Homeless == 1 && caseDetailsModified.docType == "Application") {
+    If (HomelessStatus && caseDetailsModified.docType == "Application") {
 		caseDetailsModified.caseType := "*HL " caseDetails.caseType
 	}
 	If (caseDetailsModified.docType == "Application") {
@@ -417,7 +416,7 @@ makeCaseNote() {
         }
     ; MAXIS ----------------------------------------
         If (caseDetails.eligibility == "elig") {
-            finishedCaseNote.maxisNote := "CCAP app rec'd " dateObject.receivedMDY ", approved eligible." (Homeless == 1 ? " Expedited." : "") "`n"
+            finishedCaseNote.maxisNote := "CCAP app rec'd " dateObject.receivedMDY ", approved eligible." (HomelessStatus ? " Expedited." : "") "`n"
         }
         If (caseDetailsModified.eligibility == "ineligible" || caseDetailsModified.eligibility == "over-income") {
             finishedCaseNote.maxisNote := "CCAP app rec'd " dateObject.receivedMDY ", denied " dateObject.todayMDY ".`n"
@@ -474,12 +473,12 @@ outputCaseNoteMec2(sendingCaseNote) {
     WinActivate % ini.employeeInfo.employeeBrowser
     WinWaitActive, % ini.employeeInfo.employeeBrowser,, 5
     mec2docType := caseDetails.docType == "Redet" ? "Redetermination" : caseDetails.docType
-    If (ini.employeeInfo.employeeUseMec2Functions == 1) {
+    If (ini.employeeInfo.employeeUseMec2Functions) {
         jsonCaseNote := "CaseNoteFromAHKJSON{""noteDocType"":""" mec2docType """,""noteTitle"":""" JSONstring(sendingCaseNote.mec2NoteTitle) """,""noteText"":""" JSONstring(sendingCaseNote.mec2CaseNote) """,""noteElig"":""" sendingCaseNote.eligibility """ }"
         Clipboard := jsonCaseNote
         Sleep 500
         Send, ^v
-    } Else If (ini.employeeInfo.employeeUseMec2Functions == 0) {
+    } Else If (!ini.employeeInfo.employeeUseMec2Functions) {
         catNum := { Application: { letter: "A", pends: 5, elig: 4, denied: 4 }, Redet: { letter: "R", incomplete: 1, elig: 2, denied: 2 } }
         catLetter := catNum[caseDetails.docType].letter
         catNumber := catNum[caseDetails.docType][caseDetails.eligibility]
@@ -557,9 +556,9 @@ outputCaseNoteNotepad(sendingCaseNote) {
     For i, letterTextValue in letterText {
         letterNotepad .= StrLen(LetterText[i]) > 0 ? "`n====== Special Letter " i " ======`n" letterTextValue "`n" : ""
     }
-    FileAppend, % "====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n", % A_Desktop "\" notepadFileName ".txt"
+    FileAppend, % "====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n", % A_Desktop "\" notepadFileName ".txt"
     If (verbose) {
-        buildOversizedNoteGui("====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n")
+        buildOversizedNoteGui("====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n")
     }
     GuiControl, MainGui:Text, notepadNoteButton, % "Desktop " cm
     caseNoteEntered.mec2NoteEntered := 1
@@ -675,7 +674,7 @@ calcDates() {
                 autoDenyObject.autoDenyExtensionSpecLetter := "*Please note that you will be mailed an auto-denial notice.`n  You have through " autoDenyObject.autoDenyExtensionDate " to submit required verifications.`n  If you are eligible, your case will be reinstated."
                 GuiControl, MainGui: Text, autoDenyStatus, % "Auto-denies tonight, pends until " autoDenyObject.autoDenyExtensionDate
             }
-        } Else If (Homeless == 1) {
+        } Else If (HomelessStatus) {
             dateObject.ExpeditedNinetyDaysYMD := addDays(dateObject.receivedYMD, 89)
             autoDenyObject.autoDenyExtensionDate := formatMDY(dateObject.ExpeditedNinetyDaysYMD)
             autoDenyObject.autoDenyExtensionSpecLetter := "*You have through " autoDenyObject.autoDenyExtensionDate " to submit required verifications."
@@ -877,10 +876,10 @@ missingVerifsDoneButton() {
         missingVerifications[overIncomeMissingText1] := 3
         missingVerifications[overIncomeMissingText2] := 3
         caseNoteMissingText .= "Household is calculated to be over-income by $" overIncomeObj.overIncomeDifference " ($" overIncomeObj.overIncomeReceived " - $" overIncomeObj.overIncomeLimit ");`n"
-    } Else If (Homeless && caseDetails.docType == "Application") {
+    } Else If (HomelessStatus && caseDetails.docType == "Application") {
         If (caseDetails.eligibility == "pends") {
             InputBox, missingHomelessItems, % "Homeless App - Info Missing", % "Eligibility is marked as Pending. What information is needed from the client to approve expedited eligibility?`n`nUse a double space ""  "" without quotation marks to start a new line.",,,,,,,, % StrReplace(missingHomelessItems, "`n", "  ")
-            If (ErrorLevel == 0) {
+            If (!ErrorLevel) {
                 missingHomelessItems := StrReplace(missingHomelessItems, "  ", "`n")
                 pendingHomelessMissing := getRowCount("  " missingHomelessItems, 60, "  ")
                 missingVerifications[stWordWrap(emailText.pendingHomelessPreText, 60, " ") "`n"] := 8
@@ -892,17 +891,15 @@ missingVerifsDoneButton() {
             emailTextObject.EndHL := (caseDetails.eligibility == "elig") ? emailText.initialApproval : ""
         }
 
-        emailTextObject.AreOrWillBe := (Homeless == 1) ? "will be" : "are"
-        emailTextObject.Reason1 := (caseDetails.eligibility == "elig") ? "for authorizing assistance hours" : "to determine eligibility or calculate assistance hours"
-        emailTextObject.Reason2 := (Homeless == 1) ? "to determine on-going eligibility or calculate assistance hours after the 90-day period" : emailTextObject.Reason1
     }
-    emailTextObject.Start := (Homeless == 1) ? emailTextObject.StartAll emailTextObject.StartHL : emailTextObject.StartAll
-    emailTextObject.Middle := !overIncomeMissing ? "`n`nThe following documents or verifications " emailTextObject.AreOrWillBe " needed " emailTextObject.Reason2 ":`n`n" : ""
+    emailTextObject.AreOrWillBe := (HomelessStatus) ? "will be" : "are"
+    emailTextObject.Reason1 := (caseDetails.eligibility == "elig") ? " for authorizing assistance hours" : " to determine eligibility or calculate assistance hours"
+    emailTextObject.Reason2 := (HomelessStatus) ? " to determine on-going eligibility or calculate assistance hours after the 90-day period" : emailTextObject.Reason1
+    emailTextObject.Start := emailTextObject.StartAll (HomelessStatus ? emailTextObject.StartHL : emailTextObject.StartAll)
+    emailTextObject.Middle := !overIncomeMissing ? "`n`nThe following documents or verifications " emailTextObject.AreOrWillBe " needed" emailTextObject.Reason2 ":`n`n" : ""
     emailTextObject.Combined := emailTextObject.Start emailTextObject.Middle
 
     parseMissingVerifications(missingVerifications, missingListEnum, clarifiedVerifications, clarifiedListEnum, emailTextString, emailListEnum, caseNoteMissingText)
-
-
 
     caseDetails.haveWaitlist := (caseDetails.caseType == "BSF" && caseDetails.eligibility == "ineligible" && ini.caseNoteCountyInfo.Waitlist > 1)
     If (!caseDetails.haveWaitlist) {
@@ -918,7 +915,7 @@ missingVerifsDoneButton() {
         idList .= "," checkboxId
     }
     Trim(idList, ",")
-    insertAtOffset := (caseDetails.eligibility == "pends" && Homeless) ? 2 : 0
+    insertAtOffset := (caseDetails.eligibility == "pends" && HomelessStatus) ? 2 : 0
     If ( !overIncomeMissing && !caseDetails.haveWaitlist && !manualWaitlistBox && missingVerifications.Length() > (0 + insertAtOffset) ) {
         If (StrLen(idList) > 5 || insertAtOffset == 2) { ; "other" will always add at least 5
             missingVerifications.InsertAt(1 + insertAtOffset, "In addition to the above, please submit the following items:`n", 1)
@@ -1019,7 +1016,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
         mecCheckboxIds.proofOfRelation := 1
     }
 	If AddressMissing {
-        If (Homeless) {
+        If (HomelessStatus) {
             missingText := "Verification of current residence, such as a signed statement of your county of residence;`n"
             clarifiedVerifications[clarifiedListEnum ". " missingText] := 2
             emailTextString .= emailListEnum ". " missingText
@@ -1063,8 +1060,8 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
         emailListEnum++
     }
     if DependentAdultStudentMissing {
-        missingText := "Verification of full-time student status for " missingInput.DependentAdultStudentMissing ", verification of their most recent 30 days income, and a signed statement that you provide at least 50% of their financial support;`n"
-        missingVerifications[missingListEnum ". " missingText] := 3
+        missingText := "Verification of full-time student status for " missingInput.DependentAdultStudentMissing ", verification of their most recent 30 days income, and a signed statement that you provide at least 50% of their financial support;`n  * Income verification is not needed if " missingInput.DependentAdultStudentMissing " is a full-time high-school / GED student and under 19."
+        missingVerifications[missingListEnum ". " missingText] := 6
         emailTextString .= emailListEnum ". " missingText
 		caseNoteMissingText .= "Dependant Adult FT school status, income, statement of 50% support;`n"
 		missingListEnum++
@@ -1642,13 +1639,13 @@ letterButtonClick(letterGUINumber := 1) {
 	Gui, MainGui: Submit, NoHide
 	Gui, MissingGui: Submit, NoHide
 	letterGUINumber := LTrim(A_GuiControl, "letter")
-    If (Homeless == 1 && caseDetails.eligibility == "pends" && StrLen(missingHomelessItems) < 1) {
+    If (HomelessStatus && caseDetails.eligibility == "pends" && StrLen(missingHomelessItems) < 1) {
         missingVerifsDoneButton()
     }
     thisLetterText := Trim(letterText[letterGUINumber], "`n")
-    If (ini.employeeInfo.employeeUseMec2Functions == 1) {
-        ;caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (Homeless == 1) ? "Homeless App" : caseDetails.docType
-        caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (Homeless == 1 && caseDetails.eligibility == "elig") ? "Homeless App" : caseDetails.docType
+    If (ini.employeeInfo.employeeUseMec2Functions) {
+        ;caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (HomelessStatus) ? "Homeless App" : caseDetails.docType
+        caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (HomelessStatus && caseDetails.eligibility == "elig") ? "Homeless App" : caseDetails.docType
         jsonLetterText := "LetterTextFromAHKJSON{""LetterText"":""" JSONstring(thisLetterText) """,""CaseStatus"":""" caseStatus """,""IdList"":""" idList """ }"
         Clipboard := jsonLetterText
     } Else {
@@ -1663,7 +1660,7 @@ letterButtonClick(letterGUINumber := 1) {
 otherGUI() {
     Global
     Gui, MissingGui: Submit, NoHide
-    If (%A_GuiControl% == 0) { ; unchecked
+    If (!%A_GuiControl%) { ; unchecked
         Return
     }
     local otherEditWidth := (wCH*60)+scrollbar+pad
@@ -1704,7 +1701,7 @@ inputBoxAGUIControl() {
     Global
     Gui, Submit, NoHide
     Gui +OwnDialogs
-    If (%A_GuiControl% == 0) { ; unchecked
+    If (!%A_GuiControl%) { ; unchecked
         Return
     }
     inputBoxDefaultText := A_GuiControl == "ChildSupportFormsMissing" ? Trim(missingInput[A_GuiControl], "sets") : Trim(missingInput[A_GuiControl], " (input)")
@@ -1756,8 +1753,8 @@ MainGuiGuiClose() {
     If (caseNoteEntered.confirmedClear > 0) {
         coordSaveAndExitApp(1)
     }
-    closingPromptText .= caseNoteEntered.mec2NoteEntered == 0 ? " MEC2" : ""
-    If (ini.caseNoteCountyInfo.countyNoteInMaxis == 1 && caseDetails.docType == "Application" && caseNoteEntered.maxisNoteEntered == 0) {
+    closingPromptText .= !caseNoteEntered.mec2NoteEntered ? " MEC2" : ""
+    If (ini.caseNoteCountyInfo.countyNoteInMaxis && caseDetails.docType == "Application" && !caseNoteEntered.maxisNoteEntered) {
         closingPromptText .= StrLen(closingPromptText) > 0 ? " or MAXIS" : " MAXIS"
     }
     If (A_GuiControl == "ClearFormButton") {
@@ -1814,7 +1811,7 @@ HelpGuiGuiClose() {
 ;SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION
 buildSettingsGui(checkOnOpen := 0) {
     Global
-    If (checkOnOpen == 1 && StrLen(ini.employeeInfo.employeeName) > 0) { 
+    If (checkOnOpen && StrLen(ini.employeeInfo.employeeName) > 0) { 
         Return
     }
     countyContact := { Default: { Email: "" } } ;v2 reset to continuation version
@@ -1843,7 +1840,7 @@ buildSettingsGui(checkOnOpen := 0) {
     Gui, SettingsGui: Add, Text, % textLabelOptions, % "Using mec2functions:"
     Gui, SettingsGui: Add, CheckBox, % "vEmployeeUseMec2FunctionsWrite gworkerUsingMec2Functions " checkboxOptions " Checked" ini.employeeInfo.employeeUseMec2Functions
     Gui, SettingsGui: Add, ComboBox, % "x+10 yp vEmployeeBrowserWrite Choose1 R4 Hidden", % ini.employeeInfo.employeeBrowser "|Google Chrome|Mozilla Firefox|Microsoft Edge"
-    If (ini.employeeInfo.employeeUseMec2Functions == 1) {
+    If (ini.employeeInfo.employeeUseMec2Functions) {
         GuiControl, SettingsGui: Show, EmployeeBrowserWrite
     }
     Gui, SettingsGui: Add, Text, h0 w0 y+10
@@ -1852,7 +1849,7 @@ buildSettingsGui(checkOnOpen := 0) {
     Gui, SettingsGui: Add, Text, % textLabelOptions, % "Case Note in MAXIS:"
     Gui, SettingsGui: Add, CheckBox, % "vcountyNoteInMaxisWrite gcountyNoteInMaxis " checkboxOptions " Checked" ini.caseNoteCountyInfo.countyNoteInMaxis
     Gui, SettingsGui: Add, Edit, % "x+10 yp h18 w170 vEmployeeMaxisWrite Hidden", % ini.employeeInfo.employeeMaxis
-    If (ini.caseNoteCountyInfo.countyNoteInMaxis == 1) {
+    If (ini.caseNoteCountyInfo.countyNoteInMaxis) {
         GuiControl, SettingsGui: Show, EmployeeMaxisWrite
     }
     Gui, SettingsGui: Add, Text, % textLabelOptions, % "Fax Number:"
@@ -1871,7 +1868,7 @@ buildSettingsGui(checkOnOpen := 0) {
 }
 workerUsingMec2Functions() {
     GuiControlGet, EmployeeUseMec2FunctionsWrite
-    If (EmployeeUseMec2FunctionsWrite == 0) {
+    If (!EmployeeUseMec2FunctionsWrite) {
         GuiControl, SettingsGui: Hide, EmployeeBrowserWrite
         Return
     }
@@ -1890,7 +1887,7 @@ countySelection() {
 }
 countyNoteInMaxis() {
     GuiControlGet, countyNoteInMaxisWrite
-    If (countyNoteInMaxisWrite == 0) {
+    If (!countyNoteInMaxisWrite) {
         GuiControl, SettingsGui: Hide, EmployeeMaxisWrite
         Return
     }
@@ -2120,7 +2117,7 @@ coordSaveAndExitApp(reOpen := 0) {
         coordString := coordStringify(coordObjOut)
         IniWrite, % coordString, % A_MyDocuments "\AHK.ini", % "caseNotePositions"
     }
-    If (reOpen == 1) {
+    If (reOpen) {
         Reload
     } Else {
         ExitApp
@@ -2183,7 +2180,7 @@ stWordWrap(originalString, maxColumns, indentString:="", indentRow:=4, reduceRow
             }
             isFirstLineOfPara := (indentRow > 3 && firstLineOfPara)
             test .= A_LoopField ": " isFirstLineOfPara "`n"
-            indentThisLine := ((column == 0 && indentRow > 0) && (indentRow == 4 || (!firstLine && indentRow == 1) || (indentRow > 1 && firstLine) || (indentRow > 2 && firstLineOfPara) ))
+            indentThisLine := ((column == 0 && indentRow > 0) && (indentRow == 4 || (!firstLine && indentRow) || (indentRow > 1 && firstLine) || (indentRow > 2 && firstLineOfPara) ))
             out .= ( (indentThisLine ? indentString : "") . A_LoopField " " )
             column += ( (indentThisLine ? indentLength : 0) + wordLength + 1 )
         }
@@ -2274,8 +2271,8 @@ Return
         Gui, MainGui: Submit, NoHide
         Gui, MissingGui: Submit, NoHide
         Sleep 200
-        If (ini.employeeInfo.employeeUseMec2Functions == 1) {
-            caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (Homeless == 1) ? "Homeless App" : caseDetails.docType
+        If (ini.employeeInfo.employeeUseMec2Functions) {
+            caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (HomelessStatus) ? "Homeless App" : caseDetails.docType
             jsonLetterText := "LetterTextFromAHKJSON{""LetterText"":""" JSONstring(letterText[1]) """,""CaseStatus"":""" caseStatus """,""IdList"":""" idList """ }"
             Clipboard := jsonLetterText
             Sleep 200
@@ -2487,7 +2484,7 @@ Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword f
             InputBox, saApprovalInfo, % "Enter Service Authorization Details", % "Service Authorization _______. `n`nExamples: `n  approved effective 1/1/25 `n  not approved"
             reviewString := "Reviewed case for verifications that are required at application. Verifications were received.`n-`nApproved eligible results effective " approvedDate ".`n-`nService Authorization " saApprovalInfo ".`n=====`n" ini.employeeInfo.employeeName
             noteTitle := "Reviewed application requirements - approved elig"
-            If (ini.employeeInfo.employeeUseMec2Functions == 1) {
+            If (ini.employeeInfo.employeeUseMec2Functions) {
                 jsonCaseNote := "CaseNoteFromAHKJSON{""notedocType"":""Application Approved"",""noteTitle"":""" noteTitle """,""noteText"":""" JSONstring(reviewString) """,""noteElig"":""elig"" }"
                 Clipboard := jsonCaseNote
                 Send, ^v
@@ -2511,7 +2508,7 @@ Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword f
         !F2::
             reviewString := "Reviewed case for documents that are required at application. Documents were not received.`n-`nApplication was denied by MEC2 and remains denied.`n=====`n" ini.employeeInfo.employeeName
             noteTitle := "Reviewed application requirements - app denied"
-            If (ini.employeeInfo.employeeUseMec2Functions == 1) {
+            If (ini.employeeInfo.employeeUseMec2Functions) {
                 jsonCaseNote := "CaseNoteFromAHKJSON{""notedocType"":""Application Approved"",""noteTitle"":""" noteTitle """,""noteText"":""" JSONstring(reviewString) """,""noteElig"":""ineligible"" }"
                 Clipboard := jsonCaseNote
                 Send, ^v
