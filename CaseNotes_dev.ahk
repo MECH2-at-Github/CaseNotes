@@ -31,7 +31,7 @@
 ;version 0.4.2, The 'Holy crap I finally figured out how to fix the Gui Submit issue.' version
 ;version 0.4.3, The 'I changed most AHK built-in function commands to % variable "string"' version
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.86"
+Version := "v0.5.87"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -49,7 +49,7 @@ SetTitleMatchMode, RegEx
 
 ; Rule for AHKv1 GUI functions and variables: If you are doing a "Gui, Submit" the function needs to be declared Global.
 
-Global verbose := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, sq := "²", cm := "✔", cs := ", ", pct := "%"
+Global sq := "²", cm := "✔", cs := ", ", pct := "%"
 Global signRecDateVisible, signRecDateVisible1, signRecDateVisible2, signRecDateVisible3
 
 ;Settings
@@ -112,7 +112,7 @@ Global missingInputObject := { IDmissing: { baseText: "ID", inputAdject: " for "
 
 buildMainGui()
 buildMissingGui()
-buildSettingsGui(1)
+openSettingsGui(1)
 Global caseNotesMonCenter := getMonCenter("CaseNotes")
 
 Return
@@ -218,15 +218,15 @@ buildMainGui() {
     Gui, MainGui: Add, Text, % labelSettings " v13NotesEditLabel", % "Notes"
     Gui, MainGui: Add, Edit, % textboxSettings " " fourRows " v13NotesEdit",
 
-    Gui, MainGui: Add, Text, % "xm+5 y+1 gshowMissingVerifs v14MissingEditLabel Border", % "Missing"
+    Gui, MainGui: Add, Text, % "xm+5 y+1 gopenMissingGui v14MissingEditLabel Border", % "Missing"
     Gui, MainGui: Add, Text, % labelExampleSettings " v14MissingEditLabelExample Hidden", % "(Click ""Missing"" to bring up the missing verification list)"
     Gui, MainGui: Add, Edit, % textboxSettings " h" hCH*10+pad " v14MissingEdit",
 
     Gui, MainGui: Add, Text, % "x15 y+4", % Version
-    Gui, MainGui: Add, Button, % "x+20 yp w65 h19 -TabStop gbuildSettingsGui", % "Settings"
+    Gui, MainGui: Add, Button, % "x+20 yp w65 h19 -TabStop gopenSettingsGui", % "Settings"
     Gui, MainGui: Add, Button, % "x+40 yp wp h19 -TabStop gexamplesButton vexamplesButtonText", % "Examples"
-    Gui, MainGui: Add, Button, % "x+40 yp wp h19 -TabStop gbuildHelpGui", % "Help"
-    Gui, MainGui: Add, Button, % "x600 yp wp h19 gshowMissingVerifs", % "Missing"
+    Gui, MainGui: Add, Button, % "x+40 yp wp h19 -TabStop gopenHelpGui", % "Help"
+    Gui, MainGui: Add, Button, % "x600 yp wp h19 gopenMissingGui", % "Missing"
 
     Gui, MainGui: Show, % "x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes, CaseNotes
     Gui, MainGui: Show, AutoSize
@@ -381,10 +381,11 @@ makeCaseNote() {
     local caseDetailsModified := { caseType: caseDetails.caseType, appType: caseDetails.appType, docType: caseDetails.docType, eligibility: caseDetails.eligibility, saEntered: caseDetails.saEntered }
     ;v2: continuation section 
     editFields := { 01HouseholdCompEdit: " HH COMP:    ", 02SharedCustodyEdit: " CUSTODY:    ", 03AddressVerificationEdit: " ADDRESS:    ", 04SchoolInformationEdit: "  SCHOOL:    ", 05IncomeEdit: "  INCOME:    ", 06ChildSupportIncomeEdit: "      CS:    ", 07ChildSupportCooperationEdit: " CS COOP:    ", 08ExpensesEdit: "EXPENSES:    ", 09AssetsEdit: "  ASSETS:    ", 10ProviderEdit: "PROVIDER:    ", 11ActivityAndScheduleEdit: "ACTIVITY:    ", 12ServiceAuthorizationEdit: "      SA:    ", 13NotesEdit: "   NOTES:    ", 14MissingEdit: " MISSING:    " }
-    For i, pattern in [ "i)([a-z])([0-9])", "i)([a-z0-9]+)(\()", "(\))([a-z0-9]+)" ] {
+    parenPatterns := ["i)([a-z])([0-9])", "i)([a-z0-9]+)(\()", "(\))([a-z0-9]+)"]
+    For i, pattern in parenPatterns {
         01HouseholdCompEdit := RegExReplace(01HouseholdCompEdit, pattern, "$1 $2")
     }
-    finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote 
+    finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote
     For editField, label in editFields {
         finishedCaseNote.mec2CaseNote .= label stWordWrap(%editField%, 100, "             ", 1, 1) "`n"
     }
@@ -426,6 +427,7 @@ makeCaseNote() {
             finishedCaseNote.maxisNote .= "`n"
         }
         If (StrLen(originalMissingEdit) > 0) {
+            ;missingMax := stWordWrap(originalMissingEdit, 74, "* ", 4)
             missingMax := stWordWrap(originalMissingEdit, 74, "* ", 4)
             finishedCaseNote.maxisNote .= "Special Letter mailed " dateObject.todayMDY " requesting:`n" missingMax "`n"
         }
@@ -459,11 +461,11 @@ outputCaseNote() {
     sleep 500
     Clipboard := caseNumber
 }
-outputCaseNoteMec2(sendingCaseNote) {
+outputCaseNoteMec2(ByRef sendingCaseNote) {
     Global
     StrReplace(sendingCaseNote.mec2CaseNote, "`n", "`n", mec2CaseNoteLines) ; Counting lines
     If (mec2CaseNoteLines > 29) { ; off by 1 - last line won't have a newline
-        sendingCaseNote.mec2CaseNote := buildOversizedNoteGui(sendingCaseNote.mec2CaseNote)
+        sendingCaseNote.mec2CaseNote := openOversizedNoteGui(sendingCaseNote.mec2CaseNote)
         If (StrLen(sendingCaseNote.mec2CaseNote) < 2) {
             Sleep 200
             WinActivate, % "CaseNotes"
@@ -500,13 +502,12 @@ outputCaseNoteMec2(sendingCaseNote) {
     caseNoteEntered.mec2NoteEntered := 1
     GuiControl, MainGui:Text, % "mec2NoteButton", % "MEC2 " cm
 }
-outputCaseNoteMaxis(sendingCaseNote) {
+outputCaseNoteMaxis(ByRef sendingCaseNote) {
     Global
-    Clipboard := sendingCaseNote.maxisNote
     maxisWindow := WinExist("ahk_group maxisGroup") ; returns an ID
     If (maxisWindow == "0x0") {
         MsgBox, 1, % "MAXIS window not found", % "MAXIS window not found. Open or click on the MAXIS window, then click the OK button."
-        IfMsgBox, Cancel
+        IfMsgBox Cancel
             Return
         maxWin := WinExist("ahk_exe bzmd.exe")
         WinGetTitle, maxWinName, % "ahk_id " maxWin
@@ -514,66 +515,59 @@ outputCaseNoteMaxis(sendingCaseNote) {
         ini.employeeInfo.employeeMaxis := maxWinName
         IniWrite, % maxWinName, % A_MyDocuments "\AHK.ini", EmployeeInfo, EmployeeMaxis
     }
-; Current code (works)
-    ;If (maxisWindow) {
-        ;WinActivate, % "ahk_id " maxisWindow
-        ;Clipboard := sendingCaseNote.maxisNote
-        ;WinWaitActive, % "ahk_id " maxisWindow,, 5
-        ;Sleep 500
-        ;Send, ^v
-    ;}
-; End current code
-; Test area start
-
-    maxisNote := sendingCaseNote.maxisNote
+    maxisNote := StrSplit(sendingCaseNote.maxisNote, "`n")
     maxisNoteLength := maxisNote.Length() -1, maxisNoteOutput := "", j := 1
     For i, textLine in maxisNote {
         maxisNoteOutput .= textLine "`n"
         j++
-        If (j == 14 && i < maxisNoteLength) {
+        If (j == 15 && i < maxisNoteLength) {
             maxisNoteOutput .= "...continued on next page"
             doPasteInMaxis(maxisNoteOutput, maxisWindow)
-            j := 1
-            maxisNoteOutput := ""
+            j := 2
+            maxisNoteOutput := "...continued from previous page`n"
             Send, {F9}
             Sleep 1000
         }
     }
     doPasteInMaxis(maxisNoteOutput, maxisWindow)
-
-; Test area end
-
     caseNoteEntered.maxisNoteEntered := 1
     GuiControl, MainGui:Text, maxisNoteButton, % "MAXIS " cm
 }
-outputCaseNoteNotepad(sendingCaseNote) {
+outputCaseNoteNotepad(ByRef sendingCaseNote) {
     Global
     local notepadFileName := caseNumber !== "" ? caseNumber : ""
     If (notepadFileName == "") {
-        RegExMatch(HouseholdComp, "\w+\W", notepadFileName)
+        MsgBox, 1, % "No Case Number", % "Case Number is blank. Save case note to desktop without case number?`n`n(File will be named after the first person listed in Household Comp.)"
+        IfMsgBox OK
+            RegExMatch(01HouseholdCompEdit, "i)[A-Z\-]+", notepadFileName)
+        else
+            Return
     }
-    local letterNotepad := ""
+    local specialLetterNotepad := ""
     For i, letterTextValue in letterText {
-        letterNotepad .= StrLen(LetterText[i]) > 0 ? "`n====== Special Letter " i " ======`n" letterTextValue "`n" : ""
+        specialLetterNotepad .= StrLen(LetterText[i]) > 0 ? "`n====== Special Letter " i " ======`n" letterTextValue "`n" : ""
     }
-    FileAppend, % "====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n", % A_Desktop "\" notepadFileName ".txt"
-    If (verbose) {
-        buildOversizedNoteGui("====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" letterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n")
-    }
+    local backupFile := FileOpen(A_Desktop "\" notepadFileName ".txt", "W")
+    local backupString := "Case Number: " (caseNumber != "" ? caseNumber : "(not entered)") "`n`n====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" specialLetterNotepad "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n"
+    backupFile.Write(backupString)
+    backupFile.Close()
     GuiControl, MainGui:Text, notepadNoteButton, % "Desktop " cm
     caseNoteEntered.mec2NoteEntered := 1
     caseNoteEntered.maxisNoteEntered := 1
 }
-doPasteInMaxis(textString, ByRef maxisWindow) {
-    textString := Trim(textString, "`n")
-    clipboard := textString
+doPasteInMaxis(maxisNoteText, ByRef maxisWindow) {
+    maxisNoteText := Trim(maxisNoteText, "`n")
+    clipboard := maxisNoteText
     WinActivate, % "ahk_id " maxisWindow
-    WinWaitActive, % "ahk_id " maxisWindow
+    WinWaitActive, % "ahk_id " maxisWindow,,3
+    If ErrorLevel
+        MsgBox % "WinWaitActive failed. MAXIS window not found."
+    Sleep 100
     Send, ^v
     Return 1
 }
 
-buildOversizedNoteGui(oversizedCaseNote) {
+openOversizedNoteGui(oversizedCaseNote) {
     Global
     Gui, OversizedNoteGui: New,, % "Oversized Note"
     Gui, OversizedNoteGui: Color, % "a9a9a9", % "bebebe"
@@ -724,7 +718,7 @@ calcDates() {
 
 ;=====================================================================================================================================================================================
 ;VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION - VERIFICATION SECTION
-showMissingVerifs() {
+openMissingGui() {
     Gui, MissingGui: Restore
     Gui, MissingGui: Show, AutoSize
     Gui, MainGui: Submit, NoHide
@@ -1724,7 +1718,7 @@ inputBoxAGUIControl() {
     missingInput[A_GuiControl] := inputBoxInput ; set to global object
 }
 overIncomeSub(overIncomeString) {
-    overIncomeEntriesArray := StrSplit(overIncomeString, A_Space, ",", -1)
+    overIncomeEntriesArray := StrSplit(overIncomeString, A_Space, ",")
     If (StrLen(overIncomeEntriesArray[3]) > 0) {
         overIncomeObj.overIncomeHHsize := overIncomeEntriesArray[3]
     }
@@ -1809,9 +1803,9 @@ HelpGuiGuiClose() {
 
 ;========================================================================================================================================================================
 ;SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION - SETTINGS SECTION
-buildSettingsGui(checkOnOpen := 0) {
+openSettingsGui(checkOnOpen := 0) {
     Global
-    If (checkOnOpen && StrLen(ini.employeeInfo.employeeName) > 0) { 
+    If (checkOnOpen == 1 && StrLen(ini.employeeInfo.employeeName) > 0) { 
         Return
     }
     countyContact := { Default: { Email: "" } } ;v2 reset to continuation version
@@ -1917,7 +1911,7 @@ updateIniFileText(section, settingArray) {
 
 ;=======================================================================================================================================================================================================
 ;EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION 
-buildHelpGui() {
+openHelpGui() {
     local widestText
     Paragraph1 := "
     (
@@ -2187,8 +2181,13 @@ stWordWrap(originalString, maxColumns, indentString:="", indentRow:=4, reduceRow
         firstLine := 0
         out := RTrim(RTrim(out), "`n") "`n" ; ensures it ends with a new line
     }
-    ;MsgBox % out
     Return RTrim(out, "`n")
+}
+verbose(verboseOutput) {
+    If (A_ScriptName != "CaseNotes_dev.ahk") {
+        return
+    }
+    MsgBox % verboseOutput
 }
 ;MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS - MISC FUNCTIONS
 ;=======================================================================================================================================================================
