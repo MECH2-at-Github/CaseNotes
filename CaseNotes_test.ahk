@@ -1,6 +1,6 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly. 
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.88"
+Version := "v0.5.89"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -385,7 +385,7 @@ makeCaseNote() {
 	If (caseDetailsModified.docType == "Application") {
 		finishedCaseNote.mec2NoteTitle := caseDetailsModified.caseType " " caseDetailsModified.appType " rec'd " dateObject.receivedMDY ", " caseDetailsModified.eligibility caseDetailsModified.saEntered
         If (caseDetailsModified.eligibility == "pends") {
-            finishedCaseNote.mec2NoteTitle .= " until " autoDenyObject.autoDenyExtensionDate
+            finishedCaseNote.mec2NoteTitle .= " through " autoDenyObject.autoDenyExtensionDate
     ; MAXIS only start ----------------------------------------
             finishedCaseNote.maxisNote := "CCAP app rec'd " dateObject.receivedMDY ", pend date " autoDenyObject.autoDenyExtensionDate ".`n" ; MAXIS
         }
@@ -620,11 +620,12 @@ formatMDY(inputDate) {
 calcDates() {
     Global
     Gui, MainGui: Submit, NoHide
-    autoDenyObject.autoDenyExtensionSpecLetter :=
+    ;autoDenyObject.autoDenyExtensionSpecLetter :=
+    autoDenyObject := {}
 
     dateObject.receivedYMD := ReceivedDate
     dateObject.receivedMDY := formatMDY(dateObject.receivedYMD)
-    dateObject.autoDenyYMD := addDays(dateObject.receivedYMD, 29)
+    dateObject.autoDenyYMD := addDays(dateObject.receivedYMD, 30)
     dateObject.recdPlusFortyfiveYMD := addDays(dateObject.receivedYMD, 44)
     dateObject.todayPlusFifteenishYMD := addFifteenishDays(dateObject.todayYMD)
     dateObject.recdPlusFifteenishYMD := addFifteenishDays(dateObject.receivedYMD)
@@ -646,7 +647,7 @@ calcDates() {
                 autoDenyObject.autoDenyExtensionDate := formatMDY(dateObject.todayPlusFifteenishYMD)
                 autoDenyObject.autoDenyExtensionMECnote := "Reinstate date is " autoDenyObject.autoDenyExtensionDate " due to processing < 15 days before auto-deny.`n-`n"
                 autoDenyObject.autoDenyExtensionSpecLetter := "*Please note that you will be mailed an auto-denial notice.`n  You have through " autoDenyObject.autoDenyExtensionDate " to submit required verifications.`n  If you are eligible, your case will be reinstated."
-                GuiControl, MainGui: Text, autoDenyStatus, % "Auto-denies tonight, pends until " autoDenyObject.autoDenyExtensionDate
+                GuiControl, MainGui: Text, autoDenyStatus, % "Auto-denies tonight, pends through " autoDenyObject.autoDenyExtensionDate
             }
         } Else If (HomelessStatus) {
             dateObject.ExpeditedNinetyDaysYMD := addDays(dateObject.receivedYMD, 89)
@@ -2155,27 +2156,32 @@ coordStringify(coordObjIn) {
     }
     Return coordString
 }
-;getRowCount({originalString, maxColumns, indentString:="", indentRow:=4, reduceRowButDoNotIndent:=0}) {
-getRowCount(originalString, maxColumns, indentString:="", indentRow:=4) {
+;getRowCount({originalString, maxColumns, indentString:="", indentLine:=4, reduceLineLen_dontIndent:=0}) {
+getRowCount(originalString, maxColumns, indentString:="", indentLine:=4) {
     ;indentString := StrLen(indentString) > 0 ? indentString : ""
-    textString := stWordWrap(originalString, maxColumns, indentString, indentRow)
-    ;textString := stWordWrap({ originalString: originalString, maxColumns: maxColumns, indentString: indentString, indentRow: indentRow })
+    textString := stWordWrap(originalString, maxColumns, indentString, indentLine)
+    ;textString := stWordWrap({ originalString: originalString, maxColumns: maxColumns, indentString: indentString, indentLine: indentLine })
     StrReplace(textString, "`n", "`n", xCount)
     Return [textString, xCount +1]
 }
 ;stWordWrap has been rewritten to allow for increased indenting options - was borrowed function from 'String Things'
-;stWordWrap({originalString, maxColumns, indentString:="", indentRow:=4, reduceRowButDoNotIndent:=0}) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
-stWordWrap(originalString, maxColumns, indentString:="", indentRow:=4, reduceRowButDoNotIndent:=0) { ; indentRow: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
+;stWordWrap({originalString, maxColumns, indentString:="", indentLine:=4, reduceLineLen_dontIndent:=0}) { ; indentLine: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
+stWordWrap(originalString, maxColumns, indentString:="", indentLine:=4, reduceLineLen_dontIndent:=0) { ; indentLine: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
+; indentLine: 0 + very first line (1) + first line of each paragraph (10) + all lines (100)
+indentLineStrLen := StrLen(indentLine)
+indentAllLines := indentLineStrLen > 2 && SubStr(indentLine, -1, 1) ? 1 : 0
+indentAllFirstLines := indentAllLines || SubStr(indentLine, 0, 1) || (indentLineStrLen > 1 && SubStr(indentLine, -1, 1)) ? 1 : 0
+
     If (!StrLen(originalString)) {
         Return
     }
-    indentLength := StrLen(indentString), indentRow = indentLength > 0 ? indentRow : 0
+    indentLength := StrLen(indentString), indentLine = indentLength > 0 ? indentLine : 0
     completeString := RTrim(originalString, "`n"), firstLine := 1
     If (
         !InStr(completeString, "`n")
-        && (reduceRowButDoNotIndent ? maxColumns - indentLength : maxColumns)
-        >= ( StrLen(completeString) + (indentRow > 1 ? indentLength : 0) ) ) {
-        Return (indentRow > 1 ? indentString : "") completeString
+        && (reduceLineLen_dontIndent ? maxColumns - indentLength : maxColumns)
+        >= ( StrLen(completeString) + (indentLine > 1 ? indentLength : 0) ) ) {
+        Return (indentLine > 1 ? indentString : "") completeString
     }
     Loop, Parse, completeString, `n, `r ; A_LoopField == sentence;
     {
@@ -2190,16 +2196,16 @@ stWordWrap(originalString, maxColumns, indentString:="", indentRow:=4, reduceRow
                     out .= manualIndent
                     maxLoopColumns -= StrLen(manualIndent)
                 }
-                maxLoopColumns -= (firstLine && reduceRowButDoNotIndent) ? indentLength : 0
+                maxLoopColumns -= (firstLine && reduceLineLen_dontIndent) ? indentLength : 0
             }
             wordLength := StrLen(A_LoopField)
             lineLength := column + wordLength
             If (lineLength > maxLoopColumns ) {
                 out .= "`n", column := 0, firstLine := 0, firstLineOfPara := 0
             }
-            isFirstLineOfPara := (indentRow > 3 && firstLineOfPara)
+            isFirstLineOfPara := (indentLine > 3 && firstLineOfPara)
             test .= A_LoopField ": " isFirstLineOfPara "`n"
-            indentThisLine := ((column == 0 && indentRow > 0) && (indentRow == 4 || (!firstLine && indentRow) || (indentRow > 1 && firstLine) || (indentRow > 2 && firstLineOfPara) ))
+            indentThisLine := ((column == 0 && indentLine > 0) && (indentLine == 4 || (!firstLine && indentLine != 2) || (indentLine > 1 && firstLine) || (indentLine > 2 && firstLineOfPara) ))
             out .= ( (indentThisLine ? indentString : "") . A_LoopField " " )
             column += ( (indentThisLine ? indentLength : 0) + wordLength + 1 )
         }
