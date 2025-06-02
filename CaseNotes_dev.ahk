@@ -1,6 +1,6 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly. 
 ;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.89"
+Version := "v0.5.91"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -79,8 +79,8 @@ Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1)
         , overIncomeMissing: { baseText: "Over-income", inputAdject: " by $", promptText: "Without dollar signs, enter the calculated income less expenses, income limit, and household size.`nOnly type numbers separated by spaces - no commas or periods.`n`n(Example: 76392 49605 3)" } }
 ;}
 ;setGlobalVariables()
-    checkGroupAdd()
-    setFromIni()
+setFromIni()
+checkGroupAdd()
 setIcon()
 buildOpenMainGui()
 buildMissingGui()
@@ -592,6 +592,7 @@ guiGetControlSize(guiName, controlName) {
 
 JSONstring(inputString) {
     inputString := StrReplace(inputString, "\", "\\",, -1)
+    inputString := StrReplace(inputString, "`n`n", "\n",, -1)
     inputString := StrReplace(inputString, "`n", "\n",, -1)
     inputString := StrReplace(inputString, """", "\""",, -1)
     Return inputString
@@ -625,7 +626,7 @@ calcDates() {
 
     dateObject.receivedYMD := ReceivedDate
     dateObject.receivedMDY := formatMDY(dateObject.receivedYMD)
-    dateObject.autoDenyYMD := addDays(dateObject.receivedYMD, 30)
+    dateObject.autoDenyYMD := addDays(dateObject.receivedYMD, 30) ; +30 is correct. App rec'd 5/1 will auto-deny after end of business on 5/31.
     dateObject.recdPlusFortyfiveYMD := addDays(dateObject.receivedYMD, 44)
     dateObject.todayPlusFifteenishYMD := addFifteenishDays(dateObject.todayYMD)
     dateObject.recdPlusFifteenishYMD := addFifteenishDays(dateObject.receivedYMD)
@@ -1037,7 +1038,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
         missingText := "Verification of full-time student status for " missingInput.DependentAdultStudentMissing ", and a signed statement that you provide at least 50% of their financial support;`n* Their 30-day income verification is needed if they are not a full-time high-school / GED student or are over 18.`n"
         missingVerifications[missingListEnum ". " missingText] := 6
         emailTextString .= emailListEnum ". " missingText
-		caseNoteMissingText .= "Dependant Adult FT school status, income, statement of 50% support;`n"
+		caseNoteMissingText .= "Dependent Adult FT school status, income, statement of 50% support;`n"
 		missingListEnum++
         emailListEnum++
     }
@@ -1683,12 +1684,12 @@ inputBoxAGUIControl() {
     InputBox, inputBoxInput, % "Additional Input Required", % missingInputObject[A_GuiControl].promptText,,,,,,,, % inputBoxDefaultText
 	If (ErrorLevel) {
         GuiControl, MissingGui:, % A_GuiControl, 0
-		Return
+		Return 1
     }
     If (StrLen(inputBoxInput) == 0) {
         GuiControl, MissingGui: Text, % A_GuiControl, % missingInputObject[A_GuiControl].baseText " (input)"
         GuiControl, MissingGui:, % A_GuiControl, 0 ; uncheck if blank
-        Return
+        Return 1
     }
     If (A_GuiControl == "ChildSupportFormsMissing") {
         inputBoxInput .= StrLen(inputBoxInput) == 1 ? ( (inputBoxInput < 2 ? " set" : " sets") ) : ""
@@ -2087,13 +2088,6 @@ checkGroupAdd() {
         GroupAdd, maxisGroup, % ini.employeeInfo.employeeMaxis
     }
 }
-;removeToolTip() {
-    ;ToolTip
-;}
-;timedToolTip(string, duration) {
-    ;ToolTip, % string, 0, 0
-    ;SetTimer, removeToolTip, % "-" duration
-;}
 removeToolTip() {
     Global globalToolTip := ""
     ToolTip,,,, 20
@@ -2105,8 +2099,6 @@ trimToolTip() {
 }
 timedToolTip(string:="", duration:=10000) {
     Global
-    ;MsgBox % "string: " string cs "globalToolTip: " globalToolTip
-    ;Global globalToolTip := string . (StrLen(globalToolTip) > 1 ? "`n`n" globalToolTip : "")
     globalToolTip := string . ((StrLen(globalToolTip) > 2) ? "`n`n" globalToolTip : "")
     ToolTip, % globalToolTip, 0, 0, 20
     SetTimer, removeToolTip, % "-" duration
@@ -2300,7 +2292,7 @@ Class orderedAssociativeArray { ; Capt Odin https://www.autohotkey.com/boards/vi
 Return
 
 #m::
-    If WinActive("Message" ahk_exe Outlook.exe) {
+    If (WinActive("Message" ahk_exe Outlook.exe)) {
         Clipboard := getFirstName() emailTextObject.output
         Send, ^v
     } Else If WinActive(ini.employeeInfo.employeeBrowser) {
@@ -2323,9 +2315,8 @@ Return
     Clipboard := caseNumber
 Return
 
-;Shows Clipboard text in an AHK GUI
-!^a::
-    If WinExist("Clipboard Text") {
+!^a:: ; Shows Clipboard text in an AHK GUI
+    If (WinExist("Clipboard Text")) {
         Gui, CBT: Destroy
     }
     Gui, CBT: New
@@ -2337,7 +2328,8 @@ Return
     ControlSend,,{End}, % "Clipboard Text"
 Return
 
-#IfWinActive CaseNotes
+#If (WinActive("CaseNotes"))
+{
     PgDn::
         ControlFocus,,\d ahk_exe obunity.exe
         ControlSend,,^{PgDn}, \d ahk_exe obunity.exe
@@ -2360,68 +2352,50 @@ Return
             resetPositions()
         Return
     Return
-#If
+}
+#If ;#IfWinActive ; CaseNotes
 
-#IfWinActive Other Verification
+#If (WinActive("Other Verification"))
+{
     Esc:: OtherGuiGuiClose()
+}
 #If
 
-#IfWinActive ahk_group browserGroup
+#If (WinActive("ahk_group browserGroup"))
+{
     ^F12:: ;CtrlF12/AltF12 Add worker signature
     !F12::
         SendInput % "`n=====`n"
         Send, % ini.employeeInfo.employeeName
     Return
-#If
-If (ini.employeeInfo.employeeCounty == "Dakota") {
-    #IfWinActive ahk_exe WINWORD.EXE ; Word file not in use anymore?
-        F1::
-            toolTipText := "Alt+4: Starting from the name field, moves to and enters date,         case number, and client's first name."
-            timedToolTip(toolTipText, 8000)
-        Return
-        !4::
-            Gui, MainGui: Submit, NoHide
-            RegExMatch(01HouseholdCompEdit, "^\w+\b", NameMatch)
-            SendInput, {Down 2}
-            Sleep 400
-            SendInput, % ReceivedDate
-            Sleep 400
-            SendInput, {Up}
-            Sleep 400
-            SendInput, % caseNumber
-            Sleep 400
-            SendInput, {Up}
-            Sleep 400
-            SendInput, % NameMatch " "
-        Return
-    #If
+}
+#If ; WinActive("ahk_group browserGroup")
 
-    onBaseImportKeys(CaseNum, docType, DetailText, DetailTabs=1, ToolTipHelp="") {
-        SendInput, {Tab 2}
-        Sleep 250
-        SendInput, % docType
-        Sleep 1000
-        SendInput, {Tab 4}
-        Sleep 1500
-        SendInput, NO
-        Sleep 250
-        SendInput, {Tab}
-        Sleep 500
-        SendInput, % CaseNum
-        Sleep 500
-        SendInput, {Tab %DetailTabs%}
-        Sleep 750
-        SendInput, % DetailText
-        Sleep 200
-        If (StrLen(ToolTipHelp) > 0) {
-            CaretY := A_CaretY + 40
-            ToolTip, % "`n  " ToolTipHelp "  `n ", % A_CaretX, % CaretY
-            SetTimer, removeToolTip, -5000   
-        }
+onBaseImportKeys(CaseNum, docType, DetailText, DetailTabs=1, ToolTipHelp="") {
+    SendInput, {Tab 2}
+    Sleep 250
+    SendInput, % docType
+    Sleep 1000
+    SendInput, {Tab 4}
+    Sleep 1500
+    SendInput, NO
+    Sleep 250
+    SendInput, {Tab}
+    Sleep 500
+    SendInput, % CaseNum
+    Sleep 500
+    SendInput, {Tab %DetailTabs%}
+    Sleep 750
+    SendInput, % DetailText
+    Sleep 200
+    If (StrLen(ToolTipHelp) > 0) {
+        CaretY := A_CaretY + 40
+        ToolTip, % "`n  " ToolTipHelp "  `n ", % A_CaretX, % CaretY
+        SetTimer, removeToolTip, -5000   
     }
-
-    ;Ctrl+: OnBase docs (onBaseImportKeys("Text to get doc type", "Details Text", "Tab presses from Case # to details field")
-    #IfWinActive Perform Import
+}
+#If (ini.employeeInfo.employeeCounty == "Dakota" && WinActive("Perform Import"))
+{
         F1:: 
             toolTipText := "CTRL+ `n F6: RSDI `n F7: SMI ID `n F8: PRISM GCSC `n F9: CS $ Calc `nF10: Income Calc `nF11: The Work # `nF12: CCAPP Letter"
             timedToolTip(toolTipText, 8000)
@@ -2454,9 +2428,11 @@ If (ini.employeeInfo.employeeCounty == "Dakota") {
             Gui, MainGui: Submit, NoHide
             onBaseImportKeys(caseNumber, "3003 edak 3813", "{Text}OUTBOUND")
         Return
-    #If
+}
+#If ; Dakota && WinActive("Perform Import")
 
-    #IfWinActive ahk_group autoMailGroup ; OnBase, excluding "Perform Import"
+#If (ini.employeeInfo.employeeCounty == "Dakota" && WinActive("ahk_group autoMailGroup"))
+{
         F1::
             toolTipText := WinActive("Automated Mailing Home Page")
             ? "Ctrl+B: Types in the current date and case number." : "
@@ -2494,75 +2470,79 @@ Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword f
         !4::
             SendInput, % "VERIFS DUE BACK " autoDenyObject.autoDenyExtensionDate
         Return
-    #If
+}
+#If ; Dakota && WinActive("ahk_group autoMailGroup")
 
-    #IfWinActive ahk_group maxisGroup
+#If (ini.employeeInfo.employeeCounty == "Dakota" && WinActive("ahk_group maxisGroup"))
+{
         ^m::
             WinSetTitle, ahk_exe bzmd.exe,, % "S1 - MAXIS"
-            Send ^{m}
+            Send ^m
         Return
-    #If
+}
+#If ; Dakota && WinActive("ahk_group maxisGroup")
 
-
-    #IfWinActive ahk_group browserGroup
-        F1::
-            timedToolTip("
-            (
+#If (ini.employeeInfo.employeeCounty == "Dakota" && WinActive("ahk_group browserGroup"))
+{
+    F1::
+        timedToolTip("
+        (
     Alt+F1: Reviewed/Approved application (Start New case note first)
     Alt+F2: Reviewed/Denied application (Start New case note first)
 
     Ctrl/Alt+F12: Add worker signature to case note"
-            ), 8000)
-        Return
+        ), 8000)
+    Return
 
-        !F1::
-            InputBox, approvedDate, % "Enter Approved Date", % "Approved eligible results effective _____."
-            InputBox, saApprovalInfo, % "Enter Service Authorization Details", % "Service Authorization _______. `n`nExamples: `n  approved effective 1/1/25 `n  not approved"
-            reviewString := "Reviewed case for verifications that are required at application. Verifications were received.`n-`nApproved eligible results effective " approvedDate ".`n-`nService Authorization " saApprovalInfo ".`n=====`n" ini.employeeInfo.employeeName
-            noteTitle := "Reviewed application requirements - approved elig"
-            If (ini.employeeInfo.employeeUseMec2Functions) {
-                jsonCaseNote := "CaseNoteFromAHKJSON{""notedocType"":""Application Approved"",""noteTitle"":""" noteTitle """,""noteText"":""" JSONstring(reviewString) """,""noteElig"":""elig"" }"
-                Clipboard := jsonCaseNote
-                Send, ^v
-            } Else {
-                Send {Tab 7}
-                Sleep 750
-                Send {A 4}
-                Sleep 500
-                Send {Tab}
-                Sleep 500
-                SendInput, % noteTitle
-                Sleep 500,
-                Send, {Tab}
-                Sleep 500,
-                SendInput, % reviewString
-                Sleep 1000,
-            }
-            Send, !{s}
-        Return
+    !F1::
+        InputBox, approvedDate, % "Enter Approved Date", % "Approved eligible results effective _____."
+        InputBox, saApprovalInfo, % "Enter Service Authorization Details", % "Service Authorization _______. `n`nExamples: `n  approved effective 1/1/25 `n  not approved"
+        reviewString := "Reviewed case for verifications that are required at application. Verifications were received.`n-`nApproved eligible results effective " approvedDate ".`n-`nService Authorization " saApprovalInfo ".`n=====`n" ini.employeeInfo.employeeName
+        noteTitle := "Reviewed application requirements - approved elig"
+        If (ini.employeeInfo.employeeUseMec2Functions) {
+            jsonCaseNote := "CaseNoteFromAHKJSON{""notedocType"":""Application Approved"",""noteTitle"":""" noteTitle """,""noteText"":""" JSONstring(reviewString) """,""noteElig"":""elig"" }"
+            Clipboard := jsonCaseNote
+            Send, ^v
+        } Else {
+            Send {Tab 7}
+            Sleep 750
+            Send {A 4}
+            Sleep 500
+            Send {Tab}
+            Sleep 500
+            SendInput, % noteTitle
+            Sleep 500,
+            Send, {Tab}
+            Sleep 500,
+            SendInput, % reviewString
+            Sleep 1000,
+        }
+        Send, !s
+    Return
 
-        !F2::
-            reviewString := "Reviewed case for documents that are required at application. Documents were not received.`n-`nApplication was denied by MEC2 and remains denied.`n=====`n" ini.employeeInfo.employeeName
-            noteTitle := "Reviewed application requirements - app denied"
-            If (ini.employeeInfo.employeeUseMec2Functions) {
-                jsonCaseNote := "CaseNoteFromAHKJSON{""notedocType"":""Application Approved"",""noteTitle"":""" noteTitle """,""noteText"":""" JSONstring(reviewString) """,""noteElig"":""ineligible"" }"
-                Clipboard := jsonCaseNote
-                Send, ^v
-            } Else {
-                Send {Tab 7}
-                Sleep 750
-                Send {A 4}
-                Sleep 500
-                Send {Tab}
-                Sleep 500
-                SendInput, % noteTitle
-                Sleep 500,
-                Send, {Tab}
-                Sleep 500,
-                SendInput, % reviewString
-                Sleep 1000,
-            }
-            Send, !{s}
-        Return
-    #If
+    !F2::
+        reviewString := "Reviewed case for documents that are required at application. Documents were not received.`n-`nApplication was denied by MEC2 and remains denied.`n=====`n" ini.employeeInfo.employeeName
+        noteTitle := "Reviewed application requirements - app denied"
+        If (ini.employeeInfo.employeeUseMec2Functions) {
+            jsonCaseNote := "CaseNoteFromAHKJSON{""notedocType"":""Application Approved"",""noteTitle"":""" noteTitle """,""noteText"":""" JSONstring(reviewString) """,""noteElig"":""ineligible"" }"
+            Clipboard := jsonCaseNote
+            Send, ^v
+        } Else {
+            Send {Tab 7}
+            Sleep 750
+            Send {A 4}
+            Sleep 500
+            Send {Tab}
+            Sleep 500
+            SendInput, % noteTitle
+            Sleep 500,
+            Send, {Tab}
+            Sleep 500,
+            SendInput, % reviewString
+            Sleep 1000,
+        }
+        Send, !s
+    Return
 }
+#If ; Dakota && WinActive("ahk_group browserGroup")
+; The End.
