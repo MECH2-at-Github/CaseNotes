@@ -1,6 +1,6 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly. 
-;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.93"
+;version 0.6.0, The 'Might be ready for PROD because I rewrote word wrap again' version
+Version := "v0.6.00"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -371,7 +371,8 @@ makeCaseNote() {
     }
     finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote
     For editField, label in editFields {
-        finishedCaseNote.mec2CaseNote .= label stWordWrap(%editField%, 100, "             ", "330") "`n"
+        ;finishedCaseNote.mec2CaseNote .= label stWordWrap(%editField%, 100, "             ", "330") "`n"
+        finishedCaseNote.mec2CaseNote .= stWordWrap(%editField%, 100, label, "221") "`n"
     }
     finishedCaseNote.mec2CaseNote .= "=====`n" ini.employeeInfo.employeeName
     finishedCaseNote.eligibility := caseDetails.eligibility
@@ -411,7 +412,7 @@ makeCaseNote() {
             finishedCaseNote.maxisNote .= "`n"
         }
         If (StrLen(originalMissingEdit) > 0) {
-            missingMax := stWordWrap(originalMissingEdit, 74, "* ", "311")
+            missingMax := stWordWrap(originalMissingEdit, 74, "* ", "211")
             finishedCaseNote.maxisNote .= "Special Letter mailed " dateObject.todayMDY " requesting:`n" missingMax "`n"
         }
         finishedCaseNote.maxisNote .= ini.employeeInfo.employeeName
@@ -597,6 +598,7 @@ OversizedNoteGuiGuiClose() {
 }
 oversizedEditChange() {
     ControlGet, osLineCount, LineCount,, Edit1, Oversized Note
+    verbose(saveOversizedButton._borderColor)
     GuiControl, OversizedNoteGui: Text, oversizedLineCount, % osLineCount
 }
 
@@ -2181,10 +2183,10 @@ stWordWrap( origStr:="", maxColumns:=100, indStr:="", indKey:="000" ) {
         while ( StrLen(wrap.paragraph) > stWordWrapGetLineMaxColumn(wrap) ) {
             paragraphSubStr := SubStr(wrap.paragraph, 1, wrap.lineMaxColumn+1)
             paragraphSpPos := InStr(paragraphSubStr, " ", false, 0)
-            wrap.out .= SubStr(wrap.paragraph, 1, paragraphSpPos) paragraphSpPos "`n"
+            wrap.out .= SubStr(wrap.paragraph, 1, paragraphSpPos) "`n"
             wrap.paragraph := SubStr(wrap.paragraph, paragraphSpPos)
         }
-        wrap.out .= RTrim(wrap.paragraph, "`n") paragraphSpPos "`n"
+        wrap.out .= RTrim(wrap.paragraph, "`n") "`n"
     }
     Return RTrim(wrap.out, "`n")
 }

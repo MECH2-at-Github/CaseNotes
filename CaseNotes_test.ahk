@@ -1,6 +1,6 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly. 
-;version 0.5.0, The 'Every subroutine was rewritten as a function and it still works' version
-Version := "v0.5.91"
+;version 0.6.0, The 'Might be ready for PROD because I rewrote word wrap again' version
+Version := "v0.6.00"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -24,10 +24,12 @@ Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1)
     Global sq := "²", cm := "✔", cs := ", ", pct := "%"
 
     ;Settings
-    Global ini := { cbtPositions: { xClipboard: 0, yClipboard: 0 }
+    Global ini := { v2: ""
+        , cbtPositions: { xClipboard: 0, yClipboard: 0 }
         , caseNotePositions: { xCaseNotes: 0, yCaseNotes: 0, xVerification: 0, yVerification: 0 }
         , caseNoteCountyInfo: { countyNoteInMaxis: 0, countyFax: A_Space, countyDocsEmail: A_Space, countyProviderWorkerPhone: A_Space, countyEdBSF: A_Space, Waitlist: 1 }
-        , employeeInfo: { employeeName: A_Space, employeeCounty: A_Space, employeeEmail: A_Space, employeePhone: A_Space, employeeUseEmail: 0, employeeUseMec2Functions: 0, employeeBrowser: A_Space, employeeMaxis: MAXIS-WINDOW-TITLE, employeeBackupLocation: A_Desktop, employeeAlwaysBackup: 0 } }
+        , employeeInfo: { employeeName: A_Space, employeeCounty: A_Space, employeeEmail: A_Space, employeePhone: A_Space, employeeUseEmail: 0, employeeUseMec2Functions: 0, employeeBrowser: A_Space, employeeMaxis: MAXIS-WINDOW-TITLE, employeeBackupLocation: A_Desktop, employeeAlwaysBackup: 0 }
+        , v2end: "" }
     GroupAdd, autoMailGroup, % "Automated Mailing Home Page"
     GroupAdd, autoMailGroup, % "ahk_exe obunity.exe",,, % "Perform Import"
 
@@ -37,7 +39,8 @@ Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1)
     Global zoomPPI := A_ScreenDPI/96
     Global pad := 2, scrollbar := 24, margin := 12, oneRow := "h" hCH+pad*2 " Limit87", twoRows := "h" (hCH*2.7)+pad, threeRows := "h" (hCH*3)+pad*3, fourRows := "h" (hCH*4)+pad*3
 
-    Global countySpecificText := { StLouis: { OverIncomeContactInfo: "", CountyName: "St. Louis County" }
+    Global countySpecificText := { v2: ""
+        , StLouis: { OverIncomeContactInfo: "", CountyName: "St. Louis County" }
         , Dakota: { OverIncomeContactInfo: " contact 651-554-6696 and", CountyName: "Dakota County", customHotkeys: "
     (
         Custom hotkeys for your county exist for the following windows (A ToolTip reminder appears by pressing F1):
@@ -48,7 +51,8 @@ Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1)
         ● Browser (Types an Approved (Alt+F1) or Denied (Alt+F2) app case note. Ctrl+F12 or Alt+F12: worker signature)
         ● Word (Alt+4: Types in first name, case number, and app received date)
         ● MAXIS (Alt+M: Changes the title of the MAXIS window to ""MAXIS"" to enable screen-scraping)
-    )" } }
+    )" }
+        , v2end: "" }
 
     ;Base globals
     Global caseDetails := { docType: "_DOC?", eligibility: "_ELIG?", saEntered: "_SA?", caseType: "_PRG?", appType: "_APP?", haveWaitlist: false, newChanges: true }
@@ -59,12 +63,18 @@ Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1)
         , "07ChildSupportCooperationEdit", "08ExpensesEdit", "09AssetsEdit", "10ProviderEdit", "11ActivityAndScheduleEdit", "12ServiceAuthorizationEdit", "13NotesEdit", "14MissingEdit"]
     Global exampleLabels := [ "01HouseholdCompEditLabelExample", "02SharedCustodyEditLabelExample", "03AddressVerificationEditLabelExample", "04SchoolInformationEditLabelExample", "05IncomeEditLabelExample", "06ChildSupportIncomeEditLabelExample"
         , "07ChildSupportCooperationEditLabelExample", "08ExpensesEditLabelExample", "09AssetsEditLabelExample", "10ProviderEditLabelExample", "11ActivityAndScheduleEditLabelExample", "12ServiceAuthorizationEditLabelExample", "14MissingEditLabelExample" ]
-    Global emailText := { stillRequiredText: "These verifications are still required, and must be received within 90 days of your application date for continued eligibility.", pendingHomelessPreText: "You may be eligible for the homeless policy, which allows us to approve eligibility even though there are verifications we need but do not have. " emailText.stillRequiredText "`n`nBefore we can approve expedited eligibility, we need information that was not on the application:", initialApproval: "`nThe initial approval of child care assistance is 30 hours per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.`nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children.`nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay.", approvedWithMissing: "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. " }
+    Global emailText := { v2: ""
+        , pendingHomelessPreText: "You may be eligible for the homeless policy, which allows us to approve eligibility even though there are verifications we need but do not have. " emailText.stillRequiredText "`n`nBefore we can approve expedited eligibility, we need information that was not on the application:"
+        , approvedWithMissing: "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. "
+        , stillRequiredText: "These verifications are still required, and must be received within 90 days of your application date for continued eligibility."
+        , initialApproval: "`nThe initial approval of child care assistance is 30 hours per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed.`nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children.`nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay."
+        , v2end: "" }
 
     ;Missing Verification globals
     Global emailTextObject := {}, missingInput := {}, otherMissing := {}, letterText := {}, letterTextNumber := 1, missingHomelessItems := "", idList := "", lineCount := 0
     Global overIncomeObj := { overIncomeHHsize: "your size" }
-    Global missingInputObject := { IDmissing: { baseText: "ID", inputAdject: " for ", promptText: "Who is ID needed for?`n`nExample: 'Susanne, Robert Sr'", strRem: 3 }
+    Global missingInputObject := { v2: ""
+        , IDmissing: { baseText: "ID", inputAdject: " for ", promptText: "Who is ID needed for?`n`nExample: 'Susanne, Robert Sr'", strRem: 3 }
         , BCmissing: { baseText: "BC", inputAdject: " for ", promptText: "Who is birth verification needed for?`n`nExample: 'Susie, Bobby Jr'" }
         , BCNonCitizenMissing: { baseText: "BC [non-citizen]", inputAdject: " for ", promptText: "Who is birth verification needed for?`n`nExample: 'Susie, Bobby Jr'" }
         , PaternityMissing: { baseText: "Paternity", inputAdject: " for ", promptText: "Who is paternity verification needed for?`n`nExample: 'Susie, Bobby Jr' or 'Robert / Bobby Jr'" }
@@ -76,7 +86,8 @@ Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1)
         , ChildSupportNoncooperationMissing: { baseText: "CS Non-cooperation", inputAdject: " - CSO phone: ", promptText: "What is the phone number of the Child Support officer?" }
         , LegalNameChangeMissing: { baseText: "Name change", inputAdject: " for ", promptText: "Who is the name change proof needed for?" }
         , SeasonalOffSeasonMissing: { baseText: "Seasonal employment info - app in off-season", inputAdject: " for ", promptText: "Who is the employer? (optional)" }
-        , overIncomeMissing: { baseText: "Over-income", inputAdject: " by $", promptText: "Without dollar signs, enter the calculated income less expenses, income limit, and household size.`nOnly type numbers separated by spaces - no commas or periods.`n`n(Example: 76392 49605 3)" } }
+        , overIncomeMissing: { baseText: "Over-income", inputAdject: " by $", promptText: "Without dollar signs, enter the calculated income less expenses, income limit, and household size.`nOnly type numbers separated by spaces - no commas or periods.`n`n(Example: 76392 49605 3)" }
+        , v2end: "" }
 ;}
 ;setGlobalVariables()
 setFromIni()
@@ -360,7 +371,8 @@ makeCaseNote() {
     }
     finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote
     For editField, label in editFields {
-        finishedCaseNote.mec2CaseNote .= label stWordWrap(%editField%, 100, "             ", 1, 1) "`n"
+        ;finishedCaseNote.mec2CaseNote .= label stWordWrap(%editField%, 100, "             ", "330") "`n"
+        finishedCaseNote.mec2CaseNote .= stWordWrap(%editField%, 100, label, "221") "`n"
     }
     finishedCaseNote.mec2CaseNote .= "=====`n" ini.employeeInfo.employeeName
     finishedCaseNote.eligibility := caseDetails.eligibility
@@ -400,7 +412,7 @@ makeCaseNote() {
             finishedCaseNote.maxisNote .= "`n"
         }
         If (StrLen(originalMissingEdit) > 0) {
-            missingMax := stWordWrap(originalMissingEdit, 74, "* ", 4)
+            missingMax := stWordWrap(originalMissingEdit, 74, "* ", "211")
             finishedCaseNote.maxisNote .= "Special Letter mailed " dateObject.todayMDY " requesting:`n" missingMax "`n"
         }
         finishedCaseNote.maxisNote .= ini.employeeInfo.employeeName
@@ -453,7 +465,10 @@ outputCaseNoteMec2(ByRef sendingCaseNote) {
         Sleep 500
         Send, ^v
     } Else If (!ini.employeeInfo.employeeUseMec2Functions) {
-        catNum := { Application: { letter: "A", pends: 5, elig: 4, denied: 4 }, Redet: { letter: "R", incomplete: 1, elig: 2, denied: 2 } }
+        catNum := { v2: ""
+            , Application: { letter: "A", pends: 5, elig: 4, denied: 4 }
+            , Redet: { letter: "R", incomplete: 1, elig: 2, denied: 2 }
+            , v2end: "" }
         catLetter := catNum[caseDetails.docType].letter
         catNumber := catNum[caseDetails.docType][caseDetails.eligibility]
         Sleep 500
@@ -583,6 +598,7 @@ OversizedNoteGuiGuiClose() {
 }
 oversizedEditChange() {
     ControlGet, osLineCount, LineCount,, Edit1, Oversized Note
+    verbose(saveOversizedButton._borderColor)
     GuiControl, OversizedNoteGui: Text, oversizedLineCount, % osLineCount
 }
 
@@ -592,7 +608,7 @@ guiGetControlSize(guiName, controlName) {
 
 JSONstring(inputString) {
     inputString := StrReplace(inputString, "\", "\\",, -1)
-    inputString := StrReplace(inputString, "`n`n", "\n",, -1)
+    inputString := RegExReplace(inputString, "[`n]{2,10}", "\n\n",, -1)
     inputString := StrReplace(inputString, "`n", "\n",, -1)
     inputString := StrReplace(inputString, """", "\""",, -1)
     Return inputString
@@ -856,8 +872,8 @@ missingVerifsDoneButton() {
             InputBox, missingHomelessItems, % "Homeless App - Info Missing", % "Eligibility is marked as Pending. What information is needed from the client to approve expedited eligibility?`n`nUse a double space ""  "" without quotation marks to start a new line.",,,,,,,, % StrReplace(missingHomelessItems, "`n", "  ")
             If (!ErrorLevel) {
                 missingHomelessItems := StrReplace(missingHomelessItems, "  ", "`n")
-                pendingHomelessMissing := getRowCount("  " missingHomelessItems, 60, "  ")
-                missingVerifications[stWordWrap(emailText.pendingHomelessPreText, 60, " ") "`n"] := 8
+                pendingHomelessMissing := getRowCount("  " missingHomelessItems, 60, "  ", "111")
+                missingVerifications[stWordWrap(emailText.pendingHomelessPreText, 60, " ", "111") "`n"] := 8
                 missingVerifications[pendingHomelessMissing[1] "`n"] := pendingHomelessMissing[2]
                 caseNoteMissingText .= "Missing for expedited approval:`n" StrReplace(missingHomelessItems, "`n", "`n  ") ";`n"
             }
@@ -1337,12 +1353,6 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
 		missingListEnum++
         emailListEnum++
     }
-    ;If UnableToProvideCareMissing {
-        ;missingText := "Parent Medical Condition Form (DHS-6305) or documentation from a licensed practitioner with the parent's condition and limitations, which children, and the time period.`n"
-		;missingVerifications[missingText] := 3
-        ;emailTextString .= missingText
-		;caseNoteMissingText .= "Parent Medical Condition Form (DHS-6305) or documentation;`n"
-    ;}
     For i, missingText in otherMissing {
         If (!otherInput%i%) { ; not checked
             continue
@@ -1440,7 +1450,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
     }
     ;*   Provider Information- If you have a child care provider, send the provider's name, address and start date (if known). Visit www.parentaware.org for help finding a provider. Care is not approved until you get a Service Authorization.
 	If UnregisteredProviderMissing {
-        missingText := "* Your daycare provider needs to register with Child Care Assistance at http://bit.ly/43GRyg8. If they have issues or questions, they can contact CCAP.Providers.DCYF@state.mn.us.`n"
+        missingText := "* Your daycare provider needs to register with CCAP at https://bit.ly/CCAPregistration. They can contact CCAP.Providers.DCYF@state.mn.us with issues or questions.`n"
 		missingVerifications[missingText] := 3
         emailTextString .= missingText
 		caseNoteMissingText .= "Registered provider;`n"
@@ -1598,17 +1608,16 @@ emailButtonClick() {
     WinActivate, % "Message - "
     Send, ^v
 }
-setEmailText(emailTextStringIn) {
+setEmailText(emailTextString) {
 	Gui, MainGui: Submit, NoHide
 	Gui, MissingGui: Submit, NoHide
-    emailTextStringOut := StrReplace(emailTextStringIn, "`n ", " ")
-    emailTextStringOut := StrReplace(emailTextStringOut, "    ", " ")
-    emailTextStringOut := StrReplace(emailTextStringOut, "   ", " ")
-    emailTextStringOut := StrReplace(emailTextStringOut, "  ", "`n  ")
-    emailTextStringOut := StrReplace(emailTextStringOut, "`n*", "`n`n*")
-    emailTextStringOut := StrReplace(emailTextStringOut, "sent separately", "see attached")
-    emailTextStringOut := StrReplace(emailTextStringOut, "http://bit.ly/43GRyg8", "https://dcyf.mn.gov/child-care-assistance-program-information-child-care-programs")
-	return emailTextObject.Combined emailTextStringOut emailTextObject.EndHL
+    emailTextString := RegExReplace(emailTextString, " {3,4}|`n ", " ")
+    ;emailTextString := StrReplace(emailTextString, "`n|    |   ", " ") ; testing
+    emailTextString := StrReplace(emailTextString, "  ", "`n  ")
+    emailTextString := StrReplace(emailTextString, "`n*", "`n`n*")
+    emailTextString := StrReplace(emailTextString, "sent separately", "see attached")
+    emailTextString := StrReplace(emailTextString, "http://bit.ly/43GRyg8", "https://dcyf.mn.gov/child-care-assistance-program-information-child-care-programs")
+	return emailTextObject.Combined emailTextString emailTextObject.EndHL
 }
 letterButtonClick(letterGUINumber:=1) {
     Global
@@ -2148,63 +2157,48 @@ coordStringify(coordObjIn) {
     }
     Return coordString
 }
-;getRowCount({originalString, maxColumns, indentString:="", indentLine:=4, reduceLineLen_dontIndent:=0}) {
-getRowCount(originalString, maxColumns, indentString:="", indentLine:=4) {
-    ;indentString := StrLen(indentString) > 0 ? indentString : ""
-    textString := stWordWrap(originalString, maxColumns, indentString, indentLine)
-    ;textString := stWordWrap({ originalString: originalString, maxColumns: maxColumns, indentString: indentString, indentLine: indentLine })
+getRowCount(originalString, maxColumns, indStr:="", indKey:="000") {
+    textString := stWordWrap(originalString, maxColumns, indStr, indKey)
     StrReplace(textString, "`n", "`n", xCount)
     Return [textString, xCount +1]
 }
-;stWordWrap has been rewritten to allow for increased indenting options - was borrowed function from 'String Things'
-;stWordWrap({originalString, maxColumns, indentString:="", indentLine:=4, reduceLineLen_dontIndent:=0}) { ; indentLine: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
-stWordWrap(originalString, maxColumns, indentString:="", indentLine:=4, reduceLineLen_dontIndent:=0) { ; indentLine: 4 = all lines, 3 = first line of each paragraph, 2 = only very first, 1 =  all but first, 0 = none
-; indentLine: 0 + very first line (1) + first line of each paragraph (10) + all lines (100)
-indentLineStrLen := StrLen(indentLine)
-indentAllLines := indentLineStrLen > 2 && SubStr(indentLine, -1, 1) ? 1 : 0
-indentAllFirstLines := indentAllLines || SubStr(indentLine, 0, 1) || (indentLineStrLen > 1 && SubStr(indentLine, -1, 1)) ? 1 : 0
-
-    If (!StrLen(originalString)) {
+stWordWrap( origStr:="", maxColumns:=100, indStr:="", indKey:="000" ) {
+    ;; indKey: 0: no change, 1: indent, 2: buffer, 3: negative indent
+    ;; __x = first line   _x_ = subsequent first lines   x__ = lines after first line(s) - all 3 digits must be set for settings to apply to all lines;
+    If (!StrLen(origStr)) {
         Return
     }
-    indentLength := StrLen(indentString), indentLine = indentLength > 0 ? indentLine : 0
-    completeString := RTrim(originalString, "`n"), firstLine := 1
-    If (
-        !InStr(completeString, "`n")
-        && (reduceLineLen_dontIndent ? maxColumns - indentLength : maxColumns)
-        >= ( StrLen(completeString) + (indentLine > 1 ? indentLength : 0) ) ) {
-        Return (indentLine > 1 ? indentString : "") completeString
+    wrap := { origStr: RTrim(origStr, "`n"), indLen: StrLen(indStr), indStr: indStr, isFirstLine: 1, out : "", column: 0, maxColumns: maxColumns, wrapAct: {} }
+    wrap.buffStr := Format("{:" wrap.indLen "}", "")
+    
+    indKey := wrap.indLen > 0 ? Format("{:03s}", indKey) : "000" ; if indStr is blank, set all keys to 0 ;
+    For i, line in ["notFirsts", "subFirsts", "firstLine"] {
+        key := SubStr(indKey, i, 1)
+        wrap.wrapAct[line] := key == "1" ? "indent" : key == "2" ? "buffer" : key == "3" ? "reduce" : "continue"
     }
-    Loop, Parse, completeString, `n, `r ; A_LoopField == sentence;
-    {
-        RegExMatch(A_LoopField, "^\s{1,}", manualIndent)
-        trimmedSentence := Trim(A_LoopField)
-        maxLoopColumns := maxColumns, column := 0
-        firstLineOfPara := 1
-        Loop, Parse, trimmedSentence, %A_Space% ; A_LoopField == word;
-        {
-            If (column == 0) {
-                If (firstLineOfPara) {
-                    out .= manualIndent
-                    maxLoopColumns -= StrLen(manualIndent)
-                }
-                maxLoopColumns -= (firstLine && reduceLineLen_dontIndent) ? indentLength : 0
-            }
-            wordLength := StrLen(A_LoopField)
-            lineLength := column + wordLength
-            If (lineLength > maxLoopColumns ) {
-                out .= "`n", column := 0, firstLine := 0, firstLineOfPara := 0
-            }
-            isFirstLineOfPara := (indentLine > 3 && firstLineOfPara)
-            test .= A_LoopField ": " isFirstLineOfPara "`n"
-            indentThisLine := ((column == 0 && indentLine > 0) && (indentLine == 4 || (!firstLine && indentLine != 2) || (indentLine > 1 && firstLine) || (indentLine > 2 && firstLineOfPara) ))
-            out .= ( (indentThisLine ? indentString : "") . A_LoopField " " )
-            column += ( (indentThisLine ? indentLength : 0) + wordLength + 1 )
+    Loop, Parse, origStr, `n, `r
+    { ; A_LoopField == paragraph ;
+        wrap.paragraph := A_LoopField
+        wrap.isParaFirstLine := 1
+        while ( StrLen(wrap.paragraph) > stWordWrapGetLineMaxColumn(wrap) ) {
+            paragraphSubStr := SubStr(wrap.paragraph, 1, wrap.lineMaxColumn+1)
+            paragraphSpPos := InStr(paragraphSubStr, " ", false, 0)
+            wrap.out .= SubStr(wrap.paragraph, 1, paragraphSpPos) "`n"
+            wrap.paragraph := SubStr(wrap.paragraph, paragraphSpPos)
         }
-        firstLine := 0
-        out := RTrim(RTrim(out), "`n") "`n" ; ensures it ends with a new line
+        wrap.out .= RTrim(wrap.paragraph, "`n") "`n"
     }
-    Return RTrim(out, "`n")
+    Return RTrim(wrap.out, "`n")
+}
+stWordWrapGetLineMaxColumn(ByRef wrap) {
+    wrap.lineDesig := wrap.isFirstLine ? "firstLine" : wrap.isParaFirstLine ? "subFirsts" : "notFirsts"
+    wrap.instruction := wrap.wrapAct[wrap.lineDesig]
+    wrap.instruction == "indent" ? wrap.paragraph := wrap.indStr wrap.paragraph : 0
+    wrap.instruction == "buffer" ? wrap.paragraph := wrap.buffStr wrap.paragraph : 0
+    wrap.lineMaxColumn := wrap.instruction == "reduce" ? wrap.maxColumns-wrap.indLen : wrap.maxColumns
+    wrap.isFirstLine := 0
+    wrap.isParaFirstLine := 0
+    return wrap.lineMaxColumn
 }
 verbose(verboseOutput) {
     If (A_ScriptName != "CaseNotes_dev.ahk") {
@@ -2212,7 +2206,7 @@ verbose(verboseOutput) {
     }
     timedToolTip(verboseOutput)
 }
-toString(object) {
+objToString(object) {
     For key, value in object {
         output .= key " = " value "`n"
     }
@@ -2333,13 +2327,13 @@ Return
     PgDn::
         ControlFocus,,\d ahk_exe obunity.exe
         ControlSend,,^{PgDn}, \d ahk_exe obunity.exe
-        Sleep 150
+        Sleep 250
         WinActivate, CaseNotes
     Return
     PgUp::
         ControlFocus,,\d ahk_exe obunity.exe
         ControlSend,,^{PgUp}, \d ahk_exe obunity.exe
-        Sleep 150
+        Sleep 250
         WinActivate, CaseNotes
     Return
 
