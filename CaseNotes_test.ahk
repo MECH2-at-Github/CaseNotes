@@ -1,6 +1,6 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly. 
 ;version 0.6.0, The 'Might be ready for PROD because I rewrote word wrap again' version
-Version := "v0.6.00"
+Version := "v0.6.01"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -322,15 +322,15 @@ newChangesTrue() {
     caseDetails.newChanges := true
 }
 revertLabels() {
-    GuiControl, MainGui: Text, 01HouseholdCompEditLabel, % "Household Comp"
-    GuiControl, MainGui: Text, 03AddressVerificationEditLabel, % "Address Verification"
-    GuiControl, MainGui: Text, 02SharedCustodyEditLabel, % "Shared Custody"
-    GuiControl, MainGui: Text, 04SchoolInformationEditLabel, % "School Information"
-    GuiControl, MainGui: Text, 05IncomeEditLabel, % "Income"
-    GuiControl, MainGui: Text, 06ChildSupportIncomeEditLabel, % "Child Support Income"
-    GuiControl, MainGui: Text, 08ExpensesEditLabel, % "Expenses"
-    GuiControl, MainGui: Text, 09AssetsEditLabel, % "Assets"
-    GuiControl, MainGui: Text, 11ActivityAndScheduleEditLabel, % "Activity and Schedule"
+local editFieldLabels := { 01HouseholdCompEditLabel: "Household Comp", 02SharedCustodyEditLabel: "Shared Custody", 03AddressVerificationEditLabel: "Address Verification", 04SchoolInformationEditLabel: "School Information", 05IncomeEditLabel: "Income", 06ChildSupportIncomeEditLabel: "Child Support Income", 08ExpensesEditLabel: "Expenses", 09AssetsEditLabel: "Assets", 10ProviderEditLabel: "Provider", 11ActivityAndScheduleEditLabel: "Activity and Schedule" }    
+    For key, value in editFieldLabels {
+        GuiControl, MainGui: Text, % key, % value
+    }
+    ; instead of altering label name, create text control after the labels. Then show/hide the control.
+    ;local editFieldPages := [ "01HouseholdCompEditPage", "02SharedCustodyEditPage", "03AddressVerificationEditPage", "04SchoolInformationEditPage", "05IncomeEditPage", "06ChildSupportIncomeEditPage", "08ExpensesEditPage", "09AssetsEditPage", "10ProviderEditPage", "11ActivityAndScheduleEditPage" ]
+    ;For i, pageLabel in editFieldPages {
+        ;showHideControl(pageLabel, "MainGui", "Hide")
+    ;}
 }
 copySharedCustodyEditToCSCoopEdit() {
     Global
@@ -362,7 +362,6 @@ makeCaseNote() {
     Gui, MissingGui: Submit, NoHide
     local finishedCaseNote := {}, originalMissingEdit := 14MissingEdit
     local caseDetailsModified := { caseType: caseDetails.caseType, appType: caseDetails.appType, docType: caseDetails.docType, eligibility: caseDetails.eligibility, saEntered: caseDetails.saEntered }
-    ;verbose(toString(caseDetailsModified))
     ;v2: continuation section 
     editFields := { 01HouseholdCompEdit: " HH COMP:    ", 02SharedCustodyEdit: " CUSTODY:    ", 03AddressVerificationEdit: " ADDRESS:    ", 04SchoolInformationEdit: "  SCHOOL:    ", 05IncomeEdit: "  INCOME:    ", 06ChildSupportIncomeEdit: "      CS:    ", 07ChildSupportCooperationEdit: " CS COOP:    ", 08ExpensesEdit: "EXPENSES:    ", 09AssetsEdit: "  ASSETS:    ", 10ProviderEdit: "PROVIDER:    ", 11ActivityAndScheduleEdit: "ACTIVITY:    ", 12ServiceAuthorizationEdit: "      SA:    ", 13NotesEdit: "   NOTES:    ", 14MissingEdit: " MISSING:    " }
     parenPatterns := ["i)([a-z])([0-9])", "i)([a-z0-9]+)(\()", "(\))([a-z0-9]+)"]
@@ -371,7 +370,6 @@ makeCaseNote() {
     }
     finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote
     For editField, label in editFields {
-        ;finishedCaseNote.mec2CaseNote .= label stWordWrap(%editField%, 100, "             ", "330") "`n"
         finishedCaseNote.mec2CaseNote .= stWordWrap(%editField%, 100, label, "221") "`n"
     }
     finishedCaseNote.mec2CaseNote .= "=====`n" ini.employeeInfo.employeeName
@@ -559,7 +557,6 @@ doPasteInMaxis(maxisNoteText, ByRef maxisWindow) {
     Send, ^v
     Return 1
 }
-
 openOversizedNoteGui(oversizedCaseNote) {
     Global
     Gui, OversizedNoteGui: New,, % "Oversized Note"
@@ -598,7 +595,7 @@ OversizedNoteGuiGuiClose() {
 }
 oversizedEditChange() {
     ControlGet, osLineCount, LineCount,, Edit1, Oversized Note
-    verbose(saveOversizedButton._borderColor)
+    ;verbose(saveOversizedButton._borderColor)
     GuiControl, OversizedNoteGui: Text, oversizedLineCount, % osLineCount
 }
 
@@ -905,7 +902,7 @@ missingVerifsDoneButton() {
     For checkboxId in mecCheckboxIds {
         idList .= "," checkboxId
     }
-    Trim(idList, ",")
+    Trim(idList, ",") ; remove this line? test
     insertAtOffset := (caseDetails.eligibility == "pends" && HomelessStatus) ? 2 : 0
     If ( !overIncomeMissing && !caseDetails.haveWaitlist && !manualWaitlistBox && missingVerifications.Length() > (0 + insertAtOffset) ) {
         If (StrLen(idList) > 5 || insertAtOffset == 2) { ; "other" will always add at least 5
@@ -2027,15 +2024,18 @@ examplesButton() {
     GuiControlGet, examplesButtonText
     If (examplesButtonText == "Examples") {
         For i, exampleLabel in exampleLabels {
-            GuiControl, MainGui:Show, % exampleLabel
+            showHideControl(exampleLabel, "MainGui", "Show")
         }
         GuiControl, MainGui:Text, examplesButtonText, % "Restore"
     } Else If (examplesButtonText == "Restore") {
         For i, exampleLabel in exampleLabels {
-            GuiControl, MainGui:Hide, % exampleLabel
+            showHideControl(exampleLabel, "MainGui", "Hide")
         }
         GuiControl, MainGui:Text, examplesButtonText, % "Examples"
     }
+}
+showHideControl(control, guiWindow, setting:="Show") {
+    GuiControl, % guiWindow ":" setting, % control
 }
 ;EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION  EXAMPLES/HELP SECTION 
 ;=======================================================================================================================================================================================================
@@ -2165,28 +2165,35 @@ getRowCount(originalString, maxColumns, indStr:="", indKey:="000") {
 stWordWrap( origStr:="", maxColumns:=100, indStr:="", indKey:="000" ) {
     ;; indKey: 0: no change, 1: indent, 2: buffer, 3: negative indent
     ;; __x = first line   _x_ = subsequent first lines   x__ = lines after first line(s) - all 3 digits must be set for settings to apply to all lines;
-    If (!StrLen(origStr)) {
-        Return
-    }
-    wrap := { origStr: RTrim(origStr, "`n"), indLen: StrLen(indStr), indStr: indStr, isFirstLine: 1, out : "", column: 0, maxColumns: maxColumns, wrapAct: {} }
+    local wrap := { origStr: RTrim(origStr, "`n"), indLen: StrLen(indStr), indStr: indStr, isFirstLine: 1, out : "", column: 0, maxColumns: maxColumns, wrapAct: {} }
     wrap.buffStr := Format("{:" wrap.indLen "}", "")
-    
-    indKey := wrap.indLen > 0 ? Format("{:03s}", indKey) : "000" ; if indStr is blank, set all keys to 0 ;
+    indKey := Format("{:03s}", indKey)
+    ;indKey := wrap.indLen > 0 ? Format("{:03s}", indKey) : "000" ; if indStr is blank, set all keys to 0 ;
     For i, line in ["notFirsts", "subFirsts", "firstLine"] {
         key := SubStr(indKey, i, 1)
-        wrap.wrapAct[line] := key == "1" ? "indent" : key == "2" ? "buffer" : key == "3" ? "reduce" : "continue"
+        wrap.wrapAct[line] := key == "1" ? "indent" : key == "2" ? "buffer" : key == "3" ? "reduce" : "continue" ; v2 switch
     }
-    Loop, Parse, origStr, `n, `r
-    { ; A_LoopField == paragraph ;
+    If ( StrLen(wrap.origStr) < 1 && wrap.wrapAct.firstLine == "indent" && RegExMatch(wrap.indStr, "\w") ) {
+        Return wrap.indStr
+    }
+    Loop, Parse, % wrap.origStr, `n, `r
+    {
         wrap.paragraph := A_LoopField
         wrap.isParaFirstLine := 1
-        while ( StrLen(wrap.paragraph) > stWordWrapGetLineMaxColumn(wrap) ) {
-            paragraphSubStr := SubStr(wrap.paragraph, 1, wrap.lineMaxColumn+1)
-            paragraphSpPos := InStr(paragraphSubStr, " ", false, 0)
-            wrap.out .= SubStr(wrap.paragraph, 1, paragraphSpPos) "`n"
-            wrap.paragraph := SubStr(wrap.paragraph, paragraphSpPos)
-        }
-        wrap.out .= RTrim(wrap.paragraph, "`n") "`n"
+        Loop {
+            wrap.paragraphStrLen := StrLen(wrap.paragraph)
+            stWordWrapGetLineMaxColumn(wrap)
+            If (StrLen(RTrim(wrap.paragraph)) < wrap.lineMaxColumn) {
+                wrap.out .= (wrap.lineDesig != "firstLine" ? "`n" : "") wrap.paragraph
+                wrap.paragraph := ""
+            } Else {
+                paragraphSubStr := SubStr(wrap.paragraph, 1, wrap.lineMaxColumn+1)
+                paragraphSpPos := InStr(paragraphSubStr, " ", false, 0)
+                paragraphSpPos := paragraphSpPos ? paragraphSpPos : wrap.paragraphStrLen
+                wrap.out .= (wrap.lineDesig != "firstLine" ? "`n" : "") SubStr(wrap.paragraph, 1, paragraphSpPos)
+                wrap.paragraph := SubStr(wrap.paragraph, paragraphSpPos)
+            }
+        } Until ( StrLen(wrap.paragraph) < 1 )
     }
     Return RTrim(wrap.out, "`n")
 }
@@ -2195,13 +2202,12 @@ stWordWrapGetLineMaxColumn(ByRef wrap) {
     wrap.instruction := wrap.wrapAct[wrap.lineDesig]
     wrap.instruction == "indent" ? wrap.paragraph := wrap.indStr wrap.paragraph : 0
     wrap.instruction == "buffer" ? wrap.paragraph := wrap.buffStr wrap.paragraph : 0
-    wrap.lineMaxColumn := wrap.instruction == "reduce" ? wrap.maxColumns-wrap.indLen : wrap.maxColumns
+    wrap.lineMaxColumn := wrap.instruction == "reduce" ? (wrap.maxColumns - wrap.indLen) : wrap.maxColumns
     wrap.isFirstLine := 0
     wrap.isParaFirstLine := 0
-    return wrap.lineMaxColumn
 }
 verbose(verboseOutput) {
-    If (A_ScriptName != "CaseNotes_dev.ahk") {
+    If (A_ScriptName != "CaseNotes_dev.ahk" || !verboseMode) {
         return
     }
     timedToolTip(verboseOutput)
