@@ -1,6 +1,5 @@
-﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly. 
-;version 0.6.0, The 'Might be ready for PROD because I rewrote word wrap again' version
-Version := "v0.6.01"
+﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
+Version := "v1.0.0"
 
 ;Future todo ideas:
 ;Add backup to ini for Case Notes window. Check every minute old info vs new info and write changes to .ini.
@@ -13,12 +12,12 @@ Version := "v0.6.01"
 SetWorkingDir % A_ScriptDir
 #Persistent
 #SingleInstance force
-#NoTrayIcon
+;#NoTrayIcon
 SetTitleMatchMode, RegEx
 DetectHiddenWindows, On
 
 ; Rule for AHKv1 GUI functions and variables: If you are doing a "Gui, Submit" the function needs to be declared Global.
-Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1)
+Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1), selectVerboseMode := verboseMode && 0
 
 ;setGlobalVariables() { ; don't collapse until v2
     Global sq := "²", cm := "✔", cs := ", ", pct := "%"
@@ -213,11 +212,11 @@ buildOpenMainGui() {
     Gui, MainGui: Show, % "x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes, CaseNotes
     Gui, MainGui: Show, AutoSize
 
-    For i, editField in editControls {
+    For ieditField, editField in editControls {
         Gui, MainGui: Font, s9, % "Lucida Console" ; monospace font
         GuiControl, MainGui: Font, % editField
     }    
-    For i, catLabel in exampleLabels {
+    For icatLabel, catLabel in exampleLabels {
         Gui, MainGui: Font, s9, % "Lucida Console"
         GuiControl, MainGui: Font, % catLabel
     }
@@ -328,7 +327,7 @@ local editFieldLabels := { 01HouseholdCompEditLabel: "Household Comp", 02SharedC
     }
     ; instead of altering label name, create text control after the labels. Then show/hide the control.
     ;local editFieldPages := [ "01HouseholdCompEditPage", "02SharedCustodyEditPage", "03AddressVerificationEditPage", "04SchoolInformationEditPage", "05IncomeEditPage", "06ChildSupportIncomeEditPage", "08ExpensesEditPage", "09AssetsEditPage", "10ProviderEditPage", "11ActivityAndScheduleEditPage" ]
-    ;For i, pageLabel in editFieldPages {
+    ;For ipageLabel, pageLabel in editFieldPages {
         ;showHideControl(pageLabel, "MainGui", "Hide")
     ;}
 }
@@ -365,7 +364,7 @@ makeCaseNote() {
     ;v2: continuation section 
     editFields := { 01HouseholdCompEdit: " HH COMP:    ", 02SharedCustodyEdit: " CUSTODY:    ", 03AddressVerificationEdit: " ADDRESS:    ", 04SchoolInformationEdit: "  SCHOOL:    ", 05IncomeEdit: "  INCOME:    ", 06ChildSupportIncomeEdit: "      CS:    ", 07ChildSupportCooperationEdit: " CS COOP:    ", 08ExpensesEdit: "EXPENSES:    ", 09AssetsEdit: "  ASSETS:    ", 10ProviderEdit: "PROVIDER:    ", 11ActivityAndScheduleEdit: "ACTIVITY:    ", 12ServiceAuthorizationEdit: "      SA:    ", 13NotesEdit: "   NOTES:    ", 14MissingEdit: " MISSING:    " }
     parenPatterns := ["i)([a-z])([0-9])", "i)([a-z0-9]+)(\()", "(\))([a-z0-9]+)"]
-    For i, pattern in parenPatterns {
+    For ipattern, pattern in parenPatterns {
         01HouseholdCompEdit := RegExReplace(01HouseholdCompEdit, pattern, "$1 $2")
     }
     finishedCaseNote.mec2CaseNote := autoDenyObject.autoDenyExtensionMECnote
@@ -443,14 +442,14 @@ outputCaseNote(outputInstruction:="") {
     sleep 500
     Clipboard := caseNumber
 }
-outputCaseNoteMec2(ByRef sendingCaseNote) {
+outputCaseNoteMec2(ByRef sendingCaseNote) { ; don't collapse until v2
     Global
     StrReplace(sendingCaseNote.mec2CaseNote, "`n", "`n", mec2CaseNoteLines) ; Counting lines
-    If (mec2CaseNoteLines > 29) { ; off by 1 - last line won't have a newline
+    If (mec2CaseNoteLines > 29) { ; needs to be off by 1 as the last line won't have a newline
         sendingCaseNote.mec2CaseNote := openOversizedNoteGui(sendingCaseNote.mec2CaseNote)
         If (StrLen(sendingCaseNote.mec2CaseNote) < 2) {
             Sleep 200
-            WinActivate, % "CaseNotes"
+            WinActivate, % "^CaseNotes$"
             Return
         }
     }
@@ -501,14 +500,14 @@ outputCaseNoteMaxis(ByRef sendingCaseNote) {
         IniWrite, % maxWinName, % A_MyDocuments "\AHK.ini", EmployeeInfo, EmployeeMaxis
     }
     maxisNote := StrSplit(sendingCaseNote.maxisNote, "`n")
-    maxisNoteLength := maxisNote.Length() -1, maxisNoteOutput := "", j := 1
-    For i, textLine in maxisNote {
+    maxisNoteLength := maxisNote.Length() -1, maxisNoteOutput := "", imaxis := 1
+    For itextLine, textLine in maxisNote {
         maxisNoteOutput .= textLine "`n"
-        j++
-        If (j == 15 && i < maxisNoteLength) {
+        imaxis++
+        If (imaxis == 15 && itextLine < maxisNoteLength) {
             maxisNoteOutput .= "...continued on next page"
             doPasteInMaxis(maxisNoteOutput, maxisWindow)
-            j := 2
+            imaxis := 2
             maxisNoteOutput := "...continued from previous page`n"
             Send, {F9}
             Sleep 1000
@@ -529,8 +528,8 @@ outputCaseNoteBackup(ByRef sendingCaseNote) {
             Return
     }
     local specialLetterBackup := ""
-    For i, letterTextValue in letterText {
-        specialLetterBackup .= StrLen(LetterText[i]) > 0 ? "`n====== Special Letter " i " ======`n" letterTextValue "`n" : ""
+    For iletterTextValue, letterTextValue in letterText {
+        specialLetterBackup .= StrLen(LetterText[iletterTextValue]) > 0 ? "`n====== Special Letter " iletterTextValue " ======`n" letterTextValue "`n" : ""
     }
     local backupFile := FileOpen(ini.employeeInfo.employeeBackupLocation "\" backupFileName ".txt", "W")
     local backupString := "Case Number: " (caseNumber != "" ? caseNumber : "(not entered)") "`n`n====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" specialLetterBackup "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n"
@@ -595,7 +594,6 @@ OversizedNoteGuiGuiClose() {
 }
 oversizedEditChange() {
     ControlGet, osLineCount, LineCount,, Edit1, Oversized Note
-    ;verbose(saveOversizedButton._borderColor)
     GuiControl, OversizedNoteGui: Text, oversizedLineCount, % osLineCount
 }
 
@@ -603,11 +601,12 @@ guiGetControlSize(guiName, controlName) {
     GuiControlGet outputVar, % guiName ":POS", % controlName
 }
 
-JSONstring(inputString) {
-    inputString := StrReplace(inputString, "\", "\\",, -1)
-    inputString := RegExReplace(inputString, "[`n]{2,10}", "\n\n",, -1)
-    inputString := StrReplace(inputString, "`n", "\n",, -1)
-    inputString := StrReplace(inputString, """", "\""",, -1)
+JSONstring(inputString) { ; encodeURIComponent
+    inputString := StrReplace(inputString, "\", "%5C",, -1)
+    inputString := StrReplace(inputString, "%", "%25",, -1)
+    inputString := RegExReplace(inputString, "`n{2,}", "%0A%0A",, -1)
+    inputString := StrReplace(inputString, "`n", "%0A",, -1)
+    inputString := StrReplace(inputString, """", "%22",, -1)
     Return inputString
 }
 ;BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION - BUILD AND SEND SECTION
@@ -634,7 +633,6 @@ formatMDY(inputDate) {
 calcDates() {
     Global
     Gui, MainGui: Submit, NoHide
-    ;autoDenyObject.autoDenyExtensionSpecLetter :=
     autoDenyObject := {}
 
     dateObject.receivedYMD := ReceivedDate
@@ -809,7 +807,6 @@ buildMissingGui() {
     Gui, MissingGui: Add, Checkbox, % column2of2 " vEmploymentIneligibleMissing", % "Employment Not Enough Hours"
     Gui, MissingGui: Add, Checkbox, % column1of2 " vESPlanOnlyJSMissing", % "ES Plan-only JS notice"
     Gui, MissingGui: Add, Checkbox, % column2of2 " vActivityAfterHomelessMissing", % "Activity Req. After 3-Mo Homeless Period"
-    ;Gui, MissingGui: Add, Checkbox, % column1of2 " vUnableToProvideCareMissing", % "Unable to Provide Care form"
     Gui, MissingGui: Add, Checkbox, % column1of1 " vMightBeUnableToProvideCareMissing", % "One Parent Of Two Might Be 'Unable to Provide Care'"
 
     Gui, MissingGui: Font, bold ;-- PROVIDER SECTION ===================================================================
@@ -838,18 +835,16 @@ buildMissingGui() {
     Gui, MissingGui: Show, % "Hide x" ini.caseNotePositions.xVerification " y" ini.caseNotePositions.yVerification
 }
 
+enumInc(ByRef enum, list) {
+    enum[list]++
+}
 missingVerifsDoneButton() {
     Global
 	Gui, MainGui: Submit, NoHide
 	Gui, MissingGui: Submit, NoHide
     calcDates()
-    ; Resetting variables to blank and creating locals
-    emailTextString := "", emailTextObject := {}
-    mecCheckboxIds := {}
-    letterNumber := 1, letterTextNumber := 1, letterText := {}
-    lineNumber := 1, missingListEnum := 1, clarifiedListEnum := 1, emailListEnum := 1, lineCount := 0
-    caseNoteMissingText := ""
-    For i, letnum in ["letter2", "letter3", "letter4"] {
+    emailTextString := "", emailTextObject := {}, mecCheckboxIds := {}, letterTextNumber := 1, letterText := {}, lineNumber := 1, lineCount := 0, enum := { missing: 0, clarify: 0, email: 0, lineCount: 0 }, caseNoteMissingText := "" ; Resetting variables to blank and creating locals
+    For iletnum, letnum in ["letter1", "letter2", "letter3", "letter4"] {
         GuiControl, MissingGui: Hide, % letnum
     }
 	local missingVerifications := {}, clarifiedVerifications := {}
@@ -887,28 +882,31 @@ missingVerifsDoneButton() {
     emailTextObject.Middle := !overIncomeMissing ? "`n`nThe following documents or verifications " emailTextObject.AreOrWillBe " needed" emailTextObject.Reason2 ":`n`n" : ""
     emailTextObject.Combined := emailTextObject.Start emailTextObject.Middle
 
-    parseMissingVerifications(missingVerifications, missingListEnum, clarifiedVerifications, clarifiedListEnum, emailTextString, emailListEnum, caseNoteMissingText)
+    parseMissingVerifications(missingVerifications, clarifiedVerifications, emailTextString, caseNoteMissingText, enum)
 
+    If (enum.clarify) {
+        clarifiedVerifications.InsertAt(1, "__Clarification of items listed above the Worker Comments:__`n", 1)
+    }
     caseDetails.haveWaitlist := (caseDetails.caseType == "BSF" && caseDetails.eligibility == "ineligible" && ini.caseNoteCountyInfo.Waitlist > 1)
     If (!caseDetails.haveWaitlist) {
+        selectVerboseMode := 1
         faxAndEmail := faxAndEmailText()
-        faxAndEmailWrapped := getRowCount(faxAndEmail, 60, "")
-        autoDenyTextAndLines := getRowCount(autoDenyObject.autoDenyExtensionSpecLetter, 60, "")
-        clarifiedVerifications[ "NEWLINE" faxAndEmail "`nNEWLINE" autoDenyObject.autoDenyExtensionSpecLetter ] := faxAndEmailWrapped[2]+autoDenyTextAndLines[2]+1
+        faxAndEmailWrapped := getRowCount(faxAndEmail, 60, "", "000")
+        autoDenyTextAndLines := getRowCount(autoDenyObject.autoDenyExtensionSpecLetter, 60, "", "000")
+        clarifiedVerifications[ "NEWLINE" faxAndEmailWrapped[1] "`nNEWLINE" autoDenyTextAndLines[1] ] := faxAndEmailWrapped[2]+autoDenyTextAndLines[2]+1
         emailTextString .= autoDenyObject.autoDenyExtensionSpecLetter
+        selectVerboseMode := 0
     }
 
     idList := "other"
     For checkboxId in mecCheckboxIds {
         idList .= "," checkboxId
     }
-    Trim(idList, ",") ; remove this line? test
     insertAtOffset := (caseDetails.eligibility == "pends" && HomelessStatus) ? 2 : 0
-    If ( !overIncomeMissing && !caseDetails.haveWaitlist && !manualWaitlistBox && missingVerifications.Length() > (0 + insertAtOffset) ) {
+    If ( !overIncomeMissing && !caseDetails.haveWaitlist && !manualWaitlistBox && enum.missing > (0 + insertAtOffset) ) {
         If (StrLen(idList) > 5 || insertAtOffset == 2) { ; "other" will always add at least 5
             missingVerifications.InsertAt(1 + insertAtOffset, "In addition to the above, please submit the following items:`n", 1)
-        }
-        Else If (StrLen(idList) == 5) {
+        } Else If (StrLen(idList) == 5) {
             missingVerifications.InsertAt(1+ insertAtOffset, "_____________Please submit the following items:_____________`n", 1)
         }
     }
@@ -925,467 +923,466 @@ Due to limited funding, new eligibility for CCAP in " countySpecificText[ini.emp
 • Are applying for and are approved for Cash Assistance;
 " waitlistPriorities[waitlistNumber] "`n
 )"
-        emailTextObject.Waitlist := "`n`n" waitlistText "`n" (manualWaitlistBox ? submitOnlyCommentItemsText "`n" : "")
+        emailTextObject.waitlist := "`n`n" waitlistText "`n" (manualWaitlistBox ? submitOnlyCommentItemsText "`n" : "") ; not implemented
         submitOnlyCommentItemsText := "If you meet one of the above criteria, please submit the following items:`n"
         submitCommentAndCheckboxItemsText := "If you meet one of the above criteria, in addition to items above the Worker Comments, please submit the following:`n"
         If (manualWaitlistBox) {
             waitlistText .= StrLen(idList) == 5 ? submitOnlyCommentItemsText : submitCommentAndCheckboxItemsText
         }
-        waitlistText := getRowCount(waitlistText, 60, "")
+        waitlistText := getRowCount(waitlistText, 60, "", "000")
         missingVerifications.InsertAt(1, waitlistText[1] "`n", waitlistText[2])
         caseNoteMissingText .= "Approved MFIP/DWP or meet current Waitlist criteria;`n"
     }
-    If (clarifiedVerifications.Length() > 1) {
-        clarifiedVerifications.InsertAt(1, (missingVerifications.Length() > 1 ? "`n" : "") "__Clarification of items listed above the Worker Comments:__`n", 1)
-        ;clarifiedVerifications.InsertAt(1, "__Clarification of items listed above the Worker Comments:__`n", 1)
-    }
     emailTextObject.output := setEmailText(emailTextString)
-    listifyMissingObject := { 1missing: { arrayLines: 0, verificationList: missingVerifications }, 2clarified: { arrayLines: countLines(clarifiedVerifications), verificationList: clarifiedVerifications } }
+    clarArrLines := countLines(clarifiedVerifications)
+    listifyMissingObject := { 1missing: { arrayLines: 0, verificationList: missingVerifications }, 2clarified: { arrayLines: clarArrLines, verificationList: clarifiedVerifications } }
     For objName, objContents in listifyMissingObject {
         listifyMissing( objContents )
     }
-	caseNoteMissingText := Trim(caseNoteMissingText, "`n") ; removes the last new line
-    For i, letterTextContents in letterText {
-        If (InStr(letterTextContents, "__Clarification",,2)) {
-            StrReplace(stWordWrap(letterTextContents, 60, ""), "`n", "`n", letterLineCount)
-            If (letterLineCount < 27) {
-                letterText[i] := StrReplace(letterTextContents, "__Clarification", "`n__Clarification")
-            }
+	caseNoteMissingText := RTrim(caseNoteMissingText, "`n")
+    For iletterTextContents, letterTextContents in letterText {
+        If (InStr(letterTextContents, "__Clarification",,2) && getRowCount(letterTextContents, 60, "", "000")[2] < 28) { ; adds a line break before __Clarification as long as it's not at the start of the string.
+            letterText[iletterTextContents] := StrReplace(letterTextContents, "__Clarification", "`n__Clarification")
         }
-		GuiControl, MissingGui:Show, % "letter" . i
+		GuiControl, MissingGui:Show, % "letter" . iletterTextContents
     }
 	GuiControl, MainGui: Text, 14MissingEdit, % caseNoteMissingText
 	GuiControl, MissingGui: Show, % "emailButton"
-	WinActivate, CaseNotes
+	WinActivate, % "^CaseNotes$"
     caseDetails.newChanges := false
 }
 
-parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByRef clarifiedVerifications, ByRef clarifiedListEnum, ByRef emailTextString, ByRef emailListEnum, ByRef caseNoteMissingText) {
+parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerifications, ByRef emailTextString, ByRef caseNoteMissingText, ByRef enum) {
 	Global
 	If IDmissing {
+        enumInc(enum, "email")
+        enumInc(enum, "clarify")
         missingText := "ID for " missingInput.IDmissing ";`n"
-		clarifiedVerifications[clarifiedListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		clarifiedVerifications[enum.clarify ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= missingText
-        clarifiedListEnum++
-        emailListEnum++
         mecCheckboxIds.proofOfIdentity := 1
     }
 	If BCmissing {
+        enumInc(enum, "email")
+        enumInc(enum, "clarify")
         missingText := "Birth date / relationship / citizenship verification for: " missingInput.BCmissing
-		clarifiedVerifications[clarifiedListEnum ". " missingText ";`n"] := 2
-        emailTextString .= emailListEnum ". " missingText ". (Example: official Birth Certificate);`n"
+		clarifiedVerifications[enum.clarify ". " missingText ";`n"] := 2
+        emailTextString .= enum.email ". " missingText " (example: official Birth Certificate);`n"
 		caseNoteMissingText .= missingText ";`n"
-        clarifiedListEnum++
-        emailListEnum++
         mecCheckboxIds.proofOfBirth := 1
         mecCheckboxIds.proofOfRelation := 1
         mecCheckboxIds.citizenStatus := 1
     }
 	If BCNonCitizenMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "clarify")
         missingText := "Birth date / relationship / immigration verification for: " missingInput.BCNonCitizenMissing ";`n"
-		clarifiedVerifications[clarifiedListEnum ". " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+		clarifiedVerifications[enum.clarify ". " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= missingText
-        clarifiedListEnum++
-        emailListEnum++
         mecCheckboxIds.proofOfBirth := 1
         mecCheckboxIds.proofOfRelation := 1
         mecCheckboxIds.citizenStatus := 1
     }
     If PaternityMissing {
-        missingText := "Paternity verification for: " missingInput.PaternityMissing ". (Examples: official Birth Certificate, Recognition of Parentage form. If the father is not listed, contact me for alternatives.)"
-        tempText := getRowCount(missingListEnum ". " missingText ";", 60, "")
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
+        missingText := "Paternity verification for: " missingInput.PaternityMissing " (examples: official Birth Certificate, Recognition of Parentage form. If the father is not listed, contact me for alternatives.)"
+        local tempText := getRowCount(enum.missing ". " missingText ";", 60, "")
         missingVerifications[tempText[1] "`n"] := tempText[2]
-        emailTextString .= emailListEnum ". " missingText ";`n"
+        emailTextString .= enum.email ". " missingText ";`n"
 		caseNoteMissingText .= "Paternity for  " missingInput.PaternityMissing ";`n"
-        missingListEnum++
-        emailListEnum++
         mecCheckboxIds.proofOfRelation := 1
     }
 	If AddressMissing {
         If (HomelessStatus) {
+            enumInc(enum, "email")
+            enumInc(enum, "clarify")
             missingText := "Verification of current residence, such as a signed statement of your county of residence;`n"
-            clarifiedVerifications[clarifiedListEnum ". " missingText] := 2
-            emailTextString .= emailListEnum ". " missingText
+            clarifiedVerifications[enum.clarify ". " missingText] := 2
+            emailTextString .= enum.email ". " missingText
             caseNoteMissingText .= "Address (homeless);`n"
-            clarifiedListEnum++
-            emailListEnum++
         } Else {
+            enumInc(enum, "email")
             missingText := "Verification of current residence;`n"
-            emailTextString .= emailListEnum ". " missingText
+            emailTextString .= enum.email ". " missingText
             caseNoteMissingText .= "Address;`n"
-            emailListEnum++
         }
         mecCheckboxIds.proofOfResidence := 1
     }
 	If ChildSupportFormsMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         If (missingInput.ChildSupportFormsMissing ~= "^\d$") {
-            missingInput.ChildSupportFormsMissing .= missingInput.ChildSupportFormsMissing < 2 ? " set" : " sets"
+            missingInput.ChildSupportFormsMissing .= missingInput.ChildSupportFormsMissing+0 == 1 ? " set" : " sets"
         }
-        missingText := "Cooperation with Child Support forms (" missingInput.ChildSupportFormsMissing ", sent separately);`n"
-		missingVerifications[missingListEnum ". " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
-		caseNoteMissingText .= "CS forms (" missingInput.ChildSupportFormsMissing ");`n"
-		missingListEnum++
-        emailListEnum++
+        missingText := "'Referral to Support and Collections' form (" missingInput.ChildSupportFormsMissing ", sent separately);`n"
+        ;missingText := "Cooperation with Child Support forms (" missingInput.ChildSupportFormsMissing ", sent separately);`n"
+        ;missingText := "Referral to Support and Collections (required), Client Statement of Good Cause (optional) (" missingInput.ChildSupportFormsMissing ", sent separately);`n"
+        ;missingText := "'Child Support Referral' form (" missingInput.ChildSupportFormsMissing ", sent separately);`n"
+        ;missingText := "Child Support forms, including 'Referral to Support and Collections' (" missingInput.ChildSupportFormsMissing ", sent separately);`n"
+        ;missingText := "Child Support forms' (" missingInput.ChildSupportFormsMissing ", sent separately);`n"
+		missingVerifications[enum.missing ". " missingText] := 2
+        emailTextString .= enum.email ". " missingText
+		caseNoteMissingText .= "CS Referral/Good Cause (" missingInput.ChildSupportFormsMissing ");`n"
     }
     sharedCustodyOptionsText := "  A. Stating that you have full custody, or`n  B. Your current Parenting Time (shared custody) schedule `n     listing the days and times of the custody switches;"
 	If CustodyScheduleMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "A statement, written by you that is signed and dated, for each child needing CCAP that has a parent not in your household:`n" sharedCustodyOptionsText "`n"
-		missingVerifications[missingListEnum ". " missingText] := 5
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 5
+        emailTextString .= enum.email ". " StrReplace(missingText, " `n     ", " ")
 		caseNoteMissingText .= "Shared custody / parenting time;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If CustodySchedulePlusNamesMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "A statement, written by you that is signed and dated, for " missingInput.CustodySchedulePlusNamesMissing ":`n" sharedCustodyOptionsText "`n"
-		missingVerifications[missingListEnum ". " missingText] := 5
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 5
+        emailTextString .= enum.email ". " StrReplace(missingText, " `n     ", " ")
 		caseNoteMissingText .= "Shared custody / parenting time for " missingInput.CustodySchedulePlusNamesMissing ";`n"
-		missingListEnum++
-        emailListEnum++
     }
     if DependentAdultStudentMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Verification of full-time student status for " missingInput.DependentAdultStudentMissing ", and a signed statement that you provide at least 50% of their financial support;`n* Their 30-day income verification is needed if they are not a full-time high-school / GED student or are over 18.`n"
-        missingVerifications[missingListEnum ". " missingText] := 6
-        emailTextString .= emailListEnum ". " missingText
+        missingVerifications[enum.missing ". " missingText] := 6
+        emailTextString .= enum.email ". " StrReplace(missingText, "`n", "") "`n"
 		caseNoteMissingText .= "Dependent Adult FT school status, income, statement of 50% support;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If ChildSchoolMissing {
+        enumInc(enum, "email")
         missingText := "Child's school information (location, grade, start/end times) - does not need to be verified by the school;`n"
-        emailTextString .= emailListEnum ". " missingText
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Child school information;`n"
         mecCheckboxIds.childSchoolSchedule := 2
-        emailListEnum++
         ;MEC2 text: Child School Schedule- You can provide the school schedule of each child that needs child care by sending a copy of the days and times of school from the school's website or handbook, writing the information on a piece of paper, or telling your worker.
     }
     If ChildFTSchoolMissing {
-        missingText := "Verification of full-time student status for minor children with employment OR their most recent 30 days income (income is not counted if attending school full-time);`n"
-        missingVerifications[missingListEnum ". " missingText] := 3
-        emailTextString .= emailListEnum ". " missingText
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
+        missingText := "Verification of full-time student status for employed minor children OR their most recent 30 days of income (income is not counted if attending school full-time);`n"
+        missingVerifications[enum.missing ". " missingText] := 3
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Minor child FT school status or income;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If MarriageCertificateMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Marriage verification (example: marriage certificate);`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Marriage certificate;`n"
-		missingListEnum++
-        emailListEnum++
         mecCheckboxIds.proofOfRelation := 1
     }
 	If LegalNameChangeMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Legal name change verification for " missingInput.LegalNameChangeMissing ";`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Legal name change for " missingInput.LegalNameChangeMissing ";`n"
-		missingListEnum++
-        emailListEnum++
     }
 ;======================================================
 	If IncomeMissing {
-        tempText := dateObject.needsExtension > -1 ? " your most recent 30 days income" : caseDetails.docType == "Redet" ? " 30 days income prior to " dateObject.RedetDueMDY : " 30 days income prior to " dateObject.receivedMDY
+        enumInc(enum, "email")
+        enumInc(enum, "clarify")
+        local tempText := dateObject.needsExtension > -1 ? " your most recent 30 days of income" : caseDetails.docType == "Redet" ? " 30 days of income prior to " dateObject.RedetDueMDY : " 30 days of income prior to " dateObject.receivedMDY
         ; IncomeText := if doesn't need extension : elseif redetermination : elseif app needs extension
         missingText := "Verification of" tempText ";`n"
-        clarifiedVerifications[clarifiedListEnum ". Proof of Financial Information: " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+        clarifiedVerifications[enum.clarify ". Proof of Financial Information: " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Earned income;`n"
-        clarifiedListEnum++
-        emailListEnum++
         mecCheckboxIds.proofOfFInfo := 1
         ;MEC2 text: Proof of Financial Information- You can provide proof of financial information and income with the last 30 days of check stubs, income tax records, business ledger, award letter, or a letter from your employer with pay rate, number of hours worked per week and how often you are paid.
     }
 	If IncomePlusNameMissing {
-        tempText := dateObject.needsExtension > -1 ? missingInput.IncomePlusNameMissing "'s most recent 30 days income" : caseDetails.docType == "Redet" ? missingInput.IncomePlusNameMissing "'s 30 days income prior to " dateObject.RedetDueMDY : missingInput.IncomePlusNameMissing "'s 30 days income prior to " dateObject.receivedMDY
+        enumInc(enum, "email")
+        enumInc(enum, "clarify")
+        local tempText := dateObject.needsExtension > -1 ? missingInput.IncomePlusNameMissing "'s most recent 30 days of income" : caseDetails.docType == "Redet" ? missingInput.IncomePlusNameMissing "'s 30 days of income prior to " dateObject.RedetDueMDY : missingInput.IncomePlusNameMissing "'s 30 days of income prior to " dateObject.receivedMDY
         missingText := "Verification of " tempText ";`n"
-        clarifiedVerifications[clarifiedListEnum ". Proof of Financial Information: " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+        clarifiedVerifications[enum.clarify ". Proof of Financial Information: " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Earned income (" missingInput.IncomePlusNameMissing ");`n"
-        clarifiedListEnum++
-        emailListEnum++
         mecCheckboxIds.proofOfFInfo := 1
     }
 	If WorkScheduleMissing {
-        tempText := dateObject.needsExtension > -1 ? " your work schedule" : caseDetails.docType == "Redet" ? " work schedule from " dateObject.RedetDueMDY : " work schedule from " dateObject.receivedMDY
+        enumInc(enum, "email")
+        enumInc(enum, "clarify")
+        local tempText := dateObject.needsExtension > -1 ? " your work schedule" : caseDetails.docType == "Redet" ? " work schedule from " dateObject.RedetDueMDY : " work schedule from " dateObject.receivedMDY
         missingText := "Verification of" tempText " showing days of the week and start/end times;`n"
-        clarifiedVerifications[clarifiedListEnum ". Proof of Activity Schedule: " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+        clarifiedVerifications[enum.clarify ". Proof of Activity Schedule: " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Work schedule;`n"
-        clarifiedListEnum++
-        emailListEnum++
         mecCheckboxIds.proofOfActivitySchedule := 1
         ;MEC2 text: Proof of Activity Schedule- You can provide proof of adult activity schedules with work schedules, school schedules, time cards, or letter from the employer or school with the days and times working or in school. If you have a flexible work schedule, include a statement with typical or possible times worked.
     }
 	If WorkSchedulePlusNameMissing {
-        tempText := dateObject.needsExtension > -1 ? missingInput.WorkSchedulePlusNameMissing "'s work schedule" : caseDetails.docType == "Redet" ? missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.RedetDueMDY : missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.receivedMDY
+        enumInc(enum, "email")
+        enumInc(enum, "clarify")
+        local tempText := dateObject.needsExtension > -1 ? missingInput.WorkSchedulePlusNameMissing "'s work schedule" : caseDetails.docType == "Redet" ? missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.RedetDueMDY : missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.receivedMDY
         missingText := "Verification of " tempText " showing days of the week and start/end times;`n"
-        clarifiedVerifications[clarifiedListEnum ". Proof of Activity Schedule: " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+        clarifiedVerifications[enum.clarify ". Proof of Activity Schedule: " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Work schedule (" missingInput.WorkSchedulePlusNameMissing ");`n"
-        clarifiedListEnum++
-        emailListEnum++
         mecCheckboxIds.proofOfActivitySchedule := 1
     }
 	If ContractPeriodMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Employment Contract Period verification if not full-year;`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Employment Contract Period;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If NewEmploymentMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Verification of employment start date, wage and expected hours per week, and first pay date;`n"
-		missingVerifications[missingListEnum ". " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "New employment information;`n"
-		missingListEnum++
-        emailListEnum++
     }
     If WorkLeaveMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Verification of leave of absence, including: `nPaid/unpaid status, start date, and expected: return date, wage, and hours per week. Upon returning, we need your work schedule showing days of the week and start/end times;`n"
-		missingVerifications[missingListEnum ". " missingText] := 4
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 4
+        emailTextString .= enum.email ". " StrReplace(missingText, "`n", "") "`n"
 		caseNoteMissingText .= "Leave of absence details;`n"
-		missingListEnum++
-        emailListEnum++
     }
 ;-----------------------------------------------------------------
     If SeasonalWorkMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Verification of seasonal employment expected season length;`n"
-		missingVerifications[missingListEnum ". " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Seasonal employment season length;`n"
-        emailListEnum++
-        missingListEnum++
     }
     If SeasonalOffSeasonMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         ;tempText := StrLen(SeasonalOffSeasonMissing) > 0 ? " at " SeasonalOffSeasonMissing : ""
-        tempText := missingInput.SeasonalOffSeasonMissing != "" ? " at " missingInput.SeasonalOffSeasonMissing : ""
+        local tempText := missingInput.SeasonalOffSeasonMissing != "" ? " at " missingInput.SeasonalOffSeasonMissing : ""
         missingText := "Verification of either seasonal employment " tempText ", including expected season length and typical wages, or a signed statement that you are no longer an employee at this job.`n Upon returning to work, verification of work schedule will`n be needed, showing days of the week and start/end times;`n"
-		missingVerifications[missingListEnum ". " missingText] := 6
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 6
+        emailTextString .= enum.email ". " StrReplace(missingText, "`n", "") "`n"
 		caseNoteMissingText .= "Seasonal employment (applied during off season);`n"
-        missingListEnum++
-        emailListEnum++
     }
 ;-----------------------------------------------------------------
 	If SelfEmploymentMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Self-employment income such as your recent complete federal tax return. (For new self-employment, state your start date). If you haven't yet filed taxes or your taxes don't represent expected ongoing income, submit monthly reports or ledgers with the most recent full 3 months of gross income;`n"
         ;MEC2 text: Proof of Financial Information- You can provide proof of financial information and income with the last 30 days of check stubs, income tax records, business ledger, award letter, or a letter from your employer with pay rate, number of hours worked per week and how often you are paid. 
-		missingVerifications[missingListEnum ". " missingText] := 5
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 6
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Self-Employment income;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If SelfEmploymentScheduleMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Written statement of your self-employment work schedule with days of the week and start/end times;`n"
         ;MEC2 text: Proof of Activity Schedule- You can provide proof of adult activity schedules with work schedules, school schedules, time cards, or letter from the employer or school with the days and times working or in school. If you have a flexible work schedule, include a statement with typical or possible times worked.
-		missingVerifications[missingListEnum ". " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Self-Employment work schedule;`n"
-		missingListEnum++
-        emailListEnum++
     }
     If SelfEmploymentBusinessGrossMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Information regarding your self-employment business' annual gross income, if it is less than $500,000 (optional);`n"
-        missingVerifications[missingListEnum ". " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+        missingVerifications[enum.missing ". " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Self-Employment gross (if subject to small/large min wage: <$500k/yr?) - not required;`n"
-		missingListEnum++
-        emailListEnum++
     }
 ;-----------------------------------------------------------------
 	If ExpensesMissing {
-        missingText := "Proof of Expenses: Healthcare Insurance premiums, child support, and spousal support - if not listed on submitted paystubs;`n"
-        emailTextString .= emailListEnum ". " missingText
+        enumInc(enum, "email")
+        missingText := "Proof of Expenses: Healthcare Insurance premiums, child support, spousal support - if not listed on submitted paystubs;`n"
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Expenses;`n"
-        emailListEnum++
-        mecCheckboxIds.proofOfDeductions := 1
+        mecCheckboxIds.proofOfDeductions := 2
         ;MEC2 text: Proof of Deductions- You can provide proof of expenses for health insurance premiums (medical, dental, vision), child support paid for a child not living in your home, and spousal support with check stubs, benefit statements or premium statements. 
     }
 ;==================================================================================
 	If ChildSupportIncomeMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Verification of your Child Support income;`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Child Support income;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If SpousalSupportMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Verification of your Spousal Support income;`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Spousal Support income;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If RentalMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Verification of your rental income;`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Rental income;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If DisabilityMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Verification of your disability income;`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "STD / LTD;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If InsuranceBenefitsMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Verification of your Insurance Benefits income;`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Insurance benefits income;`n"
-		missingListEnum++
-        emailListEnum++
     }
     If UnearnedStatementMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "A statement written by you that is signed and dated, stating if you have any unearned income. Submit verification if yes.`nThis includes: Child/Spousal support, Rentals, Unemployment, RSDI, Insurance payments, VA benefits, Trust income, Contract for deed, Interest, Dividends, Gambling winnings, Inheritance, Capital gains, etc.;`n"
-        missingVerifications[missingListEnum ". " missingText] := 6
-        emailTextString .= emailListEnum ". " missingText
+        missingVerifications[enum.missing ". " missingText] := 6
+        emailTextString .= enum.email ". " StrReplace(missingText, "`n", "") "`n"
         caseNoteMissingText .= "Unearned income yes / no questions (statement);`n"
-        missingListEnum++
-        emailListEnum++
     }
 	If VABenefitsMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Verification of your VA income;`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "VA income;`n"
-		missingListEnum++
-        emailListEnum++
     }
     If UnearnedMailedMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Unearned income questions that were not answered (sent separately);`n"
-        missingVerifications[missingListEnum ". " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+        missingVerifications[enum.missing ". " missingText] := 2
+        emailTextString .= enum.email ". " missingText
         caseNoteMissingText .= "Unearned income yes / no questions (mailed back);`n"
-        missingListEnum++
-        emailListEnum++
     }
 	If AssetsBlankMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Written or verbal statement of your assets being either MORE THAN or LESS THAN $1 million;`n"
-		missingVerifications[missingListEnum ". " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Assets amount statement;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If AssetsGT1mMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Clarification of your assets, which you listed as MORE THAN $1 million;`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Assets clarification (>$1m on app);`n"
-		missingListEnum++
-        emailListEnum++
     }
 ;======================================================
 	If EdBSFformMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := ini.caseNoteCountyInfo.countyEdBSF " form (sent separately);`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= ini.caseNoteCountyInfo.countyEdBSF " form;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If ClassScheduleMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Class schedule with class start/end times and credits;`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Adult class schedule;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If TranscriptMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Unofficial post-secondary transcript/academic record;`n"
-		missingVerifications[missingListEnum ". " missingText] := 1
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 1
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Post-secondary transcript;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If EducationEmploymentPlanMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Cash Assistance Employment Plan listing your education activity and schedule;`n"
-		missingVerifications[missingListEnum ". " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "ES Plan with education activity and schedule;`n"
-		missingListEnum++
-        emailListEnum++
     }
     If StudentStatusOrIncomeMissing {
-        missingText := "Verification of your student status of being at least halftime, OR your most recent 30 days income.`n (if you are 19 or under and attending school at least`n   halftime, your income is not counted);`n"
-		missingVerifications[missingListEnum ". " missingText] := 4
-        emailTextString .= emailListEnum ". " missingText
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
+        missingText := "Verification of your student status of being at least halftime, OR your most recent 30 days of income (if you are 19 or under and verify attending school at least halftime, your income is not counted);`n"
+		missingVerifications[enum.missing ". " missingText] := 4
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Halftime+ student status or income (PRI age 19 or under);`n"
-		missingListEnum++
-        emailListEnum++
     }
 ;-------------------------
 	If JobSearchHoursMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Job search hours needed per week: Assistance can be approved for 1 to 20 hours of job search each week, limited to a total of 240 hours per calendar year;`n"
-		missingVerifications[missingListEnum ". " missingText] := 3
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 3
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Job search hours per week;`n"
-		missingListEnum++
-        emailListEnum++
     }
     If ESPlanUpdateMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Updated Employment Plan ...;`n"
-		missingVerifications[missingListEnum ". " missingText] := 4
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 4
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Updated Employment Plan ...;`n"
-		missingListEnum++
-        emailListEnum++
     }
-    For i, missingText in otherMissing {
-        If (!otherInput%i%) { ; not checked
+    For imissingText, missingText in otherMissing {
+        If (!otherInput%imissingText%) { ; not checked
             continue
         }
-        missingText := RTrim(missingText, ".")
-        caseNoteMissingText .= missingText ";`n"
-        tempText := getRowCount(missingListEnum ". " missingText ";", 60, "")
-        missingVerifications[tempText[1] "`n"] := tempText[2]
-        emailTextString .= emailListEnum ". " missingText ";`n"
-        missingListEnum++
-        emailListEnum++
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
+        missingText := RTrim(missingText, ".`n") ";`n"
+        caseNoteMissingText .= missingText
+        local otherText := getRowCount(enum.missing ". " missingText, 60, "")
+        missingVerifications[otherText[1] "`n"] := otherText[2]
+        emailTextString .= enum.email ". " missingText
     }
 ;======================================================
 	If InHomeCareMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "In-Home Care form (sent separately) - In-Home Care requires approval by MN DHS;`n"
-		missingVerifications[missingListEnum ". " missingText] := 2
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 2
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "In-Home Care form;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If LNLProviderMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         missingText := "Legal Non-Licensed Acknowledgement (sent separately). Your provider may not be eligible to be paid for care provided prior to them completing age specific trainings. The ‘Health and Safety Resources’ documents do not need to be completed or returned;"
-		missingVerifications[missingListEnum ". " missingText] := 5
-        emailTextString .= emailListEnum ". " missingText
+		missingVerifications[enum.missing ". " missingText] := 5
+        emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "LNL Acknowledgement form;`n"
-		missingListEnum++
-        emailListEnum++
     }
     If StartDateMissing {
+        enumInc(enum, "email")
+        enumInc(enum, "missing")
         StartDateMissingText := "Start date at your child care provider;`n"
-		missingVerifications[missingListEnum ". " StartDateMissingText] := 1
-        emailTextString .= emailListEnum ". " StartDateMissingText
+		missingVerifications[enum.missing ". " StartDateMissingText] := 1
+        emailTextString .= enum.email ". " StartDateMissingText
 		caseNoteMissingText .= "Provider start date;`n"
-		missingListEnum++
-        emailListEnum++
     }
 	If ChildSupportNoncooperationMissing {
         missingText := "* You are currently in a non-cooperation status with Child Support. Contact Child Support at " missingInput.ChildSupportNoncooperationMissing " for details. Child Support cooperation is a requirement for eligibility.`n"
@@ -1441,7 +1438,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
     }
 	If NoProviderMissing {
         missingText := "`n* Once you have a daycare provider, please notify me with the provider’s name, location, and the start date.`n   If you need help locating a daycare provider, contact Parent Aware at 888-291-9811 or www.parentaware.org/search`n"
-        emailTextString .= missingText
+        emailTextString .= StrReplace(missingText, "`n   ", " ") "`n"
 		caseNoteMissingText .= "Provider;`n"
         mecCheckboxIds.providerInformation := 1
     }
@@ -1449,7 +1446,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
 	If UnregisteredProviderMissing {
         missingText := "* Your daycare provider needs to register with CCAP at https://bit.ly/CCAPregistration. They can contact CCAP.Providers.DCYF@state.mn.us with issues or questions.`n"
 		missingVerifications[missingText] := 3
-        emailTextString .= missingText
+        emailTextString .= StrReplace(missingText, "http://bit.ly/CCAPregistration", "https://dcyf.mn.gov/child-care-assistance-program-information-child-care-programs")
 		caseNoteMissingText .= "Registered provider;`n"
     }
     If ProviderForNonImmigrantMissing {
@@ -1521,19 +1518,12 @@ parseMissingVerifications(ByRef missingVerifications, ByRef missingListEnum, ByR
 			;UnansweredTextCount := 0
 			;StrReplace(UnansweredText, "`n", "`n", UnansweredTextCount)
 			;UnansweredTextCount++
-            ;missingVerifications[missingListEnum ". " UnansweredText] := UnansweredTextCount
-            ;emailTextString .= emailListEnum ". " UnansweredText
+            ;missingVerifications[enum.missing ". " UnansweredText] := UnansweredTextCount
+            ;emailTextString .= enum.email ". " UnansweredText
 			;caseNoteMissingText .= CaseNoteUnansweredMissing ";`n"
-			;missingListEnum++
-            ;emailListEnum++
     ;}
 }
 
-incrementLetterPage(ByRef letterTextNumber) {
-    letterText[letterTextNumber] .= "                   Continued on letter " letterTextNumber+1
-    letterText[letterTextNumber+1] := "                  Continued from letter " letterTextNumber "`n"
-    letterTextNumber++
-}
 faxAndEmailText() {
     contactMethodsList := { countyFax: "faxed to ", countyDocsEmail: "emailed to " }
     contactMethods := []
@@ -1548,8 +1538,8 @@ faxAndEmailText() {
         Return
     }
     specLetterText := "Documents can mailed"
-    For i, contactText in contactMethods {
-        specLetterText .= (i == contactMethodsLength) ? (contactMethodsLength > 1 ? "," : "") " and " : ", "
+    For icontactText, contactText in contactMethods {
+        specLetterText .= (icontactText == contactMethodsLength) ? (contactMethodsLength > 1 ? "," : "") " and " : ", "
         specLetterText .= contactText
     }
     specLetterText .= ". Please include your case number."
@@ -1557,7 +1547,7 @@ faxAndEmailText() {
 }
 countLines(VerificationArray) {
     totalLines := 0
-    For i, lineCountAmt in VerificationArray {
+    For ilineCountAmt, lineCountAmt in VerificationArray {
         totalLines += lineCountAmt
     }
     Return totalLines
@@ -1573,9 +1563,7 @@ listifyMissing(verifObj) {
             lineCountPlusFaxed := lineCount + missingLineCount
             If (lineCountPlusFaxed == 30) {
                 missingText := StrReplace(missingText, "NEWLINE", "")
-                missingText := StrReplace(missingText, "NEWLINE", "")
             } Else If (lineCountPlusFaxed > 30) {
-                missingText := StrReplace(missingText, "NEWLINE", "`n")
                 missingText := StrReplace(missingText, "NEWLINE", "`n")
                 incrementLetterPage(letterTextNumber)
             } Else {
@@ -1586,11 +1574,9 @@ listifyMissing(verifObj) {
                 missingText := StrReplace(missingText, "NEWLINE", "")
             }
             letterText[letterTextNumber] .= missingText
-        } Else { ; does not contain "NEWLINE"
+        } Else { ; text does not contain "NEWLINE"
             If ((lineCount + missingLineCount) > 29) {
-            
                 incrementLetterPage(letterTextNumber)
-                
                 letterText[letterTextNumber] .= missingText
                 lineCount := (missingLineCount + 1) ; For the continued from line
             } Else {
@@ -1599,22 +1585,26 @@ listifyMissing(verifObj) {
             }
         }
     }
+    letterText[letterTextNumber] := RegExReplace(letterText[letterTextNumber], "`n{3,}", "`n`n")
 }
-emailButtonClick() {
-    Clipboard := getFirstName() emailTextObject.output
-    WinActivate, % "Message - "
-    Send, ^v
+incrementLetterPage(ByRef letterTextNumber) {
+    letterText[letterTextNumber] := RegExReplace(letterText[letterTextNumber], "`n{3,}", "`n`n") "                   Continued on letter " letterTextNumber+1
+    letterText[letterTextNumber+1] := "                  Continued from letter " letterTextNumber "`n"
+    letterTextNumber++
 }
-setEmailText(emailTextString) {
+setEmailText(ByRef emailTextString) {
 	Gui, MainGui: Submit, NoHide
 	Gui, MissingGui: Submit, NoHide
-    emailTextString := RegExReplace(emailTextString, " {3,4}|`n ", " ")
-    ;emailTextString := StrReplace(emailTextString, "`n|    |   ", " ") ; testing
-    emailTextString := StrReplace(emailTextString, "  ", "`n  ")
-    emailTextString := StrReplace(emailTextString, "`n*", "`n`n*")
+    emailTextString := RegExReplace(emailTextString, "`n{1,}\*", "`n`n*")
+    emailTextString := RegExReplace(emailTextString, "`n{3,}", "`n`n")
     emailTextString := StrReplace(emailTextString, "sent separately", "see attached")
-    emailTextString := StrReplace(emailTextString, "http://bit.ly/43GRyg8", "https://dcyf.mn.gov/child-care-assistance-program-information-child-care-programs")
-	return emailTextObject.Combined emailTextString emailTextObject.EndHL
+    clientName := getFirstName()
+	return clientName emailTextObject.Combined emailTextString emailTextObject.EndHL
+}
+emailButtonClick() {
+    Clipboard := emailTextObject.output
+    WinActivate, % "Message"
+    Send, ^v
 }
 letterButtonClick(letterGUINumber:=1) {
     Global
@@ -1626,7 +1616,6 @@ letterButtonClick(letterGUINumber:=1) {
     }
     thisLetterText := Trim(letterText[letterGUINumber], "`n")
     If (ini.employeeInfo.employeeUseMec2Functions) {
-        ;caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (HomelessStatus) ? "Homeless App" : caseDetails.docType
         caseStatus := InStr(caseDetails.docType, "?") ? "" : (caseDetails.docType == "Redet") ? "Redetermination" : (HomelessStatus && caseDetails.eligibility == "elig") ? "Homeless App" : caseDetails.docType
         jsonLetterText := "LetterTextFromAHKJSON{""LetterText"":""" JSONstring(thisLetterText) """,""CaseStatus"":""" caseStatus """,""IdList"":""" idList """ }"
         Clipboard := jsonLetterText
@@ -1642,7 +1631,7 @@ letterButtonClick(letterGUINumber:=1) {
 otherGUI() {
     Global
     Gui, MissingGui: Submit, NoHide
-    If (!%A_GuiControl%) { ; unchecked
+    If (!%A_GuiControl%) { ; !checked
         Return
     }
     local otherEditWidth := (wCH*60)+scrollbar+pad
@@ -1650,7 +1639,7 @@ otherGUI() {
     Gui, OtherGui: New,, % "Other Verification"
     Gui, OtherGui: Margin, % marginW
     Gui, OtherGui: Font, s9, % "Lucida Console"
-    Gui, OtherGui: Add, Text,, % "Additional Input Required:`nState what the client needs to submit."
+    Gui, OtherGui: Add, Text,, % "Additional Input Required: State what the client needs to submit.`nIf you ask a question, also include what they need to submit."
     Gui, OtherGui: Add, Edit, % "h100 w" otherEditWidth " votherEdit", % otherMissing[otherNumber]
     Gui, OtherGui: Add, Button, % "gOtherGuiGuiClose x175", % "Save"
     Gui, OtherGui: Add, Button, % "gOtherGuiGuiClose x+20 yp", % "Close"
@@ -1683,7 +1672,7 @@ inputBoxAGUIControl() {
     Global
     Gui, Submit, NoHide
     Gui +OwnDialogs
-    If (!%A_GuiControl%) { ; unchecked
+    If (!%A_GuiControl%) { ; !checked
         Return
     }
     inputBoxDefaultText := A_GuiControl == "ChildSupportFormsMissing" ? Trim(missingInput[A_GuiControl], "sets") : Trim(missingInput[A_GuiControl], " (input)")
@@ -1766,7 +1755,7 @@ MainGuiGuiClose() {
 }
 MissingGuiGuiClose() {
     WinGetPos, XVerificationGet, YVerificationGet,,, A
-    For i, coordName in ["xVerification", "yVerification"] {
+    For icoordName, coordName in ["xVerification", "yVerification"] {
         ini.caseNotePositions[Value] := %coordName%Get
     }
 	Gui, MissingGui: Hide
@@ -1777,7 +1766,7 @@ CBTGuiClose() {
         Return
     If ((xClipboardGet - ini.cbtPositions.xClipboard + yClipboardGet - ini.cbtPositions.yClipboard) != 0) {
         coordObjOut := {}
-        For i, coordName in ["xClipboard", "yClipboard"] {
+        For icoordName, coordName in ["xClipboard", "yClipboard"] {
             coordObjOut[coordName] := %coordName%Get
             ini.cbtPositions[coordName] := %coordName%Get
         }
@@ -1861,8 +1850,6 @@ selectBackupLocation() {
     Gui, SettingsGui: +OwnDialogs
     FileSelectFolder, EmployeeBackupLocationWrite, % "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", 3, % "Select or Create a folder for CaseNotes backups.`nRecommended: Folder named 'CaseNotes Backup' in My Documents or Desktop."
     newButtonText := shortenIfTooLong(EmployeeBackupLocationWrite, 27)
-    ;Gui, SettingsGui: -OwnDialogs
-    ;GuiControl, SettingsGui: Text, EmployeeBackupLocationWrite, ""
     GuiControl, SettingsGui: Text, EmployeeBackupLocationWrite, % newButtonText
     GuiControl, SettingsGui: +Redraw, EmployeeBackupLocationWrite
 }
@@ -1912,7 +1899,7 @@ updateIniFile() {
 }
 updateIniFileText(section, settingArray) {
     iniSettingsValues := ""
-    For i, settingName in settingArray {
+    For isettingName, settingName in settingArray {
         iniSettingsValues .= settingName "=" %settingName%Write "`n" ; iniFile data
         ini[section][settingName] := %settingName%Write ; open app data (settingNameWrite => ini.section.settingName
     }
@@ -2023,12 +2010,12 @@ openHelpGui() {
 examplesButton() {
     GuiControlGet, examplesButtonText
     If (examplesButtonText == "Examples") {
-        For i, exampleLabel in exampleLabels {
+        For iexampleLabel, exampleLabel in exampleLabels {
             showHideControl(exampleLabel, "MainGui", "Show")
         }
         GuiControl, MainGui:Text, examplesButtonText, % "Restore"
     } Else If (examplesButtonText == "Restore") {
-        For i, exampleLabel in exampleLabels {
+        For iexampleLabel, exampleLabel in exampleLabels {
             showHideControl(exampleLabel, "MainGui", "Hide")
         }
         GuiControl, MainGui:Text, examplesButtonText, % "Examples"
@@ -2132,7 +2119,7 @@ coordSaveAndExitApp(reOpen:=0) {
     }
     If ((xCaseNotesGet - ini.caseNotePositions.xCaseNotes + yCaseNotesGet - ini.caseNotePositions.yCaseNotes + XVerificationGet - ini.caseNotePositions.xVerification + YVerificationGet - ini.caseNotePositions.yVerification) != 0) {
         coordObjOut := {}
-        For i, coordName in ["xVerification", "yVerification", "xCaseNotes", "yCaseNotes"] {
+        For icoordName, coordName in ["xVerification", "yVerification", "xCaseNotes", "yCaseNotes"] {
             coordObjOut[coordName] := %coordName%Get
         }
         coordString := coordStringify(coordObjOut)
@@ -2145,9 +2132,9 @@ coordSaveAndExitApp(reOpen:=0) {
     }
 }
 coordResetIfOver9000(ByRef coordObj) {
-    For i, coordName in coordObj {
+    For icoordName, coordName in coordObj {
         If (Abs(coordName) > 9000)
-            coordObj[i] := 50
+            coordObj[icoordName] := 50
     }
 }
 coordStringify(coordObjIn) {
@@ -2157,20 +2144,19 @@ coordStringify(coordObjIn) {
     }
     Return coordString
 }
-getRowCount(originalString, maxColumns, indStr:="", indKey:="000") {
+getRowCount(originalString, maxColumns:=100, indStr:="", indKey:="000") {
     textString := stWordWrap(originalString, maxColumns, indStr, indKey)
     StrReplace(textString, "`n", "`n", xCount)
-    Return [textString, xCount +1]
+    Return [textString, xCount+1]
 }
 stWordWrap( origStr:="", maxColumns:=100, indStr:="", indKey:="000" ) {
-    ;; indKey: 0: no change, 1: indent, 2: buffer, 3: negative indent
-    ;; __x = first line   _x_ = subsequent first lines   x__ = lines after first line(s) - all 3 digits must be set for settings to apply to all lines;
-    local wrap := { origStr: RTrim(origStr, "`n"), indLen: StrLen(indStr), indStr: indStr, isFirstLine: 1, out : "", column: 0, maxColumns: maxColumns, wrapAct: {} }
+    ;;; indKey: 0: no change, 1: indent, 2: buffer, 3: negative indent
+    ;;; __x = first line   _x_ = subsequent first lines   x__ = lines after first line(s) - all 3 digits must be set for settings to apply to all lines;
+    local wrap := { origStr: RTrim(origStr, "`n"), indLen: StrLen(indStr), indStr: indStr, isFirstLine: 1, out : "", column: 0, maxColumns: maxColumns*1, wrapAct: {} }
     wrap.buffStr := Format("{:" wrap.indLen "}", "")
     indKey := Format("{:03s}", indKey)
-    ;indKey := wrap.indLen > 0 ? Format("{:03s}", indKey) : "000" ; if indStr is blank, set all keys to 0 ;
-    For i, line in ["notFirsts", "subFirsts", "firstLine"] {
-        key := SubStr(indKey, i, 1)
+    For iline, line in ["notFirsts", "subFirsts", "firstLine"] {
+        key := SubStr(indKey, iline, 1)
         wrap.wrapAct[line] := key == "1" ? "indent" : key == "2" ? "buffer" : key == "3" ? "reduce" : "continue" ; v2 switch
     }
     If ( StrLen(wrap.origStr) < 1 && wrap.wrapAct.firstLine == "indent" && RegExMatch(wrap.indStr, "\w") ) {
@@ -2183,15 +2169,15 @@ stWordWrap( origStr:="", maxColumns:=100, indStr:="", indKey:="000" ) {
         Loop {
             wrap.paragraphStrLen := StrLen(wrap.paragraph)
             stWordWrapGetLineMaxColumn(wrap)
-            If (StrLen(RTrim(wrap.paragraph)) < wrap.lineMaxColumn) {
+            If ( wrap.lineMaxColumn >= StrLen(RTrim(wrap.paragraph)) ) {
                 wrap.out .= (wrap.lineDesig != "firstLine" ? "`n" : "") wrap.paragraph
                 wrap.paragraph := ""
             } Else {
                 paragraphSubStr := SubStr(wrap.paragraph, 1, wrap.lineMaxColumn+1)
-                paragraphSpPos := InStr(paragraphSubStr, " ", false, 0)
-                paragraphSpPos := paragraphSpPos ? paragraphSpPos : wrap.paragraphStrLen
+                paragraphSpPos := InStr(paragraphSubStr, " ", false, 0) ; find pos of space character, starting from the end
+                paragraphSpPos := paragraphSpPos ? SubStr(wrap.paragraph, 0, 1) == " " ? paragraphSpPos+1 : paragraphSpPos : stWordWrapTextTooLong(wrap) ; CYA: long word with no spaces
                 wrap.out .= (wrap.lineDesig != "firstLine" ? "`n" : "") SubStr(wrap.paragraph, 1, paragraphSpPos)
-                wrap.paragraph := SubStr(wrap.paragraph, paragraphSpPos)
+                wrap.paragraph := SubStr(wrap.paragraph, paragraphSpPos+1)
             }
         } Until ( StrLen(wrap.paragraph) < 1 )
     }
@@ -2206,11 +2192,22 @@ stWordWrapGetLineMaxColumn(ByRef wrap) {
     wrap.isFirstLine := 0
     wrap.isParaFirstLine := 0
 }
+stWordWrapTextTooLong(ByRef wrap) {
+    wrapPos := Floor(wrap.lineMaxColumn * .66)
+    wrap.paragraph := SubStr(wrap.paragraph, 1, wrapPos) "-" SubStr(wrap.paragraph, wrapPos+1)
+    Return wrapPos+1
+}
 verbose(verboseOutput) {
-    If (A_ScriptName != "CaseNotes_dev.ahk" || !verboseMode) {
+    If (!verboseMode) {
         return
     }
     timedToolTip(verboseOutput)
+}
+selectVerbose(verboseOutput) {
+    if (!selectVerboseMode) {
+        Return
+    }
+    verbose(verboseOutput)
 }
 objToString(object) {
     For key, value in object {
@@ -2254,9 +2251,9 @@ Class orderedAssociativeArray { ; Capt Odin https://www.autohotkey.com/boards/vi
 		return val
 	}
 	Delete(key) {
-		for i, v in this.__Order {
+		for idelete, v in this.__Order {
 			if(key == v) {
-				return this.RemoveAt(i)
+				return this.RemoveAt(idelete)
 			}
 		}
 	}
@@ -2334,13 +2331,13 @@ Return
         ControlFocus,,\d ahk_exe obunity.exe
         ControlSend,,^{PgDn}, \d ahk_exe obunity.exe
         Sleep 250
-        WinActivate, CaseNotes
+        WinActivate, % "^CaseNotes$"
     Return
     PgUp::
         ControlFocus,,\d ahk_exe obunity.exe
         ControlSend,,^{PgUp}, \d ahk_exe obunity.exe
         Sleep 250
-        WinActivate, CaseNotes
+        WinActivate, % "^CaseNotes$"
     Return
 
     #Left::
