@@ -814,11 +814,12 @@ buildMissingGui() {
     Gui, MissingGui: Add, Text, % "w141" sepLineSubLeft
     Gui, MissingGui: Add, Text, % textLinePos, % "Education" ;----------------- Education Sub-section ---------------------------------------------------------------
     Gui, MissingGui: Add, Text, % "w134" sepLineSubRight
-    Gui, MissingGui: Add, Checkbox, % column1of2 " vEdBSFformMissing", % "BSF/TY Edu Form"
-    Gui, MissingGui: Add, Checkbox, % column2of2 " vEdBSFsecondaryEduFormMissing", % "GED / HS / ESL Edu Form"
+    Gui, MissingGui: Add, Checkbox, % column1of3 " vEdBSFformMissing", % "BSF/TY Edu Form"
+    Gui, MissingGui: Add, Checkbox, % column2of3 " vEdBSFOneBachelorDegreeMissing", % "Note: Bachelor's Limit"
+    Gui, MissingGui: Add, Checkbox, % column3of3 " vEdBSFsecondaryEduFormMissing", % "GED / HS Edu Form"
     Gui, MissingGui: Add, Checkbox, % column1of3 " vClassScheduleMissing", % "Class Schedule"
     Gui, MissingGui: Add, Checkbox, % column2of3 " vTranscriptMissing", % "Transcript"
-    Gui, MissingGui: Add, Checkbox, % column3of3 " vEdBSFOneBachelorDegreeMissing", % "Note: Bachelor's Limit"
+    Gui, MissingGui: Add, Checkbox, % column3of3 " vMFIPchildUnderOneExemption", % "Note: Child < 1 Exempt"
     Gui, MissingGui: Add, Checkbox, % column1of2 " vEducationEmploymentPlanMissing", % "ES Plan (CCMF Education)"
     Gui, MissingGui: Add, Checkbox, % column2of2 " vStudentStatusOrIncomeMissing", % "Adult Student With Income (age < 20)"
 
@@ -1106,8 +1107,9 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 	If IncomePlusNameMissing {
         enumInc(enum, "email")
         enumInc(enum, "clarify")
-        local tempText := dateObject.needsExtension > -1 ? missingInput.IncomePlusNameMissing "'s most recent 30 days of income" : caseDetails.docType == "Redet" ? missingInput.IncomePlusNameMissing "'s 30 days of income prior to " dateObject.RedetDueMDY : missingInput.IncomePlusNameMissing "'s 30 days of income prior to " dateObject.receivedMDY
-        missingText := "Verification of " tempText ";`n"
+        ;local tempText := dateObject.needsExtension > -1 ? missingInput.IncomePlusNameMissing "'s most recent 30 days of income" : caseDetails.docType == "Redet" ? missingInput.IncomePlusNameMissing "'s 30 days of income prior to " dateObject.RedetDueMDY : missingInput.IncomePlusNameMissing "'s 30 days of income prior to " dateObject.receivedMDY
+        local tempText := "for" dateObject.needsExtension > -1 ? missingInput.IncomePlusNameMissing : caseDetails.docType == "Redet" ? "prior to " dateObject.RedetDueMDY " for " missingInput.IncomePlusNameMissing : "prior to " dateObject.receivedMDY " for " missingInput.IncomePlusNameMissing
+        missingText := "Verification of the most recent 30 days of income " tempText ";`n"
         clarifiedVerifications[enum.clarify ". Proof of Financial Information: " missingText] := 2
         emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Earned income (" missingInput.IncomePlusNameMissing ");`n"
@@ -1408,6 +1410,12 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 		missingVerifications[missingText] := 3
         emailTextString .= missingText
 		caseNoteMissingText .= "* Client informed only up to first bachelor's degree is BSF/TY eligible;`n"
+    }
+	If MFIPchildUnderOneExemption {
+        missingText := "* While open on MFIP, education is not an eligible activity unless it is listed on an active Employment Plan. You are currently exempt from having a plan, due to taking the 'Child Under One Exemption.' If you need CCAP for education, you must contact your Cash Assistance team and end the exemption.`n"
+		missingVerifications[missingText] := 3
+        emailTextString .= missingText
+		caseNoteMissingText .= "* MFIP Client informed EDU must be on ES Plan;`n"
     }
 
     EligibleActivityWithJSText := "Eligible activities are:`n  A. Employment of 20+ hours per week (10+ for FT students)`n  B. Education with an approved plan (up to first BA degree)`n  C. Job Search up to 20 hours per week`n  D. Activities on a Cash Assistance Employment Plan"
@@ -2195,7 +2203,7 @@ stWordWrap( origStr:="", maxColumns:=100, indStr:="", indKey:="000" ) {
             } Else {
                 paragraphSubStr := SubStr(wrap.paragraph, 1, wrap.lineMaxColumn+1)
                 paragraphSpPos := InStr(paragraphSubStr, " ", false, 0) ; find pos of space character, starting from the end
-                paragraphSpPos := paragraphSpPos ? SubStr(wrap.paragraph, 0, 1) == " " ? paragraphSpPos+1 : paragraphSpPos : stWordWrapTextTooLong(wrap) ; CYA: long word with no spaces
+                paragraphSpPos := !paragraphSpPos ? stWordWrapTextTooLong(wrap) : paragraphSpPos  ; CYA: long word with no spaces
                 wrap.out .= (wrap.lineDesig != "firstLine" ? "`n" : "") SubStr(wrap.paragraph, 1, paragraphSpPos)
                 wrap.paragraph := SubStr(wrap.paragraph, paragraphSpPos+1)
             }
@@ -2354,6 +2362,11 @@ Return
 #a::
     Winset, Alwaysontop,, % "^Missing Verifications$"
     Winset, Alwaysontop,, % "^CaseNotes$"
+    WinGet, ExStyle, ExStyle, % "^CaseNotes$"
+    if (ExStyle & 0x8) { ; Activate windows if setting on top. 0x8 is WS_EX_TOPMOST.
+        WinActivate, % "^Missing Verifications$"
+        WinActivate, % "^CaseNotes$"
+    }
 Return
 
 
