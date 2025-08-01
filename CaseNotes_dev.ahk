@@ -699,7 +699,7 @@ calcDates() {
             autoDenyObject.autoDenyExtensionSpecLetter := "** Your redetermination is approved and your case remains eligible. "
             If (scheduleMissing) {
                 autoDenyObject.autoDenyExtensionSpecLetter .= "Assistance hours at your provider"
-                autoDenyObject.autoDenyExtensionSpecLetter .= dateObject.todayYMD < dateObject.RedetDueYMD ? " have ended" : " will end"
+                autoDenyObject.autoDenyExtensionSpecLetter .= dateObject.todayYMD > dateObject.RedetDueYMD ? " have ended" : " will end"
                 autoDenyObject.autoDenyExtensionSpecLetter .= " until we receive the above items. `n"
             }
             If (providerIssue) {
@@ -723,7 +723,7 @@ buildMissingGui() {
     Global
     local column1of1 := "xm w390"
     local column1of2 := "xm w158", column2of2 := "x+2 yp+0 w225", 
-    local column1of3 := "xm w118", column2of3 := "x+2 yp+0 w125", column3of3 := "x+2 yp+0 w138", column2and3Of3 := "x+2 yp+0 w265"
+    local column1of3 := "xm w118", column2of3 := "x+2 yp+0 w125", column3of3 := "x+2 yp+0 w138", column2and3of3 := "x+2 yp+0 w265"
 
     local lineColor := "0x5" ; https://gist.github.com/jNizM/019696878590071cf739
     ;local lineColor := "717171""
@@ -772,8 +772,8 @@ buildMissingGui() {
     Gui, MissingGui: Add, Text, % "w115" sepLineSubLeft
     Gui, MissingGui: Add, Text, % textLinePos, % "Seasonal Employment" ;------- Seasonal-Emplyment Sub-section ------------------------------------------------------
     Gui, MissingGui: Add, Text, % "w102" sepLineSubRight
-    Gui, MissingGui: Add, Checkbox, % column1of3 " vSeasonalWorkMissing", % "SE Season Length"
-    Gui, MissingGui: Add, Checkbox, % column2and3Of3 " vSeasonalOffSeasonMissing ginputBoxAGUIControl", % "SE Info - App In Off-season (input)"
+    Gui, MissingGui: Add, Checkbox, % column1of2 " vSeasonalWorkMissing", % "SE Season Length"
+    Gui, MissingGui: Add, Checkbox, % column2of2 " vSeasonalOffSeasonMissing ginputBoxAGUIControl", % "SE Info - App In Off-season (input)"
 
     Gui, MissingGui: Add, Text, % "w130" sepLineSubLeft
     Gui, MissingGui: Add, Text, % textLinePos, % "Income - Other" ;------------ Other Income Sub-section ------------------------------------------------------------
@@ -815,10 +815,10 @@ buildMissingGui() {
     Gui, MissingGui: Add, Text, % textLinePos, % "Education" ;----------------- Education Sub-section ---------------------------------------------------------------
     Gui, MissingGui: Add, Text, % "w134" sepLineSubRight
     Gui, MissingGui: Add, Checkbox, % column1of3 " vEdBSFformMissing", % "BSF/TY Edu Form"
-    Gui, MissingGui: Add, Checkbox, % column2of3 " vEdBSFOneBachelorDegreeMissing", % "Note: Bachelor's Limit"
+    Gui, MissingGui: Add, Checkbox, % column2of3 " vClassScheduleMissing", % "Class Schedule"
     Gui, MissingGui: Add, Checkbox, % column3of3 " vEdBSFsecondaryEduFormMissing", % "GED / HS Edu Form"
-    Gui, MissingGui: Add, Checkbox, % column1of3 " vClassScheduleMissing", % "Class Schedule"
-    Gui, MissingGui: Add, Checkbox, % column2of3 " vTranscriptMissing", % "Transcript"
+    Gui, MissingGui: Add, Checkbox, % column1of3 " vTranscriptMissing", % "Transcript"
+    Gui, MissingGui: Add, Checkbox, % column2of3 " vEdBSFOneBachelorDegreeMissing", % "Note: Bachelor's Limit"
     Gui, MissingGui: Add, Checkbox, % column3of3 " vMFIPchildUnderOneExemption", % "Note: Child < 1 Exempt"
     Gui, MissingGui: Add, Checkbox, % column1of2 " vEducationEmploymentPlanMissing", % "ES Plan (CCMF Education)"
     Gui, MissingGui: Add, Checkbox, % column2of2 " vStudentStatusOrIncomeMissing", % "Adult Student With Income (age < 20)"
@@ -1108,7 +1108,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         enumInc(enum, "email")
         enumInc(enum, "clarify")
         ;local tempText := dateObject.needsExtension > -1 ? missingInput.IncomePlusNameMissing "'s most recent 30 days of income" : caseDetails.docType == "Redet" ? missingInput.IncomePlusNameMissing "'s 30 days of income prior to " dateObject.RedetDueMDY : missingInput.IncomePlusNameMissing "'s 30 days of income prior to " dateObject.receivedMDY
-        local tempText := "for" dateObject.needsExtension > -1 ? missingInput.IncomePlusNameMissing : caseDetails.docType == "Redet" ? "prior to " dateObject.RedetDueMDY " for " missingInput.IncomePlusNameMissing : "prior to " dateObject.receivedMDY " for " missingInput.IncomePlusNameMissing
+        local tempText := dateObject.needsExtension > -1 ? "for " missingInput.IncomePlusNameMissing : caseDetails.docType == "Redet" ? "prior to " dateObject.RedetDueMDY "for " missingInput.IncomePlusNameMissing : "prior to " dateObject.receivedMDY "for " missingInput.IncomePlusNameMissing
         missingText := "Verification of the most recent 30 days of income " tempText ";`n"
         clarifiedVerifications[enum.clarify ". Proof of Financial Information: " missingText] := 2
         emailTextString .= enum.email ". " missingText
@@ -1129,7 +1129,8 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 	If WorkSchedulePlusNameMissing {
         enumInc(enum, "email")
         enumInc(enum, "clarify")
-        local tempText := dateObject.needsExtension > -1 ? missingInput.WorkSchedulePlusNameMissing "'s work schedule" : caseDetails.docType == "Redet" ? missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.RedetDueMDY : missingInput.WorkSchedulePlusNameMissing "'s work schedule from " dateObject.receivedMDY
+        local namePlusText := missingInput.WorkSchedulePlusNameMissing "'s work schedule"
+        local tempText := dateObject.needsExtension > -1 ? namePlusText : caseDetails.docType == "Redet" ? namePlusText " from " dateObject.RedetDueMDY : namePlusText " from " dateObject.receivedMDY
         missingText := "Verification of " tempText " showing days of the week and start/end times;`n"
         clarifiedVerifications[enum.clarify ". Proof of Activity Schedule: " missingText] := 2
         emailTextString .= enum.email ". " missingText
@@ -1412,8 +1413,8 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 		caseNoteMissingText .= "* Client informed only up to first bachelor's degree is BSF/TY eligible;`n"
     }
 	If MFIPchildUnderOneExemption {
-        missingText := "* While open on MFIP, education is not an eligible activity unless it is listed on an active Employment Plan. You are currently exempt from having a plan, due to taking the 'Child Under One Exemption.' If you need CCAP for education, you must contact your Cash Assistance team and end the exemption.`n"
-		missingVerifications[missingText] := 3
+        missingText := "* While open on MFIP, education is not an eligible activity for CCAP unless it is listed on an active Employment Plan. Due to taking the 'Child Under One Exemption' you are currently exempt from having a plan. If you need CCAP for education, contact your MFIP team to end the exemption.`n"
+		missingVerifications[missingText] := 5
         emailTextString .= missingText
 		caseNoteMissingText .= "* MFIP Client informed EDU must be on ES Plan;`n"
     }
