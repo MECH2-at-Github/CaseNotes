@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.0.2"
+Version := "v1.0.4"
 
 ;Future todo ideas:
 
@@ -20,7 +20,7 @@ SetTitleMatchMode, RegEx
 DetectHiddenWindows, On
 
 ; Rule for AHKv1 GUI functions and variables: If you are doing a "Gui, Submit" the function needs to be declared Global.
-Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1), selectVerboseMode := verboseMode && 0
+Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerboseMode := verboseMode && 0 ? 1 : 0
 
 ;setGlobalVariables() { ; don't collapse until v2
     Global sq := "²", cm := "✔", cs := ", ", pct := "%"
@@ -39,7 +39,7 @@ Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1), selectVerboseM
         wCH := CH100x30[1]/100, hCH := CH100x30[2]/30
     Global CH87 := guiEditAreaSize("123456789012345678901234567890123456789012345678901234567890123456789012345678901234567`n2", "s9", "Lucida Console"), wCH87 := CH87[1]
     Global zoomPPI := A_ScreenDPI/96
-    Global pad := 2, scrollbar := 24, margin := 12, oneRow := "h" hCH+pad*2 " Limit87", twoRows := "h" (hCH*2.7)+pad, threeRows := "h" (hCH*3)+pad*3, fourRows := "h" (hCH*4)+pad*3, tenRows := "h" (hCH*10)+pad*3
+    Global pad := 2, scrollbar := 24, margin := 12, oneRow := "h" hCH+pad*2 " Limit87", twoRows := "h" (hCH*2.7)+pad, threeRows := "h" (hCH*3)+pad*3, fourRows := "h" (hCH*4)+pad*3, tenRows := "h" (hCH*10)+pad*3, ctrlBs:=0
 
     Global countySpecificText := { v2: ""
         , StLouis: { overIncomeContacts: "", CountyName: "St. Louis County" }
@@ -478,8 +478,8 @@ outputCaseNoteMec2(ByRef sendingCaseNote) { ; don't collapse until v2
         Send, ^v
     } Else If (!ini.employeeInfo.employeeUseMec2Functions) {
         catNum := { v2: ""
-            , Application: { letter: "A", pends: 5, elig: 4, denied: 4 }
-            , Redet: { letter: "R", incomplete: 1, elig: 2, denied: 2 }
+            , Application: { letter: "A", pends: 6, elig: 5, denied: 4 }
+            , Redet: { letter: "R", incomplete: 3, elig: 2, denied: 1 }
             , v2end: "" }
         catLetter := catNum[caseDetails.docType].letter
         catNumber := catNum[caseDetails.docType][caseDetails.eligibility]
@@ -534,7 +534,7 @@ outputCaseNoteMaxis(ByRef sendingCaseNote) {
 }
 outputCaseNoteBackup(ByRef sendingCaseNote) {
     Global
-    local backupFileName := caseNumber !== "" ? caseNumber : ""
+    backupFileName := caseNumber !== "" ? caseNumber : ""
     If (backupFileName == "") {
         MsgBox, 1, % "No Case Number", % "Case Number is blank. Save case note to desktop without case number?`n`n(File will be named after the first person listed in Household Comp.)"
         IfMsgBox OK
@@ -546,8 +546,11 @@ outputCaseNoteBackup(ByRef sendingCaseNote) {
     For iletterTextValue, letterTextValue in letterText {
         specialLetterBackup .= StrLen(LetterText[iletterTextValue]) > 0 ? "`n====== Special Letter " iletterTextValue " ======`n" letterTextValue "`n" : ""
     }
+    If(!InStr(FileExist(ini.employeeInfo.employeeBackupLocation), "D")) {
+        FileCreateDir, % ini.employeeInfo.employeeBackupLocation
+    }
     backupFileLocation := ini.employeeInfo.employeeBackupLocation "\" backupFileName ".txt"
-    local backupFile := FileOpen(backupFileLocation, "W")
+    local backupFile := FileOpen(backupFileLocation, "w")
     local backupString := "Case Number: " (caseNumber != "" ? caseNumber : "(not entered)") "`n`n====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" specialLetterBackup "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n"
     backupFile.Write(backupString)
     backupFile.Close()
@@ -560,7 +563,7 @@ outputCaseNoteBackup(ByRef sendingCaseNote) {
     caseNoteEntered.maxisNoteEntered := 1
 }
 openLocalSave() {
-    run backupFileLocation
+    run, % backupFileLocation
 }
 doPasteInMaxis(maxisNoteText, ByRef maxisWindow) {
     maxisNoteText := Trim(maxisNoteText, "`n")
@@ -623,6 +626,7 @@ guiGetControlSize(guiName, controlName) {
 
 JSONstring(inputString) { ; encodeURIComponent
     inputString := StrReplace(inputString, "%", "%25",, -1)
+    inputString := StrReplace(inputString, "`t", "    ",, -1)
     inputString := StrReplace(inputString, "\", "%5C",, -1)
     inputString := RegExReplace(inputString, "`n{2,}", "%0A%0A",, -1)
     inputString := StrReplace(inputString, "`n", "%0A",, -1)
@@ -1140,9 +1144,9 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         enumInc(enum, "email")
         enumInc(enum, "clarify")
         local tempText := dateObject.needsExtension > -1 ? " your work schedule" : caseDetails.docType == "Redet" ? " work schedule from " dateObject.RedetDueMDY : " work schedule from " dateObject.receivedMDY
-        missingText := "Verification of" tempText " showing days of the week and start/end times;`n"
-        clarifiedVerifications[enum.clarify ". Proof of Activity Schedule: " missingText] := 2
-        emailTextString .= enum.email ". " missingText
+        missingText := "Verification of" tempText " showing days of the week and start/end times"
+        clarifiedVerifications[enum.clarify ". Proof of Activity Schedule: " missingText ";`n"] := 2
+        emailTextString .= enum.email ". " missingText " (examples: Timecard, work calendar, employer statement);`n"
 		caseNoteMissingText .= "Work schedule;`n"
         mecCheckboxIds.proofOfActivitySchedule := 1
         ;MEC2 text: Proof of Activity Schedule- You can provide proof of adult activity schedules with work schedules, school schedules, time cards, or letter from the employer or school with the days and times working or in school. If you have a flexible work schedule, include a statement with typical or possible times worked.
@@ -1152,9 +1156,9 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         enumInc(enum, "clarify")
         local namePlusText := missingInput.WorkSchedulePlusNameMissing "'s work schedule"
         local tempText := dateObject.needsExtension > -1 ? namePlusText : caseDetails.docType == "Redet" ? namePlusText " from " dateObject.RedetDueMDY : namePlusText " from " dateObject.receivedMDY
-        missingText := "Verification of " tempText " showing days of the week and start/end times;`n"
-        clarifiedVerifications[enum.clarify ". Proof of Activity Schedule: " missingText] := 2
-        emailTextString .= enum.email ". " missingText
+        missingText := "Verification of " tempText " showing days of the week and start/end times"
+        clarifiedVerifications[enum.clarify ". Proof of Activity Schedule: " missingText ";`n"] := 2
+        emailTextString .= enum.email ". " missingText " (examples: Timecard, work calendar, employer statement);`n"
 		caseNoteMissingText .= "Work schedule (" missingInput.WorkSchedulePlusNameMissing ");`n"
         mecCheckboxIds.proofOfActivitySchedule := 1
     }
@@ -1194,7 +1198,6 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
     If SeasonalOffSeasonMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
-        ;tempText := StrLen(SeasonalOffSeasonMissing) > 0 ? " at " SeasonalOffSeasonMissing : ""
         local tempText := missingInput.SeasonalOffSeasonMissing != "" ? " at " missingInput.SeasonalOffSeasonMissing : ""
         missingText := "Verification of either seasonal employment " tempText ", including expected season length and typical wages, or a signed statement that you are no longer an employee at this job.`n Upon returning to work, verification of work schedule will`n be needed, showing days of the week and start/end times;`n"
 		missingVerifications[enum.missing ". " missingText] := 6
@@ -1400,7 +1403,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 	If InHomeCareMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
-        missingText := "In-Home Care form (sent separately) - In-Home Care requires approval by MN DHS;`n"
+        missingText := "In-Home Care form (sent separately) - In-Home Care requires approval by MN DCYF;`n"
 		missingVerifications[enum.missing ". " missingText] := 2
         emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "In-Home Care form;`n"
@@ -2380,8 +2383,6 @@ Return
     ControlSend,,{End}, % "Clipboard Text"
 Return
 
-^BS:: send, ^+{left}{delete}
-
 #c::
     WinActivate, % "^Missing Verifications$"
     WinActivate, % "^CaseNotes$"
@@ -2421,6 +2422,7 @@ Return
             resetPositions()
         Return
     Return
+    ^BS:: Send ^+{left}{delete}
 }
 #If ;#IfWinActive ; CaseNotes
 

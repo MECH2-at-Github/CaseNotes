@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.0.1"
+Version := "v1.0.4"
 
 ;Future todo ideas:
 
@@ -20,7 +20,7 @@ SetTitleMatchMode, RegEx
 DetectHiddenWindows, On
 
 ; Rule for AHKv1 GUI functions and variables: If you are doing a "Gui, Submit" the function needs to be declared Global.
-Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1), selectVerboseMode := verboseMode && 0
+Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerboseMode := verboseMode && 0 ? 1 : 0
 
 ;setGlobalVariables() { ; don't collapse until v2
     Global sq := "²", cm := "✔", cs := ", ", pct := "%"
@@ -39,7 +39,7 @@ Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1), selectVerboseM
         wCH := CH100x30[1]/100, hCH := CH100x30[2]/30
     Global CH87 := guiEditAreaSize("123456789012345678901234567890123456789012345678901234567890123456789012345678901234567`n2", "s9", "Lucida Console"), wCH87 := CH87[1]
     Global zoomPPI := A_ScreenDPI/96
-    Global pad := 2, scrollbar := 24, margin := 12, oneRow := "h" hCH+pad*2 " Limit87", twoRows := "h" (hCH*2.7)+pad, threeRows := "h" (hCH*3)+pad*3, fourRows := "h" (hCH*4)+pad*3, tenRows := "h" (hCH*10)+pad*3
+    Global pad := 2, scrollbar := 24, margin := 12, oneRow := "h" hCH+pad*2 " Limit87", twoRows := "h" (hCH*2.7)+pad, threeRows := "h" (hCH*3)+pad*3, fourRows := "h" (hCH*4)+pad*3, tenRows := "h" (hCH*10)+pad*3, ctrlBs:=0
 
     Global countySpecificText := { v2: ""
         , StLouis: { overIncomeContacts: "", CountyName: "St. Louis County" }
@@ -66,10 +66,11 @@ Global verboseMode := (A_ScriptName == "CaseNotes_dev.ahk" && 1), selectVerboseM
     Global exampleLabels := [ "01HouseholdCompEditLabelExample", "02SharedCustodyEditLabelExample", "03AddressVerificationEditLabelExample", "04SchoolInformationEditLabelExample", "05IncomeEditLabelExample", "06ChildSupportIncomeEditLabelExample"
         , "07ChildSupportCooperationEditLabelExample", "08ExpensesEditLabelExample", "09AssetsEditLabelExample", "10ProviderEditLabelExample", "11ActivityAndScheduleEditLabelExample", "12ServiceAuthorizationEditLabelExample", "14MissingEditLabelExample" ]
     Global emailText := { v2: ""
-        , pendingHomelessPreText: "You may be eligible for the homeless policy, which allows us to approve eligibility even though there are verifications we need but do not have. " emailText.stillRequiredText "`n`nBefore we can approve expedited eligibility, we need information that was not on the application:"
+        , stillRequiredText: "The required verifications must be received within 90 days of your application date for continued eligibility."
+        , pendingHomelessPreText1: "You may be eligible for expedited CCAP. Due to your reported homelessness, we can approve eligibility even though there are required verifications we do not have yet. "
+        , pendingHomelessPreText2: "`n`However, we first need you to report (verbally or written) information that was not entered on the application:`n"
         , approvedWithMissing: "It was approved under the homeless expedited policy which allows us to approve eligibility even though there are verifications we require that we do not have. "
-        , stillRequiredText: "These verifications are still required, and must be received within 90 days of your application date for continued eligibility."
-        , initialApproval: "`nThe initial approval of child care assistance is 30 hours per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed. `nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated, or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children. `nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay."
+        , initialApproval: "`nThe initial approval of child care assistance is 30 hours per week for each child. This amount can be increased once we receive your activity verifications and we determine more assistance is needed. `nIf the provider you select is a “High Quality” provider, meaning they are Parent Aware 3⭐ or 4⭐ rated or have an approved accreditation, the hours will automatically increase to 50 per week for preschool age and younger children. `nIf you have a 'copay,' the amount the county pays to the provider will be reduced by the copay amount. Many providers charge more than our maximum rates, and you are responsible for your copay and any amounts the county cannot pay."
         , v2end: "" }
 
     ;Missing Verification globals
@@ -477,8 +478,8 @@ outputCaseNoteMec2(ByRef sendingCaseNote) { ; don't collapse until v2
         Send, ^v
     } Else If (!ini.employeeInfo.employeeUseMec2Functions) {
         catNum := { v2: ""
-            , Application: { letter: "A", pends: 5, elig: 4, denied: 4 }
-            , Redet: { letter: "R", incomplete: 1, elig: 2, denied: 2 }
+            , Application: { letter: "A", pends: 6, elig: 5, denied: 4 }
+            , Redet: { letter: "R", incomplete: 3, elig: 2, denied: 1 }
             , v2end: "" }
         catLetter := catNum[caseDetails.docType].letter
         catNumber := catNum[caseDetails.docType][caseDetails.eligibility]
@@ -533,7 +534,7 @@ outputCaseNoteMaxis(ByRef sendingCaseNote) {
 }
 outputCaseNoteBackup(ByRef sendingCaseNote) {
     Global
-    local backupFileName := caseNumber !== "" ? caseNumber : ""
+    backupFileName := caseNumber !== "" ? caseNumber : ""
     If (backupFileName == "") {
         MsgBox, 1, % "No Case Number", % "Case Number is blank. Save case note to desktop without case number?`n`n(File will be named after the first person listed in Household Comp.)"
         IfMsgBox OK
@@ -545,8 +546,11 @@ outputCaseNoteBackup(ByRef sendingCaseNote) {
     For iletterTextValue, letterTextValue in letterText {
         specialLetterBackup .= StrLen(LetterText[iletterTextValue]) > 0 ? "`n====== Special Letter " iletterTextValue " ======`n" letterTextValue "`n" : ""
     }
+    If(!InStr(FileExist(ini.employeeInfo.employeeBackupLocation), "D")) {
+        FileCreateDir, % ini.employeeInfo.employeeBackupLocation
+    }
     backupFileLocation := ini.employeeInfo.employeeBackupLocation "\" backupFileName ".txt"
-    local backupFile := FileOpen(backupFileLocation, "W")
+    local backupFile := FileOpen(backupFileLocation, "w")
     local backupString := "Case Number: " (caseNumber != "" ? caseNumber : "(not entered)") "`n`n====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" specialLetterBackup "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n"
     backupFile.Write(backupString)
     backupFile.Close()
@@ -559,7 +563,7 @@ outputCaseNoteBackup(ByRef sendingCaseNote) {
     caseNoteEntered.maxisNoteEntered := 1
 }
 openLocalSave() {
-    run backupFileLocation
+    run, % backupFileLocation
 }
 doPasteInMaxis(maxisNoteText, ByRef maxisWindow) {
     maxisNoteText := Trim(maxisNoteText, "`n")
@@ -622,6 +626,7 @@ guiGetControlSize(guiName, controlName) {
 
 JSONstring(inputString) { ; encodeURIComponent
     inputString := StrReplace(inputString, "%", "%25",, -1)
+    inputString := StrReplace(inputString, "`t", "    ",, -1)
     inputString := StrReplace(inputString, "\", "%5C",, -1)
     inputString := RegExReplace(inputString, "`n{2,}", "%0A%0A",, -1)
     inputString := StrReplace(inputString, "`n", "%0A",, -1)
@@ -887,25 +892,26 @@ missingVerifsDoneButton() {
     emailTextObject.StartAll := "Your Child Care Assistance " mec2docType " has been " (caseDetails.eligibility == "elig" ? "approved. " : "processed. ")
     If overIncomeMissing {
         overIncomeMissingText1 := "Using information you provided, your case is ineligible as your income is over the limit for a household of " overIncomeObj.oiHHsize ". The gross limit is $" overIncomeObj.oiLimit "; your income is calculated as $" overIncomeObj.oiReceived ". `n"
-        overIncomeMissingText2 := "If your gross income does not match this calculation, you must" countySpecificText[ini.employeeInfo.employeeCounty].overIncomeContacts " submit income and eligible expense documents along with the following verifications:`n"
+        overIncomeMissingText2 := "If your gross income does not match this calculation, you must" countySpecificText[ini.employeeInfo.employeeCounty].overIncomeContacts " submit income and eligible expense (healthcare premiums, child/spousal support paid) documents along with the following verifications:`n"
         emailTextObject.StartAll .= "`n`n" overIncomeMissingText1 overIncomeMissingText2 "`n"
         missingVerifications[overIncomeMissingText1] := 3
-        missingVerifications[overIncomeMissingText2] := 3
+        missingVerifications[overIncomeMissingText2] := 4
         caseNoteMissingText .= "Household is calculated to be over-income by $" overIncomeObj.oiDifference " ($" overIncomeObj.oiReceived " - $" overIncomeObj.oiLimit ");`n"
     } Else If (HomelessStatus && caseDetails.docType == "Application") {
         If (caseDetails.eligibility == "pends") {
-            InputBox, missingHomelessItems, % "Homeless App - Info Missing", % "Eligibility is marked as Pending. What information do you need from the client to approve expedited eligibility?`n`nUse a double space ""  "" without quotation marks to start a new line.",,,,,,,, % StrReplace(missingHomelessItems, "`n", "  ")
+            InputBox, missingHomelessItemsWorkerList, % "Homeless App - Info Missing", % "Eligibility is marked as Pending. What information do you need from the client to approve expedited eligibility?`n`nUse a double space ""  "" without quotation marks to start a new line.",,,,,,,, % StrReplace(missingHomelessItems, "`n", "  ")
             If (!ErrorLevel) {
-                missingHomelessItems := StrReplace(missingHomelessItems, "  ", "`n")
-                pendingHomelessMissing := getRowCount("  " missingHomelessItems, 60, "  ", "111")
-                missingVerifications[stWordWrap(emailText.pendingHomelessPreText, 60, " ", "111") "`n"] := 8
-                missingVerifications[pendingHomelessMissing[1] "`n"] := pendingHomelessMissing[2]
-                caseNoteMissingText .= "Missing for expedited approval:`n" StrReplace(missingHomelessItems, "`n", "`n  ") ";`n"
+                missingHomelessItemsWorkerList := StrReplace(missingHomelessItemsWorkerList, "  ", ";`n")
+                pendingHomelessMissingTextAndRows := getRowCount("  " missingHomelessItemsWorkerList, 60, "  ", "111")
+                missingVerifications[stWordWrap("  " emailText.pendingHomelessPreText1 emailText.stillRequiredText "  " emailText.pendingHomelessPreText2, 60, " ", "111") "`n"] := 8
+                missingVerifications[pendingHomelessMissingTextAndRows[1] "`n"] := pendingHomelessMissingTextAndRows[2]
+                caseNoteMissingText .= "Missing for expedited approval:`n" StrReplace(missingHomelessItemsWorkerList, "`n", "`n  ") ";`n"
             }
-        } Else If (caseDetails.eligibility == "elig") {
-            emailTextObject.StartHL := (caseDetails.eligibility == "elig") ? emailText.approvedWithMissing "`n" emailText.stillRequiredText : PendingHomelessPreText missingHomelessItems
-            emailTextObject.EndHL := (caseDetails.eligibility == "elig") ? emailText.initialApproval : ""
         }
+        ;If (caseDetails.eligibility == "elig") {
+        emailTextObject.StartHL := (caseDetails.eligibility == "elig") ? emailText.approvedWithMissing "`n" emailText.stillRequiredText : "`n`n" emailText.pendingHomelessPreText1 emailText.stillRequiredText "`n" emailText.pendingHomelessPreText2 missingHomelessItemsWorkerList
+        emailTextObject.EndHL := (caseDetails.eligibility == "elig") ? emailText.initialApproval : ""
+        ;}
     }
     emailTextObject.AreOrWillBe := (HomelessStatus) ? "will be" : "are"
     emailTextObject.Reason1 := (caseDetails.eligibility == "elig") ? " for authorizing assistance hours" : " to determine eligibility or calculate assistance hours"
@@ -1398,7 +1404,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 	If InHomeCareMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
-        missingText := "In-Home Care form (sent separately) - In-Home Care requires approval by MN DHS;`n"
+        missingText := "In-Home Care form (sent separately) - In-Home Care requires approval by MN DCYF;`n"
 		missingVerifications[enum.missing ". " missingText] := 2
         emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "In-Home Care form;`n"
@@ -1716,10 +1722,10 @@ inputBoxAGUIControl() {
     If (!%A_GuiControl%) { ; !checked
         Return
     }
-    inputBoxDefaultText := A_GuiControl == "ChildSupportFormsMissing" ? Trim(missingInput[A_GuiControl], "sets") : Trim(missingInput[A_GuiControl], " (input)")
+    inputBoxDefaultText := A_GuiControl == "ChildSupportFormsMissing" ? Trim(missingInput[A_GuiControl], "forms") : Trim(missingInput[A_GuiControl], " (input)")
     InputBox, inputBoxInput, % "Additional Input Required", % missingInputObject[A_GuiControl].promptText,,,,,,,, % inputBoxDefaultText
 	If (ErrorLevel) {
-        GuiControl, MissingGui:, % A_GuiControl, 0
+        GuiControl, MissingGui:, % A_GuiControl, 0 ; uncheck if cancelled
 		Return 1
     }
     If (StrLen(inputBoxInput) == 0) {
@@ -1728,7 +1734,7 @@ inputBoxAGUIControl() {
         Return 1
     }
     If (A_GuiControl == "ChildSupportFormsMissing") {
-        inputBoxInput .= StrLen(inputBoxInput) == 1 ? ( (inputBoxInput < 2 ? " set" : " sets") ) : ""
+        inputBoxInput .= StrLen(inputBoxInput) == 1 ? ( (inputBoxInput < 2 ? " form" : " forms") ) : ""
     } Else If (A_GuiControl == "overIncomeMissing") {
         overIncomeSub(inputBoxInput)
     }
@@ -2378,8 +2384,6 @@ Return
     ControlSend,,{End}, % "Clipboard Text"
 Return
 
-^BS:: send, ^+{left}{delete}
-
 #c::
     WinActivate, % "^Missing Verifications$"
     WinActivate, % "^CaseNotes$"
@@ -2419,6 +2423,7 @@ Return
             resetPositions()
         Return
     Return
+    ^BS:: Send ^+{left}{delete}
 }
 #If ;#IfWinActive ; CaseNotes
 
