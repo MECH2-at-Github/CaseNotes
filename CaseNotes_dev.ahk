@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.0.6"
+Version := "v1.0.7"
 
 ;Future todo ideas:
 
@@ -376,6 +376,11 @@ makeCaseNote() {
     }
     Gui, MainGui:Submit, NoHide
     Gui, MissingGui:Submit, NoHide
+    optionsSelectedString := caseDetails.docType caseDetails.caseType caseDetails.eligibility (caseDetails.docType != "Redet" ? caseDetails.appType : "") (caseDetails.eligibility == "elig" ? caseDetails.saEntered : "")
+    If ( InStr(optionsSelectedString, "?") ) {
+        MsgBox,, % "Case Note Error", % "Select options at the top before case noting.`n  (Document type, Program, Eligibility, etc.)"
+        Return false
+    }
     local finishedCaseNote := {}, originalMissingEdit := 14MissingEdit
     local caseDetailsModified := { caseType: caseDetails.caseType, appType: caseDetails.appType, docType: caseDetails.docType, eligibility: caseDetails.eligibility, saEntered: caseDetails.saEntered }
     ;v2: continuation section 
@@ -434,10 +439,6 @@ makeCaseNote() {
 	} Else If (caseDetailsModified.docType == "Redet") {
 		finishedCaseNote.mec2NoteTitle := caseDetailsModified.caseType " " caseDetailsModified.docType " rec'd " dateObject.receivedMDY ", " caseDetailsModified.eligibility caseDetailsModified.saEntered
 	}
-    If (!StrLen(finishedCaseNote.mec2NoteTitle) || InStr(finishedCaseNote.mec2NoteTitle, "?") ) {
-        MsgBox,, % "Case Note Error", % "Select options at the top before case noting.`n  (Document type, Program, Eligibility, etc.)"
-        Return false
-    }
 
     Return finishedCaseNote
 }
@@ -752,7 +753,7 @@ buildMissingGui() {
 
     local lineColor := "0x5" ; https://gist.github.com/jNizM/019696878590071cf739
     ;local lineColor := "717171""
-    local sepLineBoldLeft := " xm+10 y+15 h1 border " lineColor, sepLineBoldRight:= " x+m yp+7 h1 border " lineColor, sepLineSubLeft := " xm+10 y+12 h1 " lineColor, sepLineSubRight := " x+m yp+7 h1 " lineColor, textLinePos := "x+m yp-7"
+    local sepLineBoldLeft := " xm y+13 h1 border " lineColor, sepLineBoldRight:= " x+m yp+7 h1 border " lineColor, sepLineSubLeft := " xm y+10 h1 " lineColor, sepLineSubRight := " x+m yp+7 h1 " lineColor, sepLineLeftLen := 80, sepLineRightLen := 80, textLinePos := "x+m yp-7"
     ;-- Alternate method for lines:
     ;local ProgressLine := "xm+10 yp+22 h1 Background" lineColor, rightProgLine := "x+m yp-7 h1 Background" lineColor
     ;Gui, MissingGui:Add, Progress, % ProgressLine
@@ -775,10 +776,10 @@ buildMissingGui() {
     Gui, MissingGui:Add, Checkbox, % column2of2 " vLegalNameChangeMissing ginputBoxAGUIControl", % "Name Change (input)"
     Gui, MissingGui:Add, Checkbox, % column1of1 " vDependentAdultStudentMissing ginputBoxAGUIControl", % "Dependent Adult Child: FT Student and 50`%+ Expenses (input)"
 
-    Gui, MissingGui:Font, bold ;============================================== ▼ EARNED INCOME SECTION ▼ ===============================================================
-    Gui, MissingGui:Add, Text, % "w125" sepLineBoldLeft
-    Gui, MissingGui:Add, Text, % "x+m yp-7", % "Earned Income"
-    Gui, MissingGui:Add, Text, % "w117" sepLineBoldRight
+    Gui, MissingGui:Font, bold s9, % "Corbel" ;============================================== ▼ EARNED INCOME SECTION ▼ ===============================================================
+    Gui, MissingGui:Add, Text, % "w" sepLineLeftLen+25 sepLineBoldLeft
+    Gui, MissingGui:Add, Text, % "x+m yp-7", % "EARNED INCOME"
+    Gui, MissingGui:Add, Text, % "w" + sepLineRightLen+37 sepLineBoldRight
     Gui, MissingGui:Font
 
     Gui, MissingGui:Add, Checkbox, % column1of3 " vIncomeMissing", % "Income"
@@ -788,31 +789,40 @@ buildMissingGui() {
     Gui, MissingGui:Add, Checkbox, % column2of2 " vWorkSchedulePlusNameMissing ginputBoxAGUIControl", % "Work Schedule (input)"
     Gui, MissingGui:Add, Checkbox, % column1of1 " vNewEmploymentMissing", % "New Job At App / End Of Job Search (wage, dates, hours)"
 
-    Gui, MissingGui:Add, Text, % "w125" sepLineSubLeft ;---------------------- ▼ Self-Emplyment Sub-section ▼ ----------------------------------------------------------
-    Gui, MissingGui:Add, Text, % textLinePos, % "Self-Employment"
-    Gui, MissingGui:Add, Text, % "w118" sepLineSubRight
+    Gui, MissingGui:Font, s9, % "Corbel"
+    Gui, MissingGui:Add, Text, % "w" sepLineLeftLen+25 sepLineSubLeft ;---------------------- ▼ Self-Employment Sub-section ▼ ----------------------------------------------------------
+    Gui, MissingGui:Add, Text, % textLinePos, % "SELF-EMPLOYMENT"
+    Gui, MissingGui:Add, Text, % "w" + sepLineRightLen+38 sepLineSubRight
+    Gui, MissingGui:Font
+
     Gui, MissingGui:Add, Checkbox, % column1of2 " vSelfEmploymentMissing", % "Self-Employment Income"
     Gui, MissingGui:Add, Checkbox, % column2of2 " vSelfEmploymentScheduleMissing", % "Self-Employment Schedule"
     Gui, MissingGui:Add, Checkbox, % column1of1 " vSelfEmploymentBusinessGrossMissing", % "Business Gross (if using state min wage, determine if small business)"
 
-    Gui, MissingGui:Add, Text, % "w115" sepLineSubLeft ;---------------------- ▼ Seasonal-Emplyment Sub-section ▼ ------------------------------------------------------
-    Gui, MissingGui:Add, Text, % textLinePos, % "Seasonal Employment"
-    Gui, MissingGui:Add, Text, % "w102" sepLineSubRight
+    Gui, MissingGui:Font, s9, % "Corbel"
+    Gui, MissingGui:Add, Text, % "w" sepLineLeftLen+15 sepLineSubLeft ;---------------------- ▼ Seasonal-Employment Sub-section ▼ ------------------------------------------------------
+    Gui, MissingGui:Add, Text, % textLinePos, % "SEASONAL EMPLOYMENT"
+    Gui, MissingGui:Add, Text, % "w" + sepLineRightLen+22 sepLineSubRight
+    Gui, MissingGui:Font
+
     Gui, MissingGui:Add, Checkbox, % column1of2 " vSeasonalWorkMissing", % "SE Season Length"
     Gui, MissingGui:Add, Checkbox, % column2of2 " vSeasonalOffSeasonMissing ginputBoxAGUIControl", % "SE Info - App In Off-season (input)"
+    Gui, MissingGui:Font, s9, % "Corbel"
+    Gui, MissingGui:Add, Text, % "w" sepLineLeftLen+30 sepLineSubLeft ;---------------------- ▼ Other Income Sub-section ▼ ------------------------------------------------------------
+    Gui, MissingGui:Add, Text, % textLinePos, % "INCOME - OTHER"
+    Gui, MissingGui:Add, Text, % "w" + sepLineRightLen+43 sepLineSubRight
+    Gui, MissingGui:Font
 
-    Gui, MissingGui:Add, Text, % "w130" sepLineSubLeft ;---------------------- ▼ Other Income Sub-section ▼ ------------------------------------------------------------
-    Gui, MissingGui:Add, Text, % textLinePos, % "Income - Other"
-    Gui, MissingGui:Add, Text, % "w123" sepLineSubRight
+    Gui, MissingGui:Add, Checkbox, % column1of1 " vWorkLeaveMissing", % "Leave Of Absence (dates, pay status, hours, work schedule)"
     Gui, MissingGui:Add, Checkbox, % column1of2 " vExpensesMissing", % "Expenses"
     Gui, MissingGui:Add, Checkbox, % column2of2 " voverIncomeMissing ginputBoxAGUIControl", % "Over-income (input)"
-    Gui, MissingGui:Add, Checkbox, % column1of1 " vWorkLeaveMissing", % "Leave Of Absence (dates, pay status, hours, work schedule)"
 
-    Gui, MissingGui:Font, bold ;============================================== ▼ UNEARNED INCOME SECTION ▼ =============================================================
-    Gui, MissingGui:Add, Text, % "w120" sepLineBoldLeft
-    Gui, MissingGui:Add, Text, % textLinePos, % "Unearned Income"
-    Gui, MissingGui:Add, Text, % "w109" sepLineBoldRight
+    Gui, MissingGui:Font, bold s9, % "Corbel" ;============================================== ▼ UNEARNED INCOME SECTION ▼ =============================================================
+    Gui, MissingGui:Add, Text, % "w" sepLineLeftLen+20 sepLineBoldLeft
+    Gui, MissingGui:Add, Text, % textLinePos, % "UNEARNED INCOME"
+    Gui, MissingGui:Add, Text, % "w" + sepLineRightLen+29 sepLineBoldRight
     Gui, MissingGui:Font
+
     Gui, MissingGui:Add, Checkbox, % column1of2 " vChildSupportIncomeMissing", % "Child Support Income"
     Gui, MissingGui:Add, Checkbox, % column2of2 " vSpousalSupportMissing", % "Spousal Support Income"
     Gui, MissingGui:Add, Checkbox, % column1of2 " vRentalMissing", % "Rental"
@@ -824,10 +834,10 @@ buildMissingGui() {
     Gui, MissingGui:Add, Checkbox, % column1of2 " vAssetsBlankMissing", % "Assets (not answered)"
     Gui, MissingGui:Add, Checkbox, % column2of2 " vUnearnedMailedMissing", % "Blank Unearned Y/N (printed, mailed)"
 
-    Gui, MissingGui:Font, bold ; ;============================================ ▼ ACTIVITY SECTION ▼ ====================================================================
-    Gui, MissingGui:Add, Text, % "w146" sepLineBoldLeft
-    Gui, MissingGui:Add, Text, % textLinePos, % "Activity"
-    Gui, MissingGui:Add, Text, % "w139" sepLineBoldRight
+    Gui, MissingGui:Font, bold s9, % "Corbel" ; ;============================================ ▼ ACTIVITY SECTION ▼ ====================================================================
+    Gui, MissingGui:Add, Text, % "w" sepLineLeftLen+46 sepLineBoldLeft
+    Gui, MissingGui:Add, Text, % textLinePos, % "ACTIVITY"
+    Gui, MissingGui:Add, Text, % "w" + sepLineRightLen+59 sepLineBoldRight
     Gui, MissingGui:Font
     Gui, MissingGui:Add, Checkbox, % column1of2 " vJobSearchHoursMissing", % "BSF Job Search Hours"
     Gui, MissingGui:Add, Checkbox, % column2of2 " vSelfEmploymentIneligibleMissing", % "Self-Employment Not Enough Hours" ; **
@@ -837,9 +847,12 @@ buildMissingGui() {
     Gui, MissingGui:Add, Checkbox, % column2of2 " vActivityAfterHomelessMissing", % "Activity Req After 3-Mo Homeless Period" ; **
     Gui, MissingGui:Add, Checkbox, % column1of1 " vMightBeUnableToProvideCareMissing", % "One Parent Of Two Might Be 'Unable to Provide Care'" ; **
 
-    Gui, MissingGui:Add, Text, % "w141" sepLineSubLeft
-    Gui, MissingGui:Add, Text, % textLinePos, % "Education" ;----------------- ▼ Education Sub-section ▼ ---------------------------------------------------------------
-    Gui, MissingGui:Add, Text, % "w134" sepLineSubRight
+    Gui, MissingGui:Font, s9, % "Corbel" 
+    Gui, MissingGui:Add, Text, % "w" sepLineLeftLen+41 sepLineSubLeft ;---------------------- ▼ Education Sub-section ▼ ---------------------------------------------------------------
+    Gui, MissingGui:Add, Text, % textLinePos, % "EDUCATION"
+    Gui, MissingGui:Add, Text, % "w" + sepLineRightLen+54 sepLineSubRight
+    Gui, MissingGui:Font
+
     Gui, MissingGui:Add, Checkbox, % column1of3 " vEdBSFformMissing", % "BSF/TY Edu Form"
     Gui, MissingGui:Add, Checkbox, % column2of3 " vClassScheduleMissing", % "Class Schedule"
     Gui, MissingGui:Add, Checkbox, % column3of3 " vEdBSFsecondaryEduFormMissing", % "GED / HS Edu Form"
@@ -849,10 +862,10 @@ buildMissingGui() {
     Gui, MissingGui:Add, Checkbox, % column1of2 " vEducationEmploymentPlanMissing", % "ES Plan (CCMF Education)"
     Gui, MissingGui:Add, Checkbox, % column2of2 " vStudentStatusOrIncomeMissing", % "Adult Student With Income (age < 20)"
 
-    Gui, MissingGui:Font, bold ;============================================== ▼ PROVIDER SECTION ▼ ====================================================================
-    Gui, MissingGui:Add, Text, % "w143" sepLineBoldLeft
-    Gui, MissingGui:Add, Text, % textLinePos, % "Provider"
-    Gui, MissingGui:Add, Text, % "w137" sepLineBoldRight
+    Gui, MissingGui:Font, bold s9, % "Corbel" ;============================================== ▼ PROVIDER SECTION ▼ ====================================================================
+    Gui, MissingGui:Add, Text, % "w" sepLineLeftLen+43 sepLineBoldLeft
+    Gui, MissingGui:Add, Text, % textLinePos, % "PROVIDER"
+    Gui, MissingGui:Add, Text, % "w" + sepLineRightLen+57 sepLineBoldRight
     Gui, MissingGui:Font
 
     Gui, MissingGui:Add, Checkbox, % column1of2 " vNoProviderMissing", % "No Provider Listed"
@@ -877,9 +890,11 @@ buildMissingGui() {
 
 parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerifications, ByRef emailTextString, ByRef caseNoteMissingText, ByRef enum) {
 	Global
+    EligActivityWithoutJS := "Eligible activities are:`n  A. Employment of 20+ hours per week (10+ for FT students)`n  B. Education with an approved plan (up to a BA/BS degree)`n  C. Activities on a Cash Assistance Employment Plan"
+    EligActivityWithJS := EligActivityWithoutJS "`n  D. Job Search up to 20 hours per week"
 ; ====================================================== ▼ GENERAL ▼ ====================================================================================================
 
-; ----------------------------------------------------- ▼ IDENTITY ▼ ---------------------------------------------------------------------------------------------------
+; ------------------------------------------------------ ▼ IDENTITY ▼ ---------------------------------------------------------------------------------------------------
 	If IDmissing {
         enumInc(enum, "email")
         enumInc(enum, "clarify")
@@ -914,9 +929,9 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
     If FosterChildBCmissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
-        missingText := "Birth date / citizenship verification and placement form for: " missingInput.FosterChildBCmissing " (ask the social worker to send these to ESS);"
+        missingText := "Birth date / citizenship verification and placement form for: " missingInput.FosterChildBCmissing " (ask the social worker to send these to ESS)"
         local tempText := getRowCount(enum.missing ". " missingText ";", 60, "")
-        missingVerifications[tempText[1] "`n"] := tempText[2]
+        clarifiedVerifications[tempText[1] "`n"] := tempText[2]
         emailTextString .= enum.email ". " missingText ";`n"
 		caseNoteMissingText .= "Birth date / citizenship verification for: " missingInput.FosterChildBCmissing ";`n"
 		caseNoteMissingText .= "Foster care placement form for: " missingInput.FosterChildBCmissing ";`n"
@@ -928,7 +943,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         enumInc(enum, "missing")
         missingText := "Paternity verification for: " missingInput.PaternityMissing " (examples: official Birth Certificate, Recognition of Parentage form. If the father is not listed, contact me for alternatives.)"
         local tempText := getRowCount(enum.missing ". " missingText ";", 60, "")
-        missingVerifications[tempText[1] "`n"] := tempText[2]
+        clarifiedVerifications[tempText[1] "`n"] := tempText[2]
         emailTextString .= enum.email ". " missingText ";`n"
 		caseNoteMissingText .= "Paternity for: " missingInput.PaternityMissing ";`n"
         mecCheckboxIds.proofOfRelation := 1
@@ -937,7 +952,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         enumInc(enum, "email")
         enumInc(enum, "missing")
         missingText := "Marriage verification (example: marriage certificate);`n"
-		missingVerifications[enum.missing ". " missingText] := 1
+		clarifiedVerifications[enum.missing ". " missingText] := 1
         emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Marriage certificate;`n"
         mecCheckboxIds.proofOfRelation := 1
@@ -951,7 +966,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 		caseNoteMissingText .= "Legal name change for " missingInput.LegalNameChangeMissing ";`n"
     }
 
-; ----------------------------------------------------- ▼ ADDRESS ▼ ---------------------------------------------------------------------------------------------------
+; ------------------------------------------------------ ▼ ADDRESS ▼ ---------------------------------------------------------------------------------------------------
 	If AddressMissing {
         If (HomelessStatus) {
             enumInc(enum, "email")
@@ -969,7 +984,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         mecCheckboxIds.proofOfResidence := 1
     }
 
-; ----------------------------------------------------- ▼ CS/CUSTODY ▼ ---------------------------------------------------------------------------------------------------
+; ------------------------------------------------------ ▼ CS/CUSTODY ▼ ---------------------------------------------------------------------------------------------------
 	If ChildSupportFormsMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
@@ -1007,7 +1022,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 		caseNoteMissingText .= "Shared custody / parenting time for " missingInput.CustodySchedulePlusNamesMissing ";`n"
     }
 
-; ----------------------------------------------------- ▼ SCHOOL ▼ ---------------------------------------------------------------------------------------------------
+; ------------------------------------------------------ ▼ SCHOOL ▼ ---------------------------------------------------------------------------------------------------
     if DependentAdultStudentMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
@@ -1102,7 +1117,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         emailTextString .= enum.email ". " StrReplace(missingText, "`n", "") "`n"
 		caseNoteMissingText .= "Leave of absence details;`n"
     }
-; ----------------------------------------------------- ▼ SEASONAL EMPLOYMENT ▼ ---------------------------------------------------------------------------------------------------
+; ------------------------------------------------------ ▼ SEASONAL EMPLOYMENT ▼ ---------------------------------------------------------------------------------------------------
     If SeasonalWorkMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
@@ -1120,7 +1135,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         emailTextString .= enum.email ". " StrReplace(missingText, "`n", "") "`n"
 		caseNoteMissingText .= "Seasonal employment (applied during off season);`n"
     }
-; ----------------------------------------------------- ▼ SELF EMPLOYMENT ▼ ---------------------------------------------------------------------------------------------------
+; ------------------------------------------------------ ▼ SELF EMPLOYMENT ▼ ---------------------------------------------------------------------------------------------------
 	If SelfEmploymentMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
@@ -1147,7 +1162,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Self-Employment gross (if subject to small/large min wage: <$500k/yr?) - not required;`n"
     }
-; ----------------------------------------------------- ▼ EXPENSES ▼ ---------------------------------------------------------------------------------------------------
+; ------------------------------------------------------ ▼ EXPENSES ▼ ---------------------------------------------------------------------------------------------------
 	If ExpensesMissing {
         enumInc(enum, "email")
         missingText := "Proof of Expenses: Healthcare Insurance premiums, child support, spousal support - if not listed on submitted paystubs;`n"
@@ -1222,11 +1237,11 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         caseNoteMissingText .= "Unearned income yes / no questions (mailed back);`n"
     }
     
-; ----------------------------------------------------- ▼ ASSETS ▼ ---------------------------------------------------------------------------------------------------
+; ------------------------------------------------------ ▼ ASSETS ▼ ---------------------------------------------------------------------------------------------------
 	If AssetsBlankMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
-        missingText := "Written or verbal statement of your assets being either MORE THAN or LESS THAN $1 million;`n"
+        missingText := "Written or verbal statement of your assets being either MORE THAN or LESS THAN $1 million (not answered on form);`n"
 		missingVerifications[enum.missing ". " missingText] := 2
         emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Assets amount statement;`n"
@@ -1285,10 +1300,17 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 	If TranscriptMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
-        missingText := "Unofficial post-secondary transcript/academic record;`n"
+        ;missingText := "Post-secondary Academic Record / unofficial transcript;`n"
+        missingText := "Post-secondary Academic Record (AKA unofficial transcript);`n"
 		missingVerifications[enum.missing ". " missingText] := 1
         emailTextString .= enum.email ". " missingText
-		caseNoteMissingText .= "Post-secondary transcript;`n"
+		caseNoteMissingText .= "Academic record / unofficial transcript;`n"
+    }
+	If EdBSFOneBachelorDegreeMissing {
+        missingText := "* Unless listed on a Cash Assistance Employment Plan, education is an eligible activity only up to your first bachelor's degree, plus CEUs (no additional degrees).`n"
+		missingVerifications[missingText] := 3
+        emailTextString .= missingText
+		caseNoteMissingText .= "* Client informed only up to first bachelor's degree is BSF/TY eligible;`n"
     }
 	If EducationEmploymentPlanMissing {
         enumInc(enum, "email")
@@ -1297,6 +1319,12 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 		missingVerifications[enum.missing ". " missingText] := 2
         emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "ES Plan with education activity and schedule;`n"
+    }
+	If MFIPchildUnderOneExemptionMissing {
+        missingText := "* While open on MFIP, education is an eligible activity for CCAP only when it is listed on an active Employment Plan. Due to taking the 'Child Under One Exemption' you are currently exempt from having a plan. If you need CCAP for education, contact your MFIP team to end the exemption.`n"
+		missingVerifications[missingText] := 5
+        emailTextString .= missingText
+		caseNoteMissingText .= "* MFIP Client informed EDU must be on ES Plan;`n"
     }
     If StudentStatusOrIncomeMissing {
         enumInc(enum, "email")
@@ -1309,7 +1337,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 
 ; ====================================================== ▼ OTHER ▼ ====================================================================================================
     For imissingText, missingText in otherMissing {
-        If (!otherInput%imissingText%) { ; not checked
+        If (!otherInput%imissingText%) { ; if not checked
             continue
         }
         enumInc(enum, "email")
@@ -1346,21 +1374,6 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 		caseNoteMissingText .= "Provider start date;`n"
     }
 ; ====================================================== ▼ ** ACTIVITY ▼ ====================================================================================================
-	If EdBSFOneBachelorDegreeMissing {
-        missingText := "* Unless listed on a Cash Assistance Employment Plan, education is an eligible activity only up to your first bachelor's degree, plus CEUs (no additional degrees).`n"
-		missingVerifications[missingText] := 3
-        emailTextString .= missingText
-		caseNoteMissingText .= "* Client informed only up to first bachelor's degree is BSF/TY eligible;`n"
-    }
-	If MFIPchildUnderOneExemptionMissing {
-        missingText := "* While open on MFIP, education is an eligible activity for CCAP only when it is listed on an active Employment Plan. Due to taking the 'Child Under One Exemption' you are currently exempt from having a plan. If you need CCAP for education, contact your MFIP team to end the exemption.`n"
-		missingVerifications[missingText] := 5
-        emailTextString .= missingText
-		caseNoteMissingText .= "* MFIP Client informed EDU must be on ES Plan;`n"
-    }
-
-    EligActivityWithoutJS := "Eligible activities are:`n  A. Employment of 20+ hours per week (10+ for FT students)`n  B. Education with an approved plan (up to a BA/BS degree)`n  C. Activities on a Cash Assistance Employment Plan"
-    EligActivityWithJS := EligActivityWithoutJS "`n  D. Job Search up to 20 hours per week"
 
     If SelfEmploymentIneligibleMissing {
         missingText := "* Your self-employment does not meet activity requirements. Self-employment hours are calculated using 50% of recent gross income, or gross minus expenses on tax return, divided by minimum wage. " EligActivityWithJS "`n"
@@ -1486,6 +1499,11 @@ missingVerifsDoneButton() {
     Global
 	Gui, MainGui:Submit, NoHide
 	Gui, MissingGui:Submit, NoHide
+    optionsSelectedString := caseDetails.docType caseDetails.caseType caseDetails.eligibility (caseDetails.docType != "Redet" ? caseDetails.appType : "") (caseDetails.eligibility == "elig" ? caseDetails.saEntered : "")
+    If ( InStr(optionsSelectedString, "?") ) {
+        MsgBox,, % "Case Note Error", % "Select options at the top before case noting.`n  (Document type, Program, Eligibility, etc.)"
+        return false
+    }
     GuiControl, MainGui:Hide, openLocalSaveButton
     calcDates()
     emailTextString := "", emailTextObject := {}, mecCheckboxIds := {}, letterTextNumber := 1, letterText := {}, lineNumber := 1, lineCount := 0, enum := { missing: 0, clarify: 0, email: 0, lineCount: 0 }, caseNoteMissingText := "" ; Resetting variables to blank and creating locals
