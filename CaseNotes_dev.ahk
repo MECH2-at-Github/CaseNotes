@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.0.7"
+Version := "v1.0.8"
 
 ;Future todo ideas:
 
@@ -1574,9 +1574,10 @@ missingVerifsDoneButton() {
     waitlistText := ""
     If (caseDetails.haveWaitlist || manualWaitlistBox) {
         waitlistNumber := ini.caseNoteCountyInfo.Waitlist -1
-        waitlistPriorities := { 1: "• Are attending High School, GED, or ESL classes;`n" }
-        waitlistPriorities.2 := waitlistPriorities.1 "• Families in which an applicant is a veteran;`n"
-        waitlistPriorities.3 := waitlistPriorities.2 "• Families which don't qualify for other priorities;`n"
+        waitlistPriorities := { 1: "• Are attending a High School or GED program and are under 21;`n" }
+        waitlistPriorities.2 := "• Are attending a High School or GED program;`n"
+        waitlistPriorities.3 := waitlistPriorities.2 "• Families in which an applicant is a veteran;`n"
+        waitlistPriorities.4 := waitlistPriorities.3 "• Families which don't qualify for other priorities;`n"
         waitlistText := "
 (
 Due to limited funding, new eligibility for CCAP in " countySpecificText[ini.employeeInfo.employeeCounty].CountyName " is currently limited to those who:
@@ -1939,7 +1940,7 @@ openSettingsGui(checkOnOpen:=0) {
     Gui, SettingsGui:Add, Text, % textLabelOptions, % "BSF Secondary Edu. Form Name:"
     Gui, SettingsGui:Add, Edit, % editboxOptions " vCountyEdBSFsecondaryWrite", % ini.caseNoteCountyInfo.countyEdBSFsecondary
     Gui, SettingsGui:Add, Text, % textLabelOptions, % "Waiting List Priority:"
-    Gui, SettingsGui:Add, DropDownList, % editboxOptions " vWaitlistWrite R4 AltSubmit Choose" ini.caseNoteCountyInfo.Waitlist, % "None|HS / GED / ESL|A PRI is a veteran|All others"
+    Gui, SettingsGui:Add, DropDownList, % editboxOptions " vWaitlistWrite R5 AltSubmit Choose" ini.caseNoteCountyInfo.Waitlist, % "None|HS / GED, under age 21|HS / GED, all ages|A PRI is a veteran|All others"
     Gui, SettingsGui:Add, Button, % "w80 gupdateIniFile", % "Save"
     Gui, SettingsGui:+OwnerMainGui
     Gui, SettingsGui:Show,, % "Update Settings"
