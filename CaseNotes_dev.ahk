@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.0.8"
+Version := "v1.0.9"
 
 ;Future todo ideas:
 
@@ -20,10 +20,11 @@ SetWorkingDir % A_ScriptDir
 SetTitleMatchMode, RegEx
 DetectHiddenWindows, On
 
-; Rule for AHKv1 GUI functions and variables: If you are doing a "Gui, Submit" the function needs to be declared Global.
+; Rule for AHKv1 functions and variables involving GUI: If you are doing a "Gui, Submit" the function needs to be declared Global.
 Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerboseMode := (verboseMode && true) ? 1 : 0
 
-;setGlobalVariables() { ; don't collapse until v2
+;setGlobalVariables() { ; don't enable until v2
+    ;symbols/characters
     Global sq := "²", cm := "✔", cs := ", ", pct := "%"
 
     ;Settings
@@ -36,25 +37,26 @@ Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerbose
     GroupAdd, autoMailGroup, % "Automated Mailing Home Page"
     GroupAdd, autoMailGroup, % "ahk_exe obunity.exe",,, % "Perform Import"
 
+    ;Normalizing window size
     Global CH100x30 := guiEditAreaSize("1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890`n2`n3`n4`n5`n6`n7`n8`n9`n0`n1`n2`n3`n4`n5`n6`n7`n8`n9`n0`n1`n2`n3`n4`n5`n6`n7`n8`n9`n0", "s9", "Lucida Console"),
         wCH := CH100x30[1]/100, hCH := CH100x30[2]/30
     Global CH87 := guiEditAreaSize("123456789012345678901234567890123456789012345678901234567890123456789012345678901234567`n2", "s9", "Lucida Console"), wCH87 := CH87[1]
     Global zoomPPI := A_ScreenDPI/96
-    Global pad := 2, scrollbar := 24, margin := 12, oneRow := "h" hCH+pad*2 " Limit87", twoRows := "h" (hCH*2.7)+pad, threeRows := "h" (hCH*3)+pad*3, fourRows := "h" (hCH*4)+pad*3, tenRows := "h" (hCH*10)+pad*3, ctrlBs:=0
-
-    Global countySpecificText := { v2: ""
-        , StLouis: { overIncomeContacts: "", CountyName: "St. Louis County" }
-        , Dakota: { overIncomeContacts: " contact 651-554-6696 and", CountyName: "Dakota County", customHotkeys: "
-    (
-        Custom hotkeys for your county exist for the following windows (A ToolTip reminder appears by pressing F1):
-        ● OnBase (Alt+4: 'Verifs Due Back' detail)
-        ● OnBase (Ctrl+F6-12: Enters keywords on the Perform Import screen)
-        ● OnBase (Ctrl+B: Inserts date and case number for mail)
-        ● Automated Mailing (Ctrl+B: Inserts date and case number for mail)
-        ● Browser (Types an Approved (Alt+F1) or Denied (Alt+F2) app case note. Ctrl+F12 or Alt+F12: worker signature)
-        ● Word (Alt+4: Types in first name, case number, and app received date)
-        ● MAXIS (Alt+M: Changes the title of the MAXIS window to ""MAXIS"" to enable screen-scraping)
-    )" }
+    Global pad := 2, scrollbar := 24, margin := 12, oneRow := "h" hCH+pad*2 " Limit87", twoRows := "h" (hCH*2.7)+pad, threeRows := "h" (hCH*3)+pad*3, fourRows := "h" (hCH*4)+pad*3, tenRows := "h" (hCH*10)+pad*3, ctrlBs := 0
+    Global sizes := { v2: "" ; not yet implemented. possibly problematic due to these being used in GUIs
+        , pad: 2
+        , scrollbar: 24
+        , margin: 12
+        , oneRow: "h" hCH+pad*2 " Limit87"
+        , twoRows: "h" (hCH*2.7)+pad
+        , threeRows: "h" (hCH*3)+pad*3
+        , fourRows: "h" (hCH*4)+pad*3
+        , tenRows: "h" (hCH*10)+pad*3
+        , wCH: CH100x30[1]/100
+        , hCH: CH100x30[2]/30
+        , wCH87: guiEditAreaSize("123456789012345678901234567890123456789012345678901234567890123456789012345678901234567`n2", "s9", "Lucida Console")[1]
+        , ctrlBs: 0
+        , zoomPPI: A_ScreenDPI/96
         , v2end: "" }
 
     ;Base globals
@@ -93,6 +95,22 @@ Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerbose
         , SeasonalOffSeasonMissing: { baseText: "SE Info - App in Off-season", inputAdject: " for ", promptText: "Who is the employer? (optional)" }
         , overIncomeMissing: { baseText: "Over-income", inputAdject: " by $", promptText: "Without dollar signs, enter the calculated income less expenses, income limit, and household size. `nType numbers separated by spaces.`n`n(Example: 76392 49605 3)" }
         , v2end: "" }
+
+    Global countySpecificText := { v2: ""
+        , StLouis: { overIncomeContacts: "", CountyName: "St. Louis County" }
+        , Dakota: { overIncomeContacts: " contact 651-554-6696 and", CountyName: "Dakota County", customHotkeys: "
+    (
+        Custom hotkeys for your county exist for the following windows (A ToolTip reminder appears by pressing F1):
+        ● OnBase (Alt+4: 'Verifs Due Back' detail)
+        ● OnBase (Ctrl+F6-12: Enters keywords on the Perform Import screen)
+        ● OnBase (Ctrl+B: Inserts date and case number for mail)
+        ● Automated Mailing (Ctrl+B: Inserts date and case number for mail)
+        ● Browser (Types an Approved (Alt+F1) or Denied (Alt+F2) app case note. Ctrl+F12 or Alt+F12: worker signature)
+        ● Word (Alt+4: Types in first name, case number, and app received date)
+        ● MAXIS (Alt+M: Changes the title of the MAXIS window to ""MAXIS"" to enable screen-scraping)
+    )" }
+        , v2end: "" }
+
 ;}
 ;setGlobalVariables()
 setFromIni()
@@ -103,6 +121,7 @@ buildMissingGui()
 defaultSettings()
 openSettingsGui(1)
 Global caseNotesMonCenter := getMonCenter("CaseNotes")
+; WinExist("ahk_id" CaseNotesHwnd)
 Return
 
 ;==============================================================================================================================================================================================
@@ -220,6 +239,7 @@ buildOpenMainGui() {
     Gui, MainGui:Add, Button, % "x+40 yp wp h19 -TabStop gopenHelpGui", % "Help"
     Gui, MainGui:Add, Button, % "x600 yp wp h19 gopenMissingGui", % "Missing"
 
+    Gui, MainGui:+HwndCaseNotesHwnd
     Gui, MainGui:Show, % "x" ini.caseNotePositions.xCaseNotes " y" ini.caseNotePositions.yCaseNotes, CaseNotes
     Gui, MainGui:Show, AutoSize
 
@@ -270,7 +290,7 @@ setAppType() {
         revertLabels()
         GuiControl, MainGui:Show, SignOrDueLabel
         GuiControl, MainGui:Show, SignOrDueDate
-    } Else If (A_GuiControl == "MNBenefitsRadio") {
+    } Else If (A_GuiControl == "MNBenefitsRadio") { ; could change this to an array of arrays and loop.
         caseDetails.appType := "MNB"
         GuiControl, MainGui:Text, 01HouseholdCompEditLabel, % "Household Comp (pg. 1, 5-7)"
         GuiControl, MainGui:Text, 03AddressVerificationEditLabel, % "Address Verification (pg. 5)"
@@ -467,7 +487,7 @@ outputCaseNoteMec2(ByRef sendingCaseNote) { ; don't collapse until v2
         sendingCaseNote.mec2CaseNote := openOversizedNoteGui(sendingCaseNote.mec2CaseNote)
         If (StrLen(sendingCaseNote.mec2CaseNote) < 2) {
             Sleep 200
-            WinActivate, % "^CaseNotes$"
+            WinActivate, % "ahk_id" CaseNotesHwnd
             Return
         }
     }
@@ -771,7 +791,7 @@ buildMissingGui() {
     Gui, MissingGui:Add, Checkbox, % column1of2 " vCustodyScheduleMissing", % "Custody (""for each child"")"
     Gui, MissingGui:Add, Checkbox, % column2of2 " vCustodySchedulePlusNamesMissing ginputBoxAGUIControl", % "Custody (input)"
     Gui, MissingGui:Add, Checkbox, % column1of2 " vChildSchoolMissing", % "Child School Information"
-    Gui, MissingGui:Add, Checkbox, % column2of2 " vChildFTSchoolMissing", % "Child Full-time Student Status"
+    Gui, MissingGui:Add, Checkbox, % column2of2 " vChildFTSchoolMissing", % "Minor Child with job: FT Student Verif"
     Gui, MissingGui:Add, Checkbox, % column1of2 " vMarriageCertificateMissing", % "Marriage Certificate"
     Gui, MissingGui:Add, Checkbox, % column2of2 " vLegalNameChangeMissing ginputBoxAGUIControl", % "Name Change (input)"
     Gui, MissingGui:Add, Checkbox, % column1of1 " vDependentAdultStudentMissing ginputBoxAGUIControl", % "Dependent Adult Child: FT Student and 50`%+ Expenses (input)"
@@ -840,12 +860,13 @@ buildMissingGui() {
     Gui, MissingGui:Add, Text, % "w" + sepLineRightLen+59 sepLineBoldRight
     Gui, MissingGui:Font
     Gui, MissingGui:Add, Checkbox, % column1of2 " vJobSearchHoursMissing", % "BSF Job Search Hours"
-    Gui, MissingGui:Add, Checkbox, % column2of2 " vSelfEmploymentIneligibleMissing", % "Self-Employment Not Enough Hours" ; **
-    Gui, MissingGui:Add, Checkbox, % column1of2 " vEligibleActivityMissing", % "No Eligible Activity Listed" ; **
     Gui, MissingGui:Add, Checkbox, % column2of2 " vEmploymentIneligibleMissing", % "Employment Not Enough Hours" ; **
     Gui, MissingGui:Add, Checkbox, % column1of2 " vESPlanOnlyJSMissing", % "ES Plan, needs JS listed" ; **
+    Gui, MissingGui:Add, Checkbox, % column2of2 " vSelfEmploymentIneligibleMissing", % "Self-Employment Not Enough Hours" ; **
+    Gui, MissingGui:Add, Checkbox, % column1of2 " vEligibleActivityMissing", % "No Eligible Activity Listed" ; **
     Gui, MissingGui:Add, Checkbox, % column2of2 " vActivityAfterHomelessMissing", % "Activity Req After 3-Mo Homeless Period" ; **
-    Gui, MissingGui:Add, Checkbox, % column1of1 " vMightBeUnableToProvideCareMissing", % "One Parent Of Two Might Be 'Unable to Provide Care'" ; **
+    Gui, MissingGui:Add, Checkbox, % column1of2 " vEligibilityForMentalHealthMissing", % "Mental Health Activity" ; **
+    Gui, MissingGui:Add, Checkbox, % column2of2 " vMightBeUnableToProvideCareMissing", % "1 Parent Of 2 'Unable to Provide Care'" ; **
 
     Gui, MissingGui:Font, s9, % "Corbel" 
     Gui, MissingGui:Add, Text, % "w" sepLineLeftLen+41 sepLineSubLeft ;---------------------- ▼ Education Sub-section ▼ ---------------------------------------------------------------
@@ -885,6 +906,7 @@ buildMissingGui() {
     Gui, MissingGui:Add, Button, % "x+20 w42 h17 hidden gletterButtonClick vletter2", % "Letter 2"
     Gui, MissingGui:Add, Button, % "x+20 w42 h17 hidden gletterButtonClick vletter3", % "Letter 3"
     Gui, MissingGui:Add, Button, % "x+20 w42 h17 hidden gletterButtonClick vletter4", % "Letter 4"
+    Gui, MissingGui:+HwndMissingGuiHwnd
     Gui, MissingGui:Show, % "Hide x" ini.caseNotePositions.xVerification " y" ini.caseNotePositions.yVerification
 }
 
@@ -950,9 +972,9 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
     }
 	If MarriageCertificateMissing {
         enumInc(enum, "email")
-        enumInc(enum, "missing")
+        enumInc(enum, "clarify")
         missingText := "Marriage verification (example: marriage certificate);`n"
-		clarifiedVerifications[enum.missing ". " missingText] := 1
+		clarifiedVerifications[enum.clarify ". " missingText] := 1
         emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Marriage certificate;`n"
         mecCheckboxIds.proofOfRelation := 1
@@ -988,10 +1010,13 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 	If ChildSupportFormsMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
-        If (missingInput.ChildSupportFormsMissing ~= "^\d$") {
-            missingInput.ChildSupportFormsMissing .= missingInput.ChildSupportFormsMissing+0 == 1 ? " set" : " sets" ; +0 attempts to convert to number
+        local csOneForm := 0
+        If (Trim(missingInput.ChildSupportFormsMissing) ~= "^\d$") {
+            missingInput.ChildSupportFormsMissing := missingInput.ChildSupportFormsMissing+0 ; +0 attempts to convert to number
+            csOneForm := missingInput.ChildSupportFormsMissing+0
+            missingInput.ChildSupportFormsMissing .= (csOneForm > 1 ? missingInput.ChildSupportFormsMissing " form" : " forms")
         }
-        missingText := "'Referral to Support and Collections' form (" missingInput.ChildSupportFormsMissing ", sent separately);`n"
+        missingText := "'Referral to Support and Collections' form (" (csOneForm != 1 ? missingInput.ChildSupportFormsMissing ", " : "") "sent separately);`n"
 		missingVerifications[enum.missing ". " missingText] := 2
         emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "CS Referral (GC optional) (" missingInput.ChildSupportFormsMissing ");`n"
@@ -1258,7 +1283,8 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 	If JobSearchHoursMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
-        missingText := "Job search hours needed per week (assistance can be approved for 1 to 20 hours of job search each week, limited to a total of 240 hours per calendar year);`n"
+        missingText := "Job search hours needed per week (assistance can be approved for 1 to 20 hours of job search each week, limited to 240 hours per calendar year);`n"
+        ;missingText := "Job search hours needed per week (assistance can be approved for 1 to 20 hours of job search each week, limited to a total of 240 hours per calendar year);`n"
 		missingVerifications[enum.missing ". " missingText] := 3
         emailTextString .= enum.email ". " missingText
 		caseNoteMissingText .= "Job search hours per week;`n"
@@ -1300,7 +1326,6 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 	If TranscriptMissing {
         enumInc(enum, "email")
         enumInc(enum, "missing")
-        ;missingText := "Post-secondary Academic Record / unofficial transcript;`n"
         missingText := "Post-secondary Academic Record (AKA unofficial transcript);`n"
 		missingVerifications[enum.missing ". " missingText] := 1
         emailTextString .= enum.email ". " missingText
@@ -1375,6 +1400,12 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
     }
 ; ====================================================== ▼ ** ACTIVITY ▼ ====================================================================================================
 
+    If EmploymentIneligibleMissing {
+        missingText := "* Your employment does not meet eligible activity requirements. " EligActivityWithJS "`nYou can submit up to 6 months of recent paystubs to meet the requirement.`n"
+		missingVerifications[missingText] := 8
+        emailTextString .= missingText
+		caseNoteMissingText .= "Employment hours meeting minimum requirement, or other eligible activity;`n"
+    }
     If SelfEmploymentIneligibleMissing {
         missingText := "* Your self-employment does not meet activity requirements. Self-employment hours are calculated using 50% of recent gross income, or gross minus expenses on tax return, divided by minimum wage. " EligActivityWithJS "`n"
 		missingVerifications[missingText] := 8
@@ -1382,16 +1413,20 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 		caseNoteMissingText .= "Self-employment hours meeting minimum requirement, or other eligible activity;`n"
     }
     If EligibleActivityMissing {
-        missingText := "* You did not select an eligible activity on the " mec2docType ". " EligActivityWithJS "`n"
-		missingVerifications[missingText] := 6
-        emailTextString .= missingText
-		caseNoteMissingText .= "Eligible activity (none selected on form);`n"
+        missingText := "* You did not select an eligible activity on the " mec2docType ", which is required. " EligActivityWithJS "`n"
+        missingText .= EligibilityForMentalHealthMissing ? "  You selected 'Mental Health Needs' - for that to be an eligible CCAP activity you must have a child under 7 and at least one child receiving the 'Child-Only MFIP' grant.`n" : ""
+        local tempText := getRowCount(missingText, 60, "")
+        missingVerifications[tempText[1] "`n"] := tempText[2]
+        emailTextString .= (EligibilityForMentalHealthMissing ? RTrim(missingText, "`n") " See https://edocs.dhs.state.mn.us/lfserver/Public/DHS-5561-ENG for more information.`n" : missingText)
+		caseNoteMissingText .= "Eligible activity (" (EligibilityForMentalHealthMissing ? "only selected Mental Health - not eligible" : "none selected on form") ");`n"
     }
-    If EmploymentIneligibleMissing {
-        missingText := "* Your employment does not meet eligible activity requirements. " EligActivityWithJS "`nYou can submit up to 6 months of recent paystubs to meet the requirement.`n"
-		missingVerifications[missingText] := 8
-        emailTextString .= missingText
-		caseNoteMissingText .= "Employment hours meeting minimum requirement, or other eligible activity;`n"
+    If EligibilityForMentalHealthMissing {
+        If !EligibleActivityMissing {
+            missingText := "Parent Mental Health Condition form (DHS-8667, sent separately) or a doctor's letter containing all information as listed on that form;`n"
+            missingVerifications[missingText] := 3
+            emailTextString .= enum.email ". " missingText
+            caseNoteMissingText .= "Parent Mental Health Condition verification (such as DHS-8667);`n"
+        }
     }
 	If ActivityAfterHomelessMissing {
         missingText := "* At the end of the 90-day homeless exemption period, you must have an eligible activity to keep your Child Care Assistance case open. " EligActivityWithoutJS "`n"
@@ -1610,12 +1645,13 @@ Due to limited funding, new eligibility for CCAP in " countySpecificText[ini.emp
     }
 	GuiControl, MainGui:Text, 14MissingEdit, % caseNoteMissingText
 	GuiControl, MissingGui:Show, % "emailButton"
-	WinActivate, % "^CaseNotes$"
+    WinActivate, % "ahk_id" CaseNotesHwnd
     caseDetails.newChanges := false
 }
 
 enumInc(ByRef enum, list) {
     enum[list]++
+    return enum[list]
 }
 faxAndEmailText() {
     contactMethodsList := { countyFax: "faxed to ", countyDocsEmail: "emailed to " }
@@ -1750,7 +1786,7 @@ OtherGuiGuiClose() {
     Gui, OtherGui:Submit, NoHide
     If (A_GuiControl == "Save" && otherEdit != "") {
         GuiControl, MissingGui:Text, % "otherInput" . otherInputID, % otherEdit
-        otherMissing[otherInputID] := Trim(otherEdit, "`n")
+        otherMissing[otherInputID] := RTrim(otherEdit, "`n")
     } Else {
         If (otherEdit == "") {
             GuiControl, MissingGui:Text, % "otherInput" . otherInputID, Other
@@ -1768,7 +1804,7 @@ inputBoxAGUIControl() {
     If (!%A_GuiControl%) { ; !checked
         Return
     }
-    inputBoxDefaultText := A_GuiControl == "ChildSupportFormsMissing" ? Trim(missingInput[A_GuiControl], "forms") : Trim(missingInput[A_GuiControl], " (input)")
+    inputBoxDefaultText := A_GuiControl == "ChildSupportFormsMissing" ? StrSplit(missingInput[A_GuiControl], " forms")[1] : StrSplit(missingInput[A_GuiControl], " (input)")[1]
     InputBox, inputBoxInput, % "Additional Input Required", % missingInputObject[A_GuiControl].promptText,,,,,,,, % inputBoxDefaultText
 	If (ErrorLevel) {
         GuiControl, MissingGui:, % A_GuiControl, 0 ; uncheck if cancelled
@@ -1783,10 +1819,11 @@ inputBoxAGUIControl() {
         overIncomeSub(inputBoxInput)
         Return
     }
-    If (A_GuiControl == "ChildSupportFormsMissing") {
-        inputBoxInput .= StrLen(inputBoxInput) == 1 ? ( (inputBoxInput < 2 ? " form" : " forms") ) : ""
-    }
-    GuiControl, MissingGui:Text, % A_GuiControl, % missingInputObject[A_GuiControl].baseText missingInputObject[A_GuiControl].inputAdject inputBoxInput
+    ;If (A_GuiControl == "ChildSupportFormsMissing") {
+        ;inputBoxInput .= StrLen(inputBoxInput) == 1 ? ( (inputBoxInput < 2 ? " form" : " forms") ) : ""
+        ;inputBoxInput := StrLen(inputBoxInput) == 1 ? ( (inputBoxInput < 2 ? "" : inputBoxInput " forms") ) : inputBoxInput
+    ;} ; not sure why this was happening here, as it happens in the MissingVerification section.
+    GuiControl, MissingGui:Text, % A_GuiControl, % missingInputObject[A_GuiControl].baseText missingInputObject[A_GuiControl].inputAdject inputBoxInput ; should probably convert the last parameter to a function.
     missingInput[A_GuiControl] := inputBoxInput ; set to global object
 }
 overIncomeSub(overIncomeString) {
@@ -2434,33 +2471,33 @@ Return
 Return
 
 #c::
-    WinActivate, % "^Missing Verifications$"
-    WinActivate, % "^CaseNotes$"
+    WinActivate, % "ahk_id" MissingGuiHwnd
+    WinActivate, % "ahk_id" CaseNotesHwnd
 Return
 #a::
-    Winset, Alwaysontop,, % "^Missing Verifications$"
-    Winset, Alwaysontop,, % "^CaseNotes$"
-    WinGet, ExStyle, ExStyle, % "^CaseNotes$"
+    Winset, Alwaysontop,, % "ahk_id" MissingGuiHwnd
+    Winset, Alwaysontop,, % "ahk_id" CaseNotesHwnd
+    WinGet, ExStyle, ExStyle, % "ahk_id" CaseNotesHwnd
     if (ExStyle & 0x8) { ; Activate windows if setting on top. 0x8 is WS_EX_TOPMOST.
-        WinActivate, % "^Missing Verifications$"
-        WinActivate, % "^CaseNotes$"
+        WinActivate, % "ahk_id" MissingGuiHwnd
+        WinActivate, % "ahk_id" CaseNotesHwnd
     }
 Return
 
 
-#If (WinActive("^CaseNotes$"))
+#If (WinActive("ahk_id" CaseNotesHwnd)
 {
     ^PgDn::
         ControlFocus,,\d ahk_exe obunity.exe
         ControlSend,,^{PgDn}, \d ahk_exe obunity.exe
         Sleep 250
-        WinActivate, % "^CaseNotes$"
+        WinActivate, % "ahk_id" CaseNotesHwnd
     Return
     ^PgUp::
         ControlFocus,,\d ahk_exe obunity.exe
         ControlSend,,^{PgUp}, \d ahk_exe obunity.exe
         Sleep 250
-        WinActivate, % "^CaseNotes$"
+        WinActivate, % "ahk_id" CaseNotesHwnd
     Return
 
     #Left::
@@ -2517,80 +2554,80 @@ onBaseImportKeys(CaseNum, docType, DetailText, DetailTabs=1, ToolTipHelp="") {
 }
 #If (ini.employeeInfo.employeeCounty == "Dakota" && WinActive("Perform Import"))
 {
-        F1:: 
-            toolTipText := "CTRL+ `n F6: RSDI `n F7: SMI ID `n F8: PRISM GCSC `n F9: CS $ Calc `nF10: Income Calc `nF11: The Work # `nF12: CCAPP Letter"
-            timedToolTip(toolTipText, 8000)
-        Return
-        ^F6::
-            Gui, MainGui:Submit, NoHide
-            onBaseImportKeys(caseNumber, "3003 ssi", "{Text}RSDI ", 3, "Member#, Member Name")
-        Return
-        ^F7::
-            Gui, MainGui:Submit, NoHide
-            onBaseImportKeys(caseNumber, "3001 other id", "{Text}SMI ", 3, "Member#, Member Name")
-        Return
-        ^F8::
-            Gui, MainGui:Submit, NoHide
-            onBaseImportKeys(caseNumber, "3003 child support", "{Text}GCSC ", 1, "Y/N, Child(ren) Member#")
-        Return
-        ^F9::
-            Gui, MainGui:Submit, NoHide
-            onBaseImportKeys(caseNumber, "3003 wo", "{Text}CCAP CS INCOME CALC")
-        Return
-        ^F10::
-            Gui, MainGui:Submit, NoHide
-            onBaseImportKeys(caseNumber, "3003 wo", "{Text}CCAP INCOME CALC")
-        Return
-        ^F11::
-            Gui, MainGui:Submit, NoHide
-            onBaseImportKeys(caseNumber, "3003 other - in", "{Text}W# ", 3, "Member#, Employer")
-        Return
-        ^F12::
-            Gui, MainGui:Submit, NoHide
-            onBaseImportKeys(caseNumber, "3003 edak 3813", "{Text}OUTBOUND")
-        Return
+    F1:: 
+        toolTipText := "CTRL+ `n F6: RSDI `n F7: SMI ID `n F8: PRISM GCSC `n F9: CS $ Calc `nF10: Income Calc `nF11: The Work # `nF12: CCAPP Letter"
+        timedToolTip(toolTipText, 8000)
+    Return
+    ^F6::
+        Gui, MainGui:Submit, NoHide
+        onBaseImportKeys(caseNumber, "3003 ssi", "{Text}RSDI ", 3, "Member#, Member Name")
+    Return
+    ^F7::
+        Gui, MainGui:Submit, NoHide
+        onBaseImportKeys(caseNumber, "3001 other id", "{Text}SMI ", 3, "Member#, Member Name")
+    Return
+    ^F8::
+        Gui, MainGui:Submit, NoHide
+        onBaseImportKeys(caseNumber, "3003 child support", "{Text}GCSC ", 1, "Y/N, Child(ren) Member#")
+    Return
+    ^F9::
+        Gui, MainGui:Submit, NoHide
+        onBaseImportKeys(caseNumber, "3003 wo", "{Text}CCAP CS INCOME CALC")
+    Return
+    ^F10::
+        Gui, MainGui:Submit, NoHide
+        onBaseImportKeys(caseNumber, "3003 wo", "{Text}CCAP INCOME CALC")
+    Return
+    ^F11::
+        Gui, MainGui:Submit, NoHide
+        onBaseImportKeys(caseNumber, "3003 other - in", "{Text}W# ", 3, "Member#, Employer")
+    Return
+    ^F12::
+        Gui, MainGui:Submit, NoHide
+        onBaseImportKeys(caseNumber, "3003 edak 3813", "{Text}OUTBOUND")
+    Return
 }
 #If ; Dakota && WinActive("Perform Import")
 
 #If (ini.employeeInfo.employeeCounty == "Dakota" && WinActive("ahk_group autoMailGroup"))
 {
-        F1::
-            toolTipText := WinActive("Automated Mailing Home Page")
-            ? "Ctrl+B: Types in the current date and case number." : "
-            (
+    F1::
+        toolTipText := WinActive("Automated Mailing Home Page")
+        ? "Ctrl+B: Types in the current date and case number." : "
+        (
 Ctrl+B: (Mail) Types in the current date and case number, clicks Yes. Works best from Custom Query.
-          Step 1: Select documents in the query.
-          Step 2: Right Click -> Send To -> Envelope.
-          Step 3: Click 'Create Envelope'
+      Step 1: Select documents in the query.
+      Step 2: Right Click -> Send To -> Envelope.
+      Step 3: Click 'Create Envelope'
 
 Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword field must be active.
-            )"
-            timedToolTip(toolTipText, 8000)
-        Return
-        ^b::
-            Gui, MainGui:Submit, NoHide
-            FormatTime, shortDate, % dateObject.todayYMD, % "M/d/yy"
-            SendInput, % shortDate " " caseNumber
-            Clipboard := caseNumber
-            Sleep 500
-            If ( WinActive("ahk_exe obunity.exe") ) {
-                Sleep 250
-                Send {Tab}
-                Send {Enter}
-                MsgBox, 4100, % "Case Open Mail", % "Reminder: First add documents to envelope.`n`nOpen / switch to Automated Mailing?"
-                    IfMsgBox Yes
-                        If (WinExist("Automated Mailing Home Page") ) {
-                            WinActivate, % "Automated Mailing Home Page"
-                                Return
-                        } Else {
-                            run % "http://webapp4/AutomatedMailingPRD/#step-1"
-                        }
-            }
-            
-        Return
-        !4::
-            SendInput, % "VERIFS DUE BACK " autoDenyObject.autoDenyExtensionDate
-        Return
+        )"
+        timedToolTip(toolTipText, 8000)
+    Return
+    ^b::
+        Gui, MainGui:Submit, NoHide
+        FormatTime, shortDate, % dateObject.todayYMD, % "M/d/yy"
+        SendInput, % shortDate " " caseNumber
+        Clipboard := caseNumber
+        Sleep 500
+        If ( WinActive("ahk_exe obunity.exe") ) {
+            Sleep 250
+            Send {Tab}
+            Send {Enter}
+            MsgBox, 4100, % "Case Open Mail", % "Reminder: First add documents to envelope.`n`nOpen / switch to Automated Mailing?"
+                IfMsgBox Yes
+                    If (WinExist("Automated Mailing Home Page") ) {
+                        WinActivate, % "Automated Mailing Home Page"
+                            Return
+                    } Else {
+                        run % "http://webapp4/AutomatedMailingPRD/#step-1"
+                    }
+        }
+        
+    Return
+    !4::
+        SendInput, % "VERIFS DUE BACK " autoDenyObject.autoDenyExtensionDate
+    Return
 }
 #If ; Dakota && WinActive("ahk_group autoMailGroup")
 
