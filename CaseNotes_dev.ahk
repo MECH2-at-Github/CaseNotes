@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.1.1"
+Version := "v1.1.2"
 
 ;Future todo ideas:
 
@@ -21,7 +21,7 @@ SetTitleMatchMode, RegEx
 DetectHiddenWindows, On
 
 ; Rule for AHKv1 functions and variables involving GUI: If you are doing a "Gui, Submit" the function needs to be declared Global.
-Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerboseMode := (verboseMode && true) ? 1 : 0
+Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerboseMode := (verboseMode && false) ? 1 : 0
 
 ;setGlobalVariables() { ; don't enable until v2
     ;symbols/characters
@@ -468,9 +468,10 @@ outputCaseNote(outputInstruction:="") {
     If (!madeCaseNote) {
         Return
     }
-    outputInstruction := outputInstruction == "doBackup" ? "doBackup" : A_GuiControl
+    outputInstruction := outputInstruction == StrLen(outputInstruction) ? outputInstruction : A_GuiControl
+    ;verbose(outputInstruction ", " ini.employeeInfo.employeeAlwaysBackup)
     ; v2 Convert to switch
-    If (outputInstruction == "backupNoteButton" || (outputInstruction == "doBackup" && ini.employeeInfo.employeeAlwaysBackup == 1)) {
+    If (outputInstruction == "backupNoteButton" || ini.employeeInfo.employeeAlwaysBackup == 1) {
         outputCaseNoteBackup(madeCaseNote)
 	}
     If (outputInstruction == "mec2NoteButton") {
@@ -578,7 +579,7 @@ outputCaseNoteBackup(ByRef sendingCaseNote) {
     local backupString := "Case Number: " (caseNumber != "" ? caseNumber : "(not entered)") "`n`n====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" specialLetterBackup "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n"
     backupFile.Write(backupString)
     backupFile.Close()
-    If (verboseMode) {
+    If (selectVerboseMode) {
         openOversizedNoteGui(backupString)
     }
     GuiControl, MainGui:Text, backupNoteButton, % "Saved " cm
@@ -2180,8 +2181,10 @@ resetPositions() {
     yVerification := 0
 }
 coordSaveAndExitApp(reOpen:=0) {
+    Global
+    Gui, MainGui:Submit, NoHide
     If (ini.employeeInfo.employeeAlwaysBackup == 1 && caseNumber != "") {
-        outputCaseNote("doBackup")
+        outputCaseNote("backupNoteButton")
     }
 	WinGetPos, xCaseNotesGet, yCaseNotesGet,,, % "CaseNotes"
 	WinGetPos, xVerificationGet, yVerificationGet,,, % "Missing Verifications"
