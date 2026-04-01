@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.1.0"
+Version := "v1.1.1"
 
 ;Future todo ideas:
 
@@ -470,13 +470,14 @@ outputCaseNote(outputInstruction:="") {
     }
     outputInstruction := outputInstruction == "doBackup" ? "doBackup" : A_GuiControl
     ; v2 Convert to switch
+    If (outputInstruction == "backupNoteButton" || (outputInstruction == "doBackup" && ini.employeeInfo.employeeAlwaysBackup == 1)) {
+        outputCaseNoteBackup(madeCaseNote)
+	}
     If (outputInstruction == "mec2NoteButton") {
         outputCaseNoteMec2(madeCaseNote)
     } Else If (outputInstruction == "maxisNoteButton") {
         outputCaseNoteMaxis(madeCaseNote)
-    } Else If (outputInstruction == "backupNoteButton" || (outputInstruction == "doBackup" && ini.employeeInfo.employeeAlwaysBackup == 1)) {
-        outputCaseNoteBackup(madeCaseNote)
-	}
+    }
     sleep 500
     Clipboard := caseNumber
 }
@@ -559,7 +560,7 @@ outputCaseNoteBackup(ByRef sendingCaseNote) {
     Global
     backupFileName := caseNumber !== "" ? caseNumber : ""
     If (backupFileName == "") {
-        MsgBox, 1, % "No Case Number", % "Case Number is blank. Save case note to desktop without case number?`n`n(File will be named after the first person listed in Household Comp.)"
+        MsgBox, 1, % "No Case Number", % "Case Number is blank. Save case note without case number?`n`n(File will be named after the first person listed in Household Comp.)"
         IfMsgBox OK
             RegExMatch(01HouseholdCompEdit, "i)[A-Z\-']+", backupFileName)
         else
@@ -773,7 +774,8 @@ buildMissingGui() {
 
     local lineColor := "0x5" ; https://gist.github.com/jNizM/019696878590071cf739
     ;local lineColor := "717171""
-    local sepLineBoldLeft := " xm y+13 h1 border " lineColor, sepLineBoldRight:= " x+m yp+7 h1 border " lineColor, sepLineSubLeft := " xm y+10 h1 " lineColor, sepLineSubRight := " x+m yp+7 h1 " lineColor, sepLineLeftLen := 80, sepLineRightLen := 80, textLinePos := "x+m yp-7"
+    local sepLineBoldLeft := " xm y+13 h1 border " lineColor, sepLineBoldRight:= " x+m yp+7 h1 border " lineColor
+    local sepLineSubLeft := " xm y+10 h1 " lineColor, sepLineSubRight := " x+m yp+7 h1 " lineColor, sepLineLeftLen := 80, sepLineRightLen := 80, textLinePos := "x+m yp-7"
     ;-- Alternate method for lines:
     ;local ProgressLine := "xm+10 yp+22 h1 Background" lineColor, rightProgLine := "x+m yp-7 h1 Background" lineColor
     ;Gui, MissingGui:Add, Progress, % ProgressLine
@@ -817,7 +819,7 @@ buildMissingGui() {
 
     Gui, MissingGui:Add, Checkbox, % column1of2 " vSelfEmploymentMissing", % "Self-Employment Income"
     Gui, MissingGui:Add, Checkbox, % column2of2 " vSelfEmploymentScheduleMissing", % "Self-Employment Schedule"
-    Gui, MissingGui:Add, Checkbox, % column1of1 " vSelfEmploymentBusinessGrossMissing", % "Business Gross (if using state min wage, determine if small business)"
+    Gui, MissingGui:Add, Checkbox, % column1of1 " vSelfEmploymentBusinessGrossMissing", % "Business Gross (to determine if small business, if using state min wage)"
 
     Gui, MissingGui:Font, s9, % "Corbel"
     Gui, MissingGui:Add, Text, % "w" sepLineLeftLen+15 sepLineSubLeft ;---------------------- ▼ Seasonal-Employment Sub-section ▼ ------------------------------------------------------
@@ -925,29 +927,34 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         mecCheckboxIds.proofOfIdentity := 1
     }
 	If BCmissing {
-        missingText := "Birth date / relationship / citizenship verification for: " missingInput.BCmissing
+        ;missingText := "Birth date + relationship + citizenship verification for: " missingInput.BCmissing
+        missingText := "Birth date, relationship, & citizenship verification for: " missingInput.BCmissing
+        ;missingText := "Birth date / relationship / citizenship verification for: " missingInput.BCmissing
 		clarifiedVerifications[enumInc(enum, "clarify") ". " missingText ";`n"] := 2
         emailTextString .= enumInc(enum, "email") ". " missingText " (example: official Birth Certificate);`n"
-		caseNoteMissingText .= missingText ";`n"
+		caseNoteMissingText .= missingText "DoB / citizenship / relationship for: " missingInput.BCmissing ";`n"
         mecCheckboxIds.proofOfBirth := 1
         mecCheckboxIds.proofOfRelation := 1
         mecCheckboxIds.citizenStatus := 1
     }
 	If BCNonCitizenMissing {
-        missingText := "Birth date / relationship / immigration verification for: " missingInput.BCNonCitizenMissing ";`n"
+        missingText := "Birth date, relationship, & immigration verification for: " missingInput.BCNonCitizenMissing ";`n"
+        ;missingText := "Birth date / relationship / immigration verification for: " missingInput.BCNonCitizenMissing ";`n"
 		clarifiedVerifications[enumInc(enum, "clarify") ". " missingText] := 2
         emailTextString .= enumInc(enum, "email") ". " missingText
-		caseNoteMissingText .= missingText
+		caseNoteMissingText .= missingText "DoB / immigration / relationship for: " missingInput.BCNonCitizenMissing ";`n"
         mecCheckboxIds.proofOfBirth := 1
         mecCheckboxIds.proofOfRelation := 1
         mecCheckboxIds.citizenStatus := 1
     }
     If FosterChildBCmissing {
-        missingText := "Birth date / citizenship verification and placement form for: " missingInput.FosterChildBCmissing " (ask the social worker to send these to ESS)"
+        missingText := "Birth date & citizenship verification, and placement form for: " missingInput.FosterChildBCmissing " (ask the social worker to send these to ESS)"
+        ;missingText := "Birth date / citizenship verification, and placement form for: " missingInput.FosterChildBCmissing " (ask the social worker to send these to ESS)"
         local tempText := getRowCount(enumInc(enum, "missing") ". " missingText ";", 60, "")
         clarifiedVerifications[tempText[1] "`n"] := tempText[2]
         emailTextString .= enumInc(enum, "email") ". " missingText ";`n"
-		caseNoteMissingText .= "Birth date / citizenship verification for: " missingInput.FosterChildBCmissing ";`n"
+		caseNoteMissingText .= "DoB / citizenship for: " missingInput.FosterChildBCmissing ";`n"
+		;caseNoteMissingText .= "Birth date / citizenship verification for: " missingInput.FosterChildBCmissing ";`n"
 		caseNoteMissingText .= "Foster care placement form for: " missingInput.FosterChildBCmissing ";`n"
         mecCheckboxIds.proofOfBirth := 1
         mecCheckboxIds.citizenStatus := 1
@@ -1033,7 +1040,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         missingText := "Child's school information (location, grade, start/end times) - does not need to be verified by the school;`n"
         emailTextString .= enumInc(enum, "email") ". " missingText
 		caseNoteMissingText .= "Child school information;`n"
-        mecCheckboxIds.childSchoolSchedule := 2
+        mecCheckboxIds.childSchoolSchedule := 1
         ;MEC2 text: Child School Schedule- You can provide the school schedule of each child that needs child care by sending a copy of the days and times of school from the school's website or handbook, writing the information on a piece of paper, or telling your worker.
     }
     If ChildFTSchoolMissing {
@@ -1128,7 +1135,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 		caseNoteMissingText .= "Self-Employment work schedule;`n"
     }
     If SelfEmploymentBusinessGrossMissing {
-        missingText := "Information regarding your self-employment business' annual gross income, if it is less than $500,000 (optional);`n"
+        missingText := "Information regarding your self-employment business' annual gross income - more/less than $500,000 (optional);`n"
         missingVerifications[enumInc(enum, "missing") ". " missingText] := 2
         emailTextString .= enumInc(enum, "email") ". " missingText
 		caseNoteMissingText .= "Self-Employment gross (if subject to small/large min wage: <$500k/yr?) - not required;`n"
@@ -1138,7 +1145,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         missingText := "Proof of Expenses: Healthcare Insurance premiums, child support, spousal support - if not listed on submitted paystubs;`n"
         emailTextString .= enumInc(enum, "email") ". " missingText
 		caseNoteMissingText .= "Expenses;`n"
-        mecCheckboxIds.proofOfDeductions := 2
+        mecCheckboxIds.proofOfDeductions := 1
         ;MEC2 text: Proof of Deductions- You can provide proof of expenses for health insurance premiums (medical, dental, vision), child support paid for a child not living in your home, and spousal support with check stubs, benefit statements or premium statements. 
     }
 ; ====================================================== ▼ UNEARNED INCOME ▼ ====================================================================================================
@@ -1207,7 +1214,6 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 ; ====================================================== ▼ JOB SEARCH ▼ ====================================================================================================
 	If JobSearchHoursMissing {
         missingText := "Job search hours needed per week (assistance can be approved for 1 to 20 hours of job search each week, limited to 240 hours per calendar year);`n"
-        ;missingText := "Job search hours needed per week (assistance can be approved for 1 to 20 hours of job search each week, limited to a total of 240 hours per calendar year);`n"
 		missingVerifications[enumInc(enum, "missing") ". " missingText] := 3
         emailTextString .= enumInc(enum, "email") ". " missingText
 		caseNoteMissingText .= "Job search hours per week;`n"
@@ -1359,7 +1365,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         missingText := "* If your child is not a US citizen, Lawful Permanent Resident, lawfully residing non-citizen, or fleeing persecution, assistance can only be approved at a daycare that is subject to public educational standards (Head Start, pre-K, school age program).`n"
         missingVerifications[missingText] := 4
         emailTextString .= missingText
-        caseNoteMissingText .= "Provider subject to Public Educational Standards (4.15), if child not citizen/immigrant;`n"
+        caseNoteMissingText .= "Provider subject to Public Edu. Standards (4.15), if child not citizen/immigrant;`n"
     }
 ; ====================================================== ▼ Unfinished "Unanswered questions on form" section ▼ ====================================================================================================
         ;If (UnearnedUnansweredMissing || LumpSumUnansweredMissing || EmploymentUnansweredMissing || SelfEmploymentUnansweredMissing || AssetsUnansweredMissing) {
@@ -1567,7 +1573,7 @@ faxAndEmailText() {
     If (contactMethodsLength == 0) {
         Return
     }
-    specLetterText := "Documents can mailed"
+    specLetterText := "Documents can be mailed"
     For icontactText, contactText in contactMethods {
         specLetterText .= (icontactText == contactMethodsLength) ? (contactMethodsLength > 1 ? "," : "") " and " : ", "
         specLetterText .= contactText
@@ -2085,6 +2091,45 @@ getMonCenter(windowName) {
 halfMath(tl, br) {
     return tl + (br - tl)/2
 }
+WinGetPos, xPos, yPos,,,% "WinTitle",, % "ExcludeTitle"
+;getMonitorCenter(xPos, yPos)
+getMonitorCenter(xPos:="", yPos:="") {
+    FindScreenBoundary(scrLeft, scrRight, scrTop, scrBottom, xPos, yPos)
+    return [halfMath(scrLeft, scrRight), halfMath(scrTop, scrBottom)]
+}
+FindScreenBoundary(ByRef CurrentScreenLeft, ByRef CurrentScreenRight, ByRef CurrentScreenTop, ByRef CurrentScreenBottom, xCoord:="", yCoord:="") {
+    MouseGetPos, Mouse_X, Mouse_Y
+    xCoord := xCoord == "" ? Mouse_X : xCoord
+    yCoord := yCoord == "" ? Mouse_Y : yCoord
+    SysGet, MonitorCount, MonitorCount
+    Loop, %MonitorCount%
+    {
+        SysGet, MonitorWorkArea, MonitorWorkArea, %A_Index%
+        if (xCoord >= MonitorWorkAreaLeft) && (xCoord <= MonitorWorkAreaRight) && (yCoord >= MonitorWorkAreaTop) && (yCoord <= MonitorWorkAreaBottom) {
+            CurrentScreenLeft   := MonitorWorkAreaLeft
+            CurrentScreenRight  := MonitorWorkAreaRight
+            CurrentScreenTop    := MonitorWorkAreaTop
+            CurrentScreenBottom := MonitorWorkAreaBottom
+        }
+    }
+}
+storeCB() {
+    clipboardContents := ClipboardAll
+    Sleep 50
+    clipboard :=
+}
+restoreCB() {
+    clipboard := clipboardContents
+    clipboardContents :=
+}
+storePasteRestore(stringToPaste) {
+    clipboardContents := ClipboardAll
+    clipboard := stringToPaste
+    SendInput ^v
+    Sleep 250
+    clipboard := clipboardContents
+    clipboardContents :=
+}
 setIcon() {
     If InStr(dateObject.todayYMD, 0401) { ; icon
         Menu, Tray, Icon, compstui.dll, 100
@@ -2416,6 +2461,7 @@ Return
 
 #If (WinActive("Other Verification"))
 {
+    ^BS:: Send ^+{left}{delete}
     Esc:: OtherGuiGuiClose()
 }
 #If
