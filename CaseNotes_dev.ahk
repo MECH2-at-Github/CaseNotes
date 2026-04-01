@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.1.2"
+Version := "v1.1.3"
 
 ;Future todo ideas:
 
@@ -933,7 +933,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         ;missingText := "Birth date / relationship / citizenship verification for: " missingInput.BCmissing
 		clarifiedVerifications[enumInc(enum, "clarify") ". " missingText ";`n"] := 2
         emailTextString .= enumInc(enum, "email") ". " missingText " (example: official Birth Certificate);`n"
-		caseNoteMissingText .= missingText "DoB / citizenship / relationship for: " missingInput.BCmissing ";`n"
+		caseNoteMissingText .= "DoB / citizenship / relationship for: " missingInput.BCmissing ";`n"
         mecCheckboxIds.proofOfBirth := 1
         mecCheckboxIds.proofOfRelation := 1
         mecCheckboxIds.citizenStatus := 1
@@ -943,7 +943,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
         ;missingText := "Birth date / relationship / immigration verification for: " missingInput.BCNonCitizenMissing ";`n"
 		clarifiedVerifications[enumInc(enum, "clarify") ". " missingText] := 2
         emailTextString .= enumInc(enum, "email") ". " missingText
-		caseNoteMissingText .= missingText "DoB / immigration / relationship for: " missingInput.BCNonCitizenMissing ";`n"
+		caseNoteMissingText .= "DoB / immigration / relationship for: " missingInput.BCNonCitizenMissing ";`n"
         mecCheckboxIds.proofOfBirth := 1
         mecCheckboxIds.proofOfRelation := 1
         mecCheckboxIds.citizenStatus := 1
