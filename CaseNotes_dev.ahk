@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.1.3"
+Version := "v1.1.4"
 
 ;Future todo ideas:
 
@@ -999,16 +999,21 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 
 ; ------------------------------------------------------ ▼ CS/CUSTODY ▼ ---------------------------------------------------------------------------------------------------
 	If ChildSupportFormsMissing {
-        local csOneForm := 0
-        If (Trim(missingInput.ChildSupportFormsMissing) ~= "^\d$") {
-            missingInput.ChildSupportFormsMissing := missingInput.ChildSupportFormsMissing+0 ; +0 attempts to convert to number
-            csOneForm := missingInput.ChildSupportFormsMissing+0
-            missingInput.ChildSupportFormsMissing .= (csOneForm > 1 ? missingInput.ChildSupportFormsMissing " form" : " forms")
+        local caseNoteText := missingInput.ChildSupportFormsMissing
+        missingInput.ChildSupportFormsMissing := Trim(missingInput.ChildSupportFormsMissing)
+        If (missingInput.ChildSupportFormsMissing ~= "^\d+$") {
+            If (missingInput.ChildSupportFormsMissing < 2) {
+                missingInput.ChildSupportFormsMissing := ""
+            } Else {
+                missingInput.ChildSupportFormsMissing .= " forms, "
+            }
+        } Else {
+            missingInput.ChildSupportFormsMissing .= ", "
         }
-        missingText := "'Referral to Support and Collections' form (" (csOneForm != 1 ? missingInput.ChildSupportFormsMissing ", " : "") "sent separately);`n"
+        missingText := "'Referral to Support and Collections' form (" missingInput.ChildSupportFormsMissing "sent separately);`n"
 		missingVerifications[enumInc(enum, "missing") ". " missingText] := 2
         emailTextString .= enumInc(enum, "email") ". " missingText
-		caseNoteMissingText .= "CS Referral (GC optional) (" missingInput.ChildSupportFormsMissing ");`n"
+		caseNoteMissingText .= "CS Referral (GC optional) (" caseNoteText ");`n"
     }
 	If ChildSupportNoncooperationMissing {
         missingText := "Child Support cooperation (required for eligibility): You are currently in a non-cooperation status with Child Support. Contact Child Support at " missingInput.ChildSupportNoncooperationMissing " for details.`n"
