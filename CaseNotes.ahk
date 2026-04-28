@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.1.4"
+Version := "v1.1.5"
 
 ;Future todo ideas:
 
@@ -962,7 +962,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
     }
     If PaternityMissing {
         missingText := "Paternity verification for: " missingInput.PaternityMissing " (examples: official Birth Certificate, Recognition of Parentage form. If the father is not listed, contact me for alternatives.)"
-        local tempText := getRowCount(enumInc(enum, "missing") ". " missingText ";", 60, "")
+        local tempText := getRowCount(enumInc(enum, "clarify") ". " missingText ";", 60, "")
         clarifiedVerifications[tempText[1] "`n"] := tempText[2]
         emailTextString .= enumInc(enum, "email") ". " missingText ";`n"
 		caseNoteMissingText .= "Paternity for: " missingInput.PaternityMissing ";`n"
@@ -999,8 +999,8 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 
 ; ------------------------------------------------------ ▼ CS/CUSTODY ▼ ---------------------------------------------------------------------------------------------------
 	If ChildSupportFormsMissing {
+        missingInput.ChildSupportFormsMissing := Trim(missingInput.ChildSupportFormsMissing, ", ")
         local caseNoteText := missingInput.ChildSupportFormsMissing
-        missingInput.ChildSupportFormsMissing := Trim(missingInput.ChildSupportFormsMissing)
         If (missingInput.ChildSupportFormsMissing ~= "^\d+$") {
             If (missingInput.ChildSupportFormsMissing < 2) {
                 missingInput.ChildSupportFormsMissing := ""
