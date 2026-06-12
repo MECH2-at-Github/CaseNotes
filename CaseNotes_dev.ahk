@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.1.6"
+Version := "v1.1.7"
 
 ;Future todo ideas:
 
@@ -21,7 +21,7 @@ SetTitleMatchMode, RegEx
 DetectHiddenWindows, On
 
 ; Rule for AHKv1 functions and variables involving GUI: If you are doing a "Gui, Submit" the function must be declared Global.
-Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerboseMode := (verboseMode && true) ? 1 : 0
+Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerboseMode := (verboseMode && false) ? 1 : 0
 
 ;setGlobalVariables() { ; don't enable until v2
 ;symbols/characters
@@ -107,7 +107,7 @@ Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerbose
         , CustodySchedulePlusNamesMissing: { baseText: "Custody", inputAdject: " for ", promptText: "Who is the schedule needed for?`n'...stating the current parenting time schedule for: ____________'`n`nExample: 'Susie and Bobby Jr' or 'your children'" }
         , WorkSchedulePlusNameMissing: { baseText: "Work Schedule", inputAdject: " for ", promptText: "Who is the work schedule needed for?" }
         , DependentAdultStudentMissing: { baseText: "Dependent adult child: FT Student and 50" pct "+ Expenses", inputAdject: " for ", promptText: "Who is the adult dependent student?" }
-        , ChildSupportFormsMissing: { baseText: "Child Support forms", inputAdject: " - ", promptText: "Enter the number of sets of Child Support forms needed`nor the names of the absent parent/children. `n`nExample: 'Robert / Susie, Bobby Jr' or '2'" }
+        , ChildSupportFormsMissing: { baseText: "Child Support Forms", inputAdject: " - ", promptText: "Enter the number of sets of Child Support forms needed`nor the names of the absent parent/children. `n`nExample: 'Robert / Susie, Bobby Jr' or '2'" }
         , ChildSupportNoncooperationMissing: { baseText: "CS Non-cooperation", inputAdject: " - CSO phone: ", promptText: "What is the phone number of the Child Support officer?" }
         , LegalNameChangeMissing: { baseText: "Name change", inputAdject: " for ", promptText: "Who is the name change proof needed for?" }
         , SeasonalOffSeasonMissing: { baseText: "SE Info - App in Off-season", inputAdject: " for ", promptText: "Who is the employer? (optional)" }
@@ -1008,18 +1008,17 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
 
 ; ------------------------------------------------------ ▼ CS/CUSTODY ▼ ---------------------------------------------------------------------------------------------------
 	If ChildSupportFormsMissing {
-        missingInput.ChildSupportFormsMissing := Trim(missingInput.ChildSupportFormsMissing, ", ")
-        local caseNoteText := missingInput.ChildSupportFormsMissing
-        If (missingInput.ChildSupportFormsMissing ~= "^\d+$") {
-            If (missingInput.ChildSupportFormsMissing < 2) {
-                missingInput.ChildSupportFormsMissing := ""
+        local csFormsMissingTemp := Trim(missingInput.ChildSupportFormsMissing, ", "), csFormsNumberOnly := csFormsMissingTemp ~= "^\d+$", caseNoteText := csFormsMissingTemp
+        If (csFormsNumberOnly) { ; 1 or more digits, nothing else
+            If (csFormsMissingTemp = 1) {
+                csFormsMissingTemp := ""
             } Else {
-                missingInput.ChildSupportFormsMissing .= " forms, "
+                csFormsMissingTemp .= " forms, "
             }
-        } Else {
-            missingInput.ChildSupportFormsMissing .= ", "
+        } Else If (!csFormsNumberOnly) {
+            csFormsMissingTemp .= ", "
         }
-        missingText := "'Referral to Support and Collections' form (" missingInput.ChildSupportFormsMissing "sent separately);`n"
+        missingText := "'Referral to Support and Collections' form (" csFormsMissingTemp "sent separately);`n"
 		missingVerifications[enumInc(enum, "missing") ". " missingText] := 2
         emailTextString .= enumInc(enum, "email") ". " missingText
 		caseNoteMissingText .= "CS Referral (GC optional) (" caseNoteText ");`n"
@@ -1345,7 +1344,7 @@ parseMissingVerifications(ByRef missingVerifications, ByRef clarifiedVerificatio
     If EligibleActivityMissing {
         ;missingText := "* You did not select an eligible activity on the " mec2docType ", which is required. " EligActivityWithJS "`n"
         missingText := "* You did not select an eligible activity on the " mec2docType ", which is required. " caseEligActivities "`n"
-        missingText .= EligibilityForMentalHealthMissing ? "  You selected 'Mental Health Needs' - for that to be an eligible CCAP activity you must have a child under 7 and at least one child receiving the 'Child-Only MFIP' grant.`n" : ""
+        missingText .= EligibilityForMentalHealthMissing ? "  You selected 'Mental Health Needs.' For that to be an eligible CCAP activity you must have a child under 7 and at least one child receiving the 'Child-Only MFIP' grant.`n" : ""
         local tempText := getRowCount(missingText, 60, "")
         missingVerifications[tempText[1] "`n"] := tempText[2]
         emailTextString .= (EligibilityForMentalHealthMissing ? RTrim(missingText, "`n") " See https://edocs.dhs.state.mn.us/lfserver/Public/DHS-5561-ENG for more information.`n" : missingText)
@@ -1734,7 +1733,7 @@ inputBoxAGUIControl() {
     If (!%A_GuiControl%) { ; !checked
         Return
     }
-    inputBoxDefaultText := A_GuiControl == "ChildSupportFormsMissing" ? StrSplit(missingInput[A_GuiControl], " forms")[1] : StrSplit(missingInput[A_GuiControl], " (input)")[1]
+    inputBoxDefaultText := A_GuiControl == "ChildSupportFormsMissing" ? StrSplit(missingInput[A_GuiControl], " Forms")[1] : StrSplit(missingInput[A_GuiControl], " (input)")[1]
     InputBox, inputBoxInput, % "Additional Input Required", % missingInputObject[A_GuiControl].promptText,,,,,,,, % inputBoxDefaultText
 	If (ErrorLevel) {
         GuiControl, MissingGui:, % A_GuiControl, 0 ; uncheck if cancelled
@@ -1877,8 +1876,8 @@ openSettingsGui(checkOnOpen:=0) {
     Gui, SettingsGui:Add, Text, % textLabelOptions, % "Use Worker Email in Letters:"
     Gui, SettingsGui:Add, CheckBox, % "vEmployeeUseEmailWrite " checkboxOptions " Checked" ini.employeeInfo.employeeUseEmail
     Gui, SettingsGui:Add, Text, % textLabelOptions, % "Save folder for notes backup:"
-    Gui, SettingsGui:Add, Button, % checkboxOptions " x+9 gselectBackupLocation", % "…"
-    Gui, SettingsGui:Add, Text, % "x+10 yp+2 vEmployeeBackupLocationWrite Left", % shortenIfTooLong(ini.employeeInfo.employeeBackupLocation, 27)
+    Gui, SettingsGui:Add, Button, % checkboxOptions " x+9 gselectBackupLocation", % "..."
+    Gui, SettingsGui:Add, Text, % "x+10 yp+2 vEmployeeBackupLocationWrite Left", % shortenStrIfTooLong(ini.employeeInfo.employeeBackupLocation, 27)
     Gui, SettingsGui:Add, Text, % textLabelOptions, % "Always backup case note to PC:"
     Gui, SettingsGui:Add, CheckBox, % "vEmployeeAlwaysBackupWrite " checkboxOptions " Checked" ini.employeeInfo.employeeAlwaysBackup
     Gui, SettingsGui:Add, Text, % textLabelOptions, % "Using mec2functions:"
@@ -1901,6 +1900,8 @@ openSettingsGui(checkOnOpen:=0) {
     Gui, SettingsGui:Add, Edit, % editboxOptions " vCountyFaxWrite", % ini.caseNoteCountyInfo.countyFax
     Gui, SettingsGui:Add, Text, % textLabelOptions, % "County Documents Email:"
     Gui, SettingsGui:Add, Edit, % editboxOptions " vCountyDocsEmailWrite", % ini.caseNoteCountyInfo.countyDocsEmail
+    ;Gui, SettingsGui:Add, Text, % textLabelOptions, % "County Documents Website:"
+    ;Gui, SettingsGui:Add, Edit, % editboxOptions " vCountyDocsEmailWrite", % ini.caseNoteCountyInfo.countyDocsWebsite
     Gui, SettingsGui:Add, Text, % textLabelOptions, % "BSF Education Form Name:"
     Gui, SettingsGui:Add, Edit, % editboxOptions " vCountyEdBSFWrite", % ini.caseNoteCountyInfo.countyEdBSF
     Gui, SettingsGui:Add, Text, % textLabelOptions, % "BSF Secondary Edu. Form Name:"
@@ -1915,12 +1916,15 @@ selectBackupLocation() {
     Global
     Gui, SettingsGui:Submit, NoHide
     Gui, SettingsGui:+OwnDialogs
-    FileSelectFolder, EmployeeBackupLocationWrite, % "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", 3, % "Select or Create a folder for CaseNotes backups.`nRecommended: Folder named 'CaseNotes Backup' in My Documents or Desktop."
-    newButtonText := shortenIfTooLong(EmployeeBackupLocationWrite, 27)
-    GuiControl, SettingsGui:Text, EmployeeBackupLocationWrite, % newButtonText
+    FileSelectFolder, EmployeeBackupLocationWrite, % "C:\Users\" Format("{:L}", A_UserName), 3, % "Select or Create a folder for CaseNotes backups.`nRecommended: Create a folder named 'CaseNotes Backup'`nin Documents or Desktop."
+    If (!EmployeeBackupLocationWrite) {
+        Return
+    }
+    EmployeeBackupLocationShortened := shortenStrIfTooLong(EmployeeBackupLocationWrite, 27)
+    GuiControl, SettingsGui:Text, EmployeeBackupLocationWrite, % EmployeeBackupLocationShortened
     GuiControl, SettingsGui:+Redraw, EmployeeBackupLocationWrite
 }
-shortenIfTooLong(str, maxLen:=27) {
+shortenStrIfTooLong(str, maxLen:=27) {
     Return StrLen(str) > maxLen ? "…" SubStr(str, -maxLen) : str
 }
 workerUsingMec2Functions() {
@@ -2403,8 +2407,6 @@ Class orderedAssociativeArray { ; Capt Odin https://www.autohotkey.com/boards/vi
 
 ;=================================================================================================================================================================================
 ;HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION - HOTKEYS SECTION
-F1::
-Return
 !3::
 	Gui, MainGui:Submit, NoHide
     Clipboard := caseNumber
