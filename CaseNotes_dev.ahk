@@ -1,5 +1,5 @@
 ﻿; Note: This script requires BOM encoding (UTF-8) to display characters properly.
-Version := "v1.1.7"
+Version := "v1.1.8"
 
 ;Future todo ideas:
 
@@ -21,7 +21,7 @@ SetTitleMatchMode, RegEx
 DetectHiddenWindows, On
 
 ; Rule for AHKv1 functions and variables involving GUI: If you are doing a "Gui, Submit" the function must be declared Global.
-Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerboseMode := (verboseMode && false) ? 1 : 0
+Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, extraVerboseMode := (false && verboseMode)
 
 ;setGlobalVariables() { ; don't enable until v2
 ;symbols/characters
@@ -120,7 +120,9 @@ Global verboseMode := A_ScriptName == "CaseNotes_dev.ahk" ? 1 : 0, selectVerbose
     (
         Custom hotkeys for your county exist for the following windows (A ToolTip reminder appears by pressing F1):
         ● OnBase (Alt+4: 'Verifs Due Back' detail)
-        ● OnBase (Ctrl+F6-12: Enters keywords on the Perform Import screen)
+        ● OnBase (Alt+5: 'Denied - No BSF Funds - Added to Waitlist' detail)
+        ● OnBase (Alt+6: 'Denied - No BSF Funds - Already on Waitlist' detail)
+        ● OnBase (Ctrl+F6 - F11: Enters keywords on the Perform Import screen)
         ● OnBase (Ctrl+B: Inserts date and case number for mail)
         ● Automated Mailing (Ctrl+B: Inserts date and case number for mail)
         ● Browser (Types an Approved (Alt+F1) or Denied (Alt+F2) app case note. Ctrl+F12 or Alt+F12: worker signature)
@@ -581,7 +583,7 @@ outputCaseNoteBackup(ByRef sendingCaseNote) {
     local backupString := "Case Number: " (caseNumber != "" ? caseNumber : "(not entered)") "`n`n====== Case Note Summary ======`n" sendingCaseNote.mec2NoteTitle "`n`n====== MEC2 Case Note ===== `n" sendingCaseNote.mec2CaseNote "`n`n===== Email ===== `n" emailTextObject.output "`n" specialLetterBackup "`n" (ini.caseNoteCountyInfo.countyNoteInMaxis ? "`n===== MAXIS Note =====`n" sendingCaseNote.maxisNote "`n" : "") "`n-------------------------------------------`n`n`n"
     backupFile.Write(backupString)
     backupFile.Close()
-    If (selectVerboseMode) {
+    If (extraVerboseMode) {
         openOversizedNoteGui(backupString)
     }
     GuiControl, MainGui:Text, backupNoteButton, % "Saved " cm
@@ -2328,7 +2330,7 @@ verbose(verboseOutput) {
     timedToolTip(verboseOutput)
 }
 selectVerbose(verboseOutput) {
-    if (!selectVerboseMode) {
+    if (!extraVerboseMode) {
         Return
     }
     verbose(verboseOutput)
@@ -2535,36 +2537,32 @@ onBaseImportKeys(CaseNum, docType, DetailText, DetailTabs=1, ToolTipHelp="") {
 #If (ini.employeeInfo.employeeCounty == "Dakota" && WinActive("Perform Import"))
 {
     F1:: 
-        toolTipText := "CTRL+ `n F6: RSDI `n F7: SMI ID `n F8: PRISM GCSC `n F9: CS $ Calc `nF10: Income Calc `nF11: The Work # `nF12: CCAPP Letter"
+        toolTipText := "CTRL+ `n F6: RSDI `n F7: VerifyMN ID (SMI) `n F8: PRISM GCSC `n F9: CS $ Calc `nF10: Income Calc `nF11: The Work #"
         timedToolTip(toolTipText, 8000)
     Return
     ^F6::
         Gui, MainGui:Submit, NoHide
-        onBaseImportKeys(caseNumber, "3003 ssi", "{Text}RSDI ", 3, "Member#, Member Name")
+        onBaseImportKeys(caseNumber, "3003 TPQY", "{Text}RSDI ", 3, "Member#, Member Name")
     Return
     ^F7::
         Gui, MainGui:Submit, NoHide
-        onBaseImportKeys(caseNumber, "3001 other id", "{Text}SMI ", 3, "Member#, Member Name")
+        onBaseImportKeys(caseNumber, "3001 Other ID", "{Text}VerifyMN ", 3, "Member#, Member Name")
     Return
     ^F8::
         Gui, MainGui:Submit, NoHide
-        onBaseImportKeys(caseNumber, "3003 child support", "{Text}GCSC ", 1, "Y/N, Child(ren) Member#")
+        onBaseImportKeys(caseNumber, "3003 Non-Client", "{Text}GCSC ", 1, "Y/N, Child(ren) Member#")
     Return
     ^F9::
         Gui, MainGui:Submit, NoHide
-        onBaseImportKeys(caseNumber, "3003 wo", "{Text}CCAP CS INCOME CALC")
+        onBaseImportKeys(caseNumber, "3003 EDAK 0413", "{Text}CCAP CS INCOME CALC")
     Return
     ^F10::
         Gui, MainGui:Submit, NoHide
-        onBaseImportKeys(caseNumber, "3003 wo", "{Text}CCAP INCOME CALC")
+        onBaseImportKeys(caseNumber, "3003 EDAK 0413", "{Text}CCAP INCOME CALC")
     Return
     ^F11::
         Gui, MainGui:Submit, NoHide
-        onBaseImportKeys(caseNumber, "3003 other - in", "{Text}W# ", 3, "Member#, Employer")
-    Return
-    ^F12::
-        Gui, MainGui:Submit, NoHide
-        onBaseImportKeys(caseNumber, "3003 edak 3813", "{Text}OUTBOUND")
+        onBaseImportKeys(caseNumber, "3003 Income", "{Text}W# ", 3, "Member#, Employer")
     Return
 }
 #If ; Dakota && WinActive("Perform Import")
@@ -2581,6 +2579,8 @@ Ctrl+B: (Mail) Types in the current date and case number, clicks Yes. Works best
       Step 3: Click 'Create Envelope'
 
 Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword field must be active.
+Alt+5: (Keywords) Enters 'DENIED - NO BSF FUNDS - ADDED TO WL'. 'Details' keyword field must be active.
+Alt+6: (Keywords) Enters 'DENIED - NO BSF FUNDS - ALREADY ON WL'. 'Details' keyword field must be active.
         )"
         timedToolTip(toolTipText, 8000)
     Return
@@ -2608,6 +2608,13 @@ Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword f
     !4::
         SendInput, % "VERIFS DUE BACK " autoDenyObject.autoDenyExtensionDate
     Return
+    !5::
+        SendInput, % "DENIED - NO BSF FUNDS - ADDED TO WL"
+    Return
+    !6::
+        SendInput, % "DENIED - NO BSF FUNDS - ALREADY ON WL"
+    Return
+    
 }
 #If ; Dakota && WinActive("ahk_group autoMailGroup")
 
@@ -2621,16 +2628,16 @@ Alt+4: (Keywords) Enters 'VERIFS DUE BACK' + verif due date. 'Details' keyword f
     CHDE: (B) Child Demographics
     GCSC: Good Cause, Special Concerns, Cooperation    
     CAAD: Case Notes
-    CAST: Member list
+    CAST: Member List
     CHPL: Checks by Payee List
     DDPL: Direct Deposit by Payee List
     CAPS*: Case Summary
     
     CP or NC +:
-    CB: Case browse
-    DD*:Address
-    ID*: (B) Wage Hits
-    SU*: Summary
+    __CB: Case Browse
+    __DD*: Address
+    __ID*: (B) Wage Hits
+    __SU*: Summary
     
   * Command may not be available to all workers.
   "
